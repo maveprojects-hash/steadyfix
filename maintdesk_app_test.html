@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steadyfix CMMS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#e8eaed;--pn:#fff;--ink:#1b2831;--mut:#5d6b75;--ln:#cfd5da;--ac:#1f5f8b;--am:#e59f0f;--ok:#2e7d4f;--bad:#c23b2a;--nav:#1b2831}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif}
+header{background:var(--nav);color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+header h1{margin:0;font-size:22px;flex:1}header a{color:var(--am);font-size:14px}
+header select{background:#2c3b45;color:#fff;border:0;padding:6px;border-radius:3px}
+nav{background:var(--nav);display:flex;overflow-x:auto;padding:0 8px;position:sticky;top:0;z-index:5}
+nav button{background:none;border:0;color:#c9d3da;padding:11px 12px;font:500 14px system-ui;white-space:nowrap;cursor:pointer;border-bottom:3px solid transparent}
+nav button.on{color:#fff;border-color:var(--am)}
+main{max-width:1100px;margin:0 auto;padding:14px}h2{margin:0 0 10px;font-size:22px}
+.g{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:14px}
+.k{background:var(--pn);border-left:5px solid var(--ac);padding:10px}.k b{font-size:28px;display:block}.k span{color:var(--mut);font-size:13px}
+.p{background:var(--pn);padding:12px;margin-bottom:14px;border:1px solid var(--ln)}
+.sc{overflow-x:auto;background:var(--pn)}table{border-collapse:collapse;width:100%;min-width:600px}
+th,td{padding:5px 6px;border-bottom:1px solid var(--ln);text-align:left}th{font-size:13px;color:var(--mut);background:var(--bg)}
+td input,td select{width:100%;border:1px solid transparent;background:none;font:inherit;padding:5px;color:var(--ink)}
+td input:focus,td select:focus{border-color:var(--ac);background:#fff}
+.f{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.f input,.f select,.f button{flex:1 1 130px;padding:8px;font:inherit;border:1px solid var(--ln);border-radius:3px;min-width:0}
+.f button,.b{background:var(--ac);color:#fff;border-color:var(--ac);font-weight:600;cursor:pointer;flex:0 0 auto}
+.b{padding:8px 12px;border:0;border-radius:3px}
+.x{background:none;border:0;color:var(--bad);cursor:pointer;font-size:16px}
+.chk{display:flex;gap:10px;padding:9px 4px;border-bottom:1px solid var(--ln);align-items:center}.chk input{width:20px;height:20px}
+.done{text-decoration:line-through;color:var(--mut)}.note{color:var(--mut);font-size:13px;margin:6px 0 12px}
+.bad{color:var(--bad);font-weight:600}.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tabs button{flex:1;padding:8px;border:1px solid var(--ln);background:var(--pn);cursor:pointer}.tabs .on{background:var(--ac);color:#fff}
+</style></head><body>
+<header><h1>Steadyfix CMMS</h1><select id="site"></select><a href="maintdesk_login.html">Team &amp; sites</a></header>
+<nav id="nav"></nav><main id="v">Loading…</main>
+<script>
+const SUPABASE_URL='https://wqggnimaglsikdusbvuh.supabase.co', SUPABASE_ANON_KEY='sb_publishable_NhiAgVZ451DMdfwzWTSGvQ_zQlbwW8l';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const $=id=>document.getElementById(id), V=$('v');
+let me,site,cur='dash',cf='daily';
+const F=(k,l,t,o)=>({k,l,t,o});
+const st=['open','in_progress','on_hold','done','cancelled'], PR=['low','medium','high','urgent'];
+const ASSET=F('asset_id','Asset','r',['assets','name']), STAFF=k=>F(k,'Assigned to','r',['profiles','full_name']);
+const MOD={
+ work_orders:{l:'Work tasks',s:1,f:[F('title','Task','t'),ASSET,STAFF('assigned_to'),F('priority','Priority','s',PR),F('due_date','Due','d'),F('status','Status','s',st)]},
+ pm_schedules:{l:'PM schedules',s:1,f:[F('title','PM task','t'),ASSET,STAFF('assigned_to'),F('frequency_days','Every (days)','n'),F('next_due','Next due','d')]},
+ stock_items:{l:'Stock',f:[F('name','Item','t'),F('sku','SKU','t'),F('unit_cost','Unit cost','n'),F('min_level','Min level','n'),F('on_hand','On hand (this site)','n',0,1)]},
+ purchase_orders:{l:'Orders',s:1,f:[F('po_number','PO number','t'),F('supplier_id','Supplier','r',['suppliers','name']),F('total_cost','Cost','n'),F('expected_at','Expected','d'),F('status','Status','s',['draft','ordered','delivered','cancelled'])]},
+ shutdowns:{l:'Shutdowns',s:1,f:[F('title','Shutdown','t'),F('system','System','t'),F('starts_at','Starts','dt'),F('duration_hrs','Hours','n'),F('status','Status','s',['planned','notified','active','complete'])]},
+ sensors:{l:'Monitoring',s:1,note:'Register each meter or sensor here. Live readings arrive from your WiFi devices using each sensor\u2019s device key. That feed is the next build step.',f:[F('name','Sensor','t'),F('kind','Type','s',['electricity','water','gas','temperature','pressure','current','flow']),F('unit','Unit','t'),F('alert_min','Alert below','n'),F('alert_max','Alert above','n')]},
+ assets:{l:'Wear & life',s:1,f:[F('name','Asset','t'),F('category','Category','t'),F('installed_on','Installed','d'),F('life_years','Life (yrs)','n'),F('wear_pct','Wear %','n'),F('replace_cost','Replace cost','n'),F('status','Status','s',['running','faulty','stopped','retired'])]},
+ shifts:{l:'Rosters',s:1,f:[STAFF('user_id'),F('shift_date','Date','d'),F('shift_type','Shift','s',['day','night','standby','off','leave'])]},
+ budgets:{l:'Budget',s:1,m:1,f:[F('category','Category','t'),F('year','Year','n'),F('annual_amount','Annual budget','n')]},
+ expenses:{l:'Expenses',s:1,m:1,f:[F('category','Category','t'),F('amount','Amount','n'),F('spent_on','Date','d')]},
+ suppliers:{l:'Suppliers',f:[F('name','Name','t'),F('kind','Type','s',['supplier','subcontractor']),F('trade','Trade','t'),F('phone','Phone','t'),F('rating','Rating (1-5)','n')]},
+ vehicles:{l:'Fleet',s:1,f:[F('name','Vehicle','t'),F('reg_no','Reg','t'),F('odometer_km','Odometer km','n'),F('next_service_km','Next service km','n'),F('status','Status','s',['available','in_use','in_service'])]}};
+const TABS=[['dash','Dashboard'],['work_orders'],['pm_schedules'],['chk','Checklists'],['stock_items'],['purchase_orders'],['shutdowns'],['sensors'],['assets'],['shifts'],['budgets'],['expenses'],['suppliers'],['vehicles'],['sub','Subscribe']];
+const isMgr=()=>['owner','manager'].includes(me.role);
+const yr=new Date().getFullYear(), today=new Date().toISOString().slice(0,10);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+const R=n=>'R '+Math.round(n||0).toLocaleString('en-ZA');
+
+async function boot(){
+ const{data:{session}}=await sb.auth.getSession(); if(!session)return location.href='maintdesk_login.html';
+ const{data}=await sb.from('profiles').select('id,company_id,full_name,role').eq('id',session.user.id).maybeSingle();
+ if(!data)return location.href='maintdesk_login.html'; me=data;
+ const{data:sites}=await sb.from('sites').select('id,name').order('name'); site=sites[0]?.id;
+ $('site').innerHTML=sites.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+ $('site').onchange=e=>{site=e.target.value;draw()};
+ $('nav').innerHTML=TABS.filter(t=>isMgr()||!['budgets','expenses','sub'].includes(t[0])).map(t=>`<button data-t="${t[0]}">${t[1]||MOD[t[0]].l}</button>`).join('');
+ $('nav').onclick=e=>{if(e.target.dataset.t){cur=e.target.dataset.t;draw()}};
+ draw()}
+
+async function draw(){[...$('nav').children].forEach(b=>b.classList.toggle('on',b.dataset.t==cur));V.innerHTML='Loading…';
+ try{V.innerHTML=cur=='dash'?await dash():cur=='chk'?await chk():cur=='sub'?await sub():await mod(cur);if(cur=='sub')pay()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}}
+
+async function dash(){
+ const w=await sb.from('work_orders').select('title,priority,due_date,status').eq('site_id',site).not('status','in','(done,cancelled)').order('due_date');
+ const pm=await sb.from('pm_schedules').select('title,next_due').eq('site_id',site).eq('active',true).lt('next_due',today);
+ const it=await sb.from('stock_items').select('id,name,min_level'), lv=await sb.from('stock_levels').select('item_id,on_hand').eq('site_id',site);
+ const oh=Object.fromEntries((lv.data||[]).map(l=>[l.item_id,+l.on_hand])), low=(it.data||[]).filter(i=>(oh[i.id]||0)<i.min_level);
+ const as=await sb.from('assets').select('name,wear_pct').eq('site_id',site).gte('wear_pct',75);
+ const urg=(w.data||[]).filter(x=>x.priority=='urgent');
+ return`<h2>Today at a glance</h2><div class="g"><div class="k"><b>${w.data.length}</b><span>Open work tasks</span></div><div class="k"><b class="bad">${pm.data.length}</b><span>Overdue PMs</span></div><div class="k"><b>${low.length}</b><span>Below min stock</span></div><div class="k"><b>${as.data.length}</b><span>Assets 75%+ worn</span></div></div>
+ <div class="p"><b>Needs attention</b>${urg.map(x=>`<div class="chk">🔧 ${esc(x.title)} (due ${x.due_date||'no date'})</div>`).join('')}${pm.data.map(x=>`<div class="chk">⏰ ${esc(x.title)} overdue since ${x.next_due}</div>`).join('')}${low.map(x=>`<div class="chk">📦 Reorder ${esc(x.name)}: ${oh[x.id]||0} on hand, min ${x.min_level}</div>`).join('')}${as.data.map(x=>`<div class="chk">⚙️ ${esc(x.name)} is ${x.wear_pct}% worn</div>`).join('')||''}</div>`}
+
+async function mod(id){
+ const m=MOD[id], refs={};
+ for(const f of m.f)if(f.t=='r'&&!refs[f.o[0]]){let q=sb.from(f.o[0]).select('id,'+f.o[1]).order(f.o[1]);if(f.o[0]=='assets')q=q.eq('site_id',site);refs[f.o[0]]=(await q).data||[]}
+ let q=sb.from(id).select('*').order(m.f[0].k);if(m.s)q=q.eq('site_id',site);const{data:rows,error}=await q;if(error)throw error;
+ let oh={};if(id=='stock_items')(await sb.from('stock_levels').select('item_id,on_hand').eq('site_id',site)).data.forEach(l=>oh[l.item_id]=l.on_hand);
+ let pre=m.note?`<div class="note">${m.note}</div>`:'';
+ if(id=='budgets'){const ex=(await sb.from('expenses').select('category,amount,spent_on').eq('site_id',site).gte('spent_on',yr+'-01-01')).data||[],mo=new Date().getMonth()+1;
+  const sp={};ex.forEach(e=>sp[e.category]=(sp[e.category]||0)+ +e.amount);
+  pre=`<div class="sc" style="margin-bottom:14px"><table><tr><th>Category</th><th>Budget ${yr}</th><th>Spent YTD</th><th>Used</th><th>Projected year-end</th></tr>${rows.filter(r=>r.year==yr).map(r=>{const s=sp[r.category]||0,p=s/mo*12;return`<tr><td>${esc(r.category)}</td><td>${R(r.annual_amount)}</td><td>${R(s)}</td><td>${Math.round(s/r.annual_amount*100||0)}%</td><td class="${p>r.annual_amount?'bad':''}">${R(p)}${p>r.annual_amount?' (over)':''}</td></tr>`}).join('')}</table></div>`}
+ const cell=(f,v,rid)=>{const oc=`onchange="upd('${id}','${rid}','${f.k}','${f.t}',this.value,${f.v?1:0})"`;
+  if(f.t=='s')return`<select ${oc}>${f.o.map(o=>`<option ${o==v?'selected':''}>${o}</option>`).join('')}</select>`;
+  if(f.t=='r')return`<select ${oc}><option value="">–</option>${refs[f.o[0]].map(r=>`<option value="${r.id}" ${r.id==v?'selected':''}>${esc(r[f.o[1]])}</option>`).join('')}</select>`;
+  return`<input ${oc} type="${{n:'number',d:'date',dt:'datetime-local'}[f.t]||'text'}" value="${esc(f.t=='dt'&&v?v.slice(0,16):v)}">`};
+ const add=`<div class="f">${m.f.map((f,i)=>f.t=='s'?`<select id="n${i}">${f.o.map(o=>`<option>${o}</option>`).join('')}</select>`:f.t=='r'?`<select id="n${i}"><option value="">${f.l}</option>${refs[f.o[0]].map(r=>`<option value="${r.id}">${esc(r[f.o[1]])}</option>`).join('')}</select>`:`<input id="n${i}" placeholder="${f.l}" ${f.k=='year'?`value="${yr}"`:''} type="${{n:'number',d:'date',dt:'datetime-local'}[f.t]||'text'}">`).join('')}<button onclick="ins('${id}')">Add</button></div>`;
+ return`<h2>${m.l}</h2>${pre}${add}<div class="sc"><table><tr>${m.f.map(f=>`<th>${f.l}</th>`).join('')}${id=='stock_items'?'<th>Status</th>':''}<th></th></tr>${rows.map(r=>`<tr>${m.f.map(f=>`<td>${cell(f,f.v?oh[r.id]??0:r[f.k],r.id)}</td>`).join('')}${id=='stock_items'?`<td>${(oh[r.id]||0)<r.min_level?'<span class="bad">Reorder</span>':'OK'}</td>`:''}<td>${isMgr()?`<button class="x" onclick="del('${id}','${r.id}')">✕</button>`:''}</td></tr>`).join('')||'<tr><td colspan="9">Nothing here yet. Add the first one above.</td></tr>'}</table></div>`}
+
+const val=(t,v)=>v===''?null:t=='n'?+v:t=='dt'?new Date(v).toISOString():v;
+async function upd(tb,rid,k,t,v,virt){const r=virt?await sb.from('stock_levels').upsert({item_id:rid,site_id:site,company_id:me.company_id,on_hand:+v}):await sb.from(tb).update({[k]:val(t,v)}).eq('id',rid);if(r.error)alert(r.error.message);else if(tb=='stock_items')draw()}
+async function ins(id){const m=MOD[id],row={company_id:me.company_id};if(m.s)row.site_id=site;let oh=0;
+ m.f.forEach((f,i)=>{const v=val(f.t,$('n'+i).value);if(f.v)oh=v||0;else if(v!==null)row[f.k]=v});
+ const{data,error}=await sb.from(id).insert(row).select('id').single();if(error)return alert(error.message);
+ if(id=='stock_items')await sb.from('stock_levels').upsert({item_id:data.id,site_id:site,company_id:me.company_id,on_hand:oh});draw()}
+async function del(tb,rid){if(!confirm('Delete this row?'))return;const{error}=await sb.from(tb).delete().eq('id',rid);error?alert(error.message):draw()}
+
+const STARTER={daily:['Walk-round: leaks, noises, alarms','Pool plant pressure & chlorine','Generator fuel & battery','Geyser valves','Log meter readings'],weekly:['Test emergency lighting','Grease pumps & motors','Inspect gas connections','Clean strainers & filters','Fleet tyre & oil check'],monthly:['Thermal scan DB boards','Test generator on load','Service booster pumps','Review stock vs min levels','Review overdue PMs']};
+function pkey(f){const d=new Date();if(f=='weekly'){d.setDate(d.getDate()-((d.getDay()+6)%7))}if(f=='monthly')d.setDate(1);return f=='daily'?today:d.toISOString().slice(0,10)}
+async function chk(){
+ const tp=(await sb.from('checklist_templates').select('*').eq('site_id',site)).data;
+ if(!tp.length)return`<h2>Checklists</h2><div class="p">No checklists for this site yet.<br><br><button class="b" onclick="seed()">Add daily, weekly and monthly starter lists</button></div>`;
+ const keys=['daily','weekly','monthly'].map(pkey), rn=(await sb.from('checklist_runs').select('*').eq('site_id',site).in('run_date',keys)).data;
+ const t=tp.find(x=>x.frequency==cf)||tp[0], key=pkey(t.frequency), run=rn.find(r=>r.template_id==t.id&&r.run_date==key), res=run?.results||{};
+ return`<h2>Checklists</h2><div class="tabs">${['daily','weekly','monthly'].map(c=>`<button class="${c==t.frequency?'on':''}" onclick="cf='${c}';draw()">${c}</button>`).join('')}</div><div class="p">${t.items.map((x,i)=>`<label class="chk"><input type="checkbox" ${res[i]?'checked':''} onchange="tick('${t.id}','${key}',${i},this.checked)"><span class="${res[i]?'done':''}">${esc(x)}</span></label>`).join('')}</div><div class="note">Lists reset each day, week or month.</div>`}
+async function seed(){await sb.from('checklist_templates').insert(Object.entries(STARTER).map(([f,items])=>({company_id:me.company_id,site_id:site,name:f+' checks',frequency:f,items})));draw()}
+async function tick(tid,key,i,on){const{data}=await sb.from('checklist_runs').select('results').eq('template_id',tid).eq('run_date',key).maybeSingle();
+ const results={...(data?.results||{}),[i]:on};await sb.from('checklist_runs').upsert({company_id:me.company_id,site_id:site,template_id:tid,run_date:key,results,completed_by:me.id,completed_at:new Date().toISOString()},{onConflict:'template_id,run_date'});draw()}
+const PP_ID='BAAshiyibCQ9kJ0LRlICmsarQCMDDn_-hw-C21GIh3S077ex8wwvq_cTdKrUEV2Mqe9unUk5O5xLOICTas';
+const PLANS=[['P-73S94176KM157670SNLBDWFQ','TEST plan: $1 USD per month (testing only)']];
+async function sub(){const{data:c}=await sb.from('companies').select('name,plan,subscription_status,max_sites,trial_ends_at').eq('id',me.company_id).single();const act=c.subscription_status=='active',pen=c.subscription_status=='pending';
+ return`<h2>Subscription</h2><div class="p"><b>${esc(c.name)}</b><br>Plan: ${esc(c.plan)} · Status: <b class="${act?'':'bad'}">${esc(c.subscription_status)}</b> · Sites allowed: ${c.max_sites}${act||pen||!c.trial_ends_at?'':`<br>Trial ends ${new Date(c.trial_ends_at).toLocaleDateString('en-ZA')}`}${pen?'<br>Payment received. We are confirming it and will activate your plan shortly.':''}</div>`+(act||pen?'':`<div class="note">Pay securely with PayPal. Your plan is activated once we confirm your payment, usually within one business day.</div>`+PLANS.map(p=>`<div class="p"><b>${p[1]}</b><div id="pp-${p[0]}"></div></div>`).join(''))}
+function pay(){if(!document.getElementById('pp-'+PLANS[0][0]))return;
+ const go=()=>PLANS.forEach(([id])=>paypal.Buttons({style:{shape:'rect',color:'gold',layout:'vertical',label:'subscribe'},createSubscription:(d,a)=>a.subscription.create({plan_id:id,custom_id:me.company_id}),onApprove:async d=>{const{error}=await sb.rpc('record_subscription',{p_sub:d.subscriptionID});alert(error?'Payment received but not recorded ('+error.message+'). Reference: '+d.subscriptionID:'Thank you! Your subscription is being activated.');draw()}}).render('#pp-'+id));
+ if(window.paypal&&paypal.Buttons)return go();const t=document.createElement('script');t.src='https://www.paypal.com/sdk/js?client-id='+PP_ID+'&vault=true&intent=subscription';t.setAttribute('data-sdk-integration-source','button-factory');t.onload=go;document.head.appendChild(t)}
+boot();
+</script></body></html>

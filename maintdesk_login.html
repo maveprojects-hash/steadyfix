@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steadyfix CMMS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{--ink:#1b2831;--ac:#1f5f8b;--am:#e59f0f;--ln:#cfd5da;--bg:#e8eaed;--bad:#c23b2a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif;display:flex;justify-content:center;padding:24px 14px}
+.box{background:#fff;width:100%;max-width:440px;padding:22px;border-top:6px solid var(--am)}
+h1{margin:0 0 4px;font-size:26px}p{color:#5d6b75;margin:0 0 14px}
+input,select,button{display:block;width:100%;padding:10px;margin-bottom:10px;font:inherit;border:1px solid var(--ln);border-radius:3px}
+button{background:var(--ac);color:#fff;border-color:var(--ac);font-weight:600;cursor:pointer}
+button.l{background:none;color:var(--ac);border:0;text-align:left;padding:4px 0}
+.err{color:var(--bad);min-height:20px}.row{padding:8px 0;border-bottom:1px solid var(--ln)}
+code{background:var(--bg);padding:2px 6px}
+</style></head><body><div class="box" id="app"></div>
+<script>
+// 1) Paste your Supabase project values (Project settings > API)
+const SUPABASE_URL='https://wqggnimaglsikdusbvuh.supabase.co', SUPABASE_ANON_KEY='sb_publishable_NhiAgVZ451DMdfwzWTSGvQ_zQlbwW8l';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const $=id=>document.getElementById(id), app=$('app');
+const head=(t,s)=>`<h1>Steadyfix CMMS</h1><p>${s||''}</p><h3>${t}</h3>`;
+const err=m=>{$('e').textContent=m||''};
+let mode='login';
+
+function auth(){
+ app.innerHTML=head(mode=='login'?'Log in':'Create your account','Maintenance management for every site.')+
+ `<input id="em" type="email" placeholder="Email" autocomplete="email"><input id="pw" type="password" placeholder="Password (8+ characters)" autocomplete="${mode=='login'?'current-password':'new-password'}">
+ <div class="err" id="e"></div><button id="go">${mode=='login'?'Log in':'Sign up'}</button>
+ <button class="l" id="sw">${mode=='login'?'New here? Create an account':'Have an account? Log in'}</button>`;
+ $('sw').onclick=()=>{mode=mode=='login'?'signup':'login';auth()};
+ $('go').onclick=async()=>{err();const c={email:$('em').value.trim(),password:$('pw').value};
+  const r=mode=='login'?await sb.auth.signInWithPassword(c):await sb.auth.signUp(c);
+  if(r.error)return err(r.error.message);
+  if(!r.data.session){app.innerHTML=head('Check your email','')+'<p>We sent a confirmation link. Confirm your email, then log in.</p>';return}
+  route()}}
+
+function setup(){
+ app.innerHTML=head('Set up your account','Create a new company, or join one with an invite code.')+
+ `<input id="nm" placeholder="Your full name"><div class="err" id="e"></div>
+ <input id="co" placeholder="Company name"><input id="st" placeholder="First site name (e.g. Head office)"><button id="mk">Create company</button>
+ <p style="text-align:center">or</p><input id="tk" placeholder="Invite code"><button id="jn">Join with invite</button>`;
+ $('mk').onclick=async()=>{err();if(!$('nm').value||!$('co').value)return err('Enter your name and company name.');
+  const{error}=await sb.rpc('signup_company',{p_company:$('co').value,p_site:$('st').value,p_name:$('nm').value});error?err(error.message):route()};
+ $('jn').onclick=async()=>{err();if(!$('nm').value||!$('tk').value)return err('Enter your name and invite code.');
+  const{error}=await sb.rpc('accept_invite',{p_token:$('tk').value.trim(),p_name:$('nm').value});error?err(error.message):route()}}
+
+async function home(me){
+ const{data:sites}=await sb.from('sites').select('id,name').order('name');
+ const mgr=['owner','manager'].includes(me.role);
+ app.innerHTML=head(me.companies.name,`Signed in as ${me.full_name} (${me.role})`)+'<p><a href="maintdesk_app.html"><b>Open the app →</b></a></p>'+
+ `<b>Your sites</b>`+sites.map(s=>`<div class="row">${s.name}</div>`).join('')+
+ (mgr?`<br><b>Add a site</b><input id="sn" placeholder="Site name"><div class="err" id="e"></div><button id="as">Add site</button>
+ <b>Invite a team member</b><input id="ie" type="email" placeholder="Their email"><select id="ir"><option>technician</option><option>manager</option><option>storeman</option><option>viewer</option></select>
+ <select id="is" multiple size="${Math.min(4,sites.length)}">${sites.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><button id="iv">Create invite</button><div id="ic"></div>`:'')+
+ `<br><button class="l" id="lo">Log out</button>`;
+ $('lo').onclick=async()=>{await sb.auth.signOut();route()};
+ if(mgr){
+  $('as').onclick=async()=>{err();const{error}=await sb.rpc('add_site',{p_name:$('sn').value,p_address:null});error?err(error.message):home(me)};
+  $('iv').onclick=async()=>{err();const ids=[...$('is').selectedOptions].map(o=>o.value);
+   const{data,error}=await sb.from('invitations').insert({company_id:me.company_id,email:$('ie').value.trim(),role:$('ir').value,site_ids:ids,invited_by:me.id}).select('token').single();
+   error?err(error.message):$('ic').innerHTML=`Send them this code: <code>${data.token}</code><br>They sign up with <b>${$('ie').value}</b>, then choose "Join with invite".`}}}
+
+async function route(){
+ const{data:{session}}=await sb.auth.getSession();if(!session)return auth();
+ const{data:me}=await sb.from('profiles').select('id,company_id,full_name,role,companies(name)').eq('id',session.user.id).maybeSingle();
+ me?home(me):setup()}
+route();
+</script></body></html>

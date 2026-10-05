@@ -43,6 +43,14 @@ details.p summary{font-weight:700;cursor:pointer;color:var(--ac)}
 .rl{padding:7px 2px;border-bottom:1px solid var(--ln);font-size:14px}.rl:first-of-type{font-weight:600}
 .ph{display:none;font-weight:700;margin-bottom:10px}
 @media print{header,nav,.noprint,.bar2,details,.ca,.tabs{display:none!important}body{background:#fff}main{padding:0}.card,.p{break-inside:avoid;border:1px solid #888}.ph{display:block!important}}
+
+.el textarea,.f textarea{width:100%;padding:8px;font:inherit;border:1px solid var(--ln);border-radius:3px;margin-top:2px;min-height:64px;color:var(--ink);background:#fff}.f textarea{flex:1 1 100%}
+.kv b{word-break:break-word;white-space:pre-wrap}
+.po{display:none}#sheet{display:none}
+.pl{font-size:24px;font-weight:800}.pt{width:100%;border-collapse:collapse;min-width:0}.pt td,.pt th{border:1px solid #888;padding:6px 8px;text-align:left;vertical-align:top}
+.box{border:1px solid #888;min-height:70px;padding:8px;white-space:pre-wrap}.sig{grid-template-columns:1fr 1fr;gap:30px;margin-top:36px}
+@media print{.po{display:block!important}.po.sig{display:grid!important}body.one header,body.one nav,body.one main{display:none!important}body.one #sheet{display:block}.ph div{margin-bottom:2px}}
+.pb{page-break-after:always}
 </style></head><body>
 <header><h1>Steadyfix CMMS</h1><select id="site"></select><a href="maintdesk_login.html">Team &amp; sites</a></header>
 <nav id="nav"></nav><main id="v">Loading…</main>
@@ -66,8 +74,9 @@ const MOD={
  budgets:{l:'Budget',s:1,m:1,f:[F('category','Category','t'),F('year','Year','n'),F('annual_amount','Annual budget','n')]},
  expenses:{l:'Expenses',s:1,m:1,f:[F('category','Category','t'),F('amount','Amount','n'),F('spent_on','Date','d')]},
  suppliers:{l:'Suppliers',f:[F('name','Name','t'),F('kind','Type','s',['supplier','subcontractor']),F('trade','Trade','t'),F('phone','Phone','t'),F('rating','Rating (1-5)','n')]},
+ damage_reports:{l:'Damage report',s:1,o:'date_noticed',d:1,note:'Record theft, damage, breakages or items that need servicing. Tap Print on any report for a sheet you can sign and use for insurance or your records.',f:[F('title','What was damaged or stolen','t'),F('report_type','Type','s',['damage','theft','broken','needs_servicing','insurance_claim','other']),ASSET,F('location_text','Where','t'),F('date_noticed','Date noticed','d'),F('reported_by','Reported by','t'),F('description','What happened','x'),F('estimated_cost','Estimated cost','n'),F('police_case_no','Police case no.','t'),F('insurer_claim_no','Insurer claim no.','t'),F('action_taken','Action taken or needed','x'),F('status','Status','s',['open','investigating','claim_lodged','repaired','closed','written_off'])]},
  vehicles:{l:'Fleet',s:1,f:[F('name','Vehicle','t'),F('reg_no','Reg','t'),F('odometer_km','Odometer km','n'),F('next_service_km','Next service km','n'),F('status','Status','s',['available','in_use','in_service'])]}};
-const TABS=[['dash','Dashboard'],['rep','Reports'],['work_orders'],['pm_schedules'],['chk','Checklists'],['stock_items'],['purchase_orders'],['shutdowns'],['sensors'],['assets'],['shifts'],['budgets'],['expenses'],['suppliers'],['vehicles'],['sub','Subscribe']];
+const TABS=[['dash','Dashboard'],['rep','Reports'],['work_orders'],['pm_schedules'],['chk','Checklists'],['damage_reports'],['stock_items'],['purchase_orders'],['shutdowns'],['mon','Monitoring'],['assets'],['shifts'],['budgets'],['expenses'],['suppliers'],['vehicles'],['set','Settings'],['sub','Subscribe']];
 const isMgr=()=>['owner','manager'].includes(me.role);
 const yr=new Date().getFullYear(), today=new Date().toISOString().slice(0,10);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
@@ -82,10 +91,12 @@ async function boot(){
  $('site').onchange=e=>{site=e.target.value;draw()};
  $('nav').innerHTML=TABS.filter(t=>isMgr()||!['budgets','expenses','sub'].includes(t[0])).map(t=>`<button data-t="${t[0]}">${t[1]||MOD[t[0]].l}</button>`).join('');
  $('nav').onclick=e=>{if(e.target.dataset.t){cur=e.target.dataset.t;draw()}};
+ try{CO=(await sb.from('companies').select('name').eq('id',me.company_id).single()).data.name}catch(e){}
  draw()}
 
-async function draw(){[...$('nav').children].forEach(b=>b.classList.toggle('on',b.dataset.t==cur));V.innerHTML='Loading…';
- try{V.innerHTML=cur=='dash'?await dash():cur=='rep'?await rep():cur=='chk'?await chk():cur=='sub'?await sub():await mod(cur);if(cur=='sub')pay()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}}
+let MT;
+async function draw(){clearInterval(MT);[...$('nav').children].forEach(b=>b.classList.toggle('on',b.dataset.t==cur));V.innerHTML='Loading…';
+ try{V.innerHTML=cur=='dash'?await dash():cur=='rep'?await rep():cur=='mon'?await mon():cur=='set'?settings():cur=='chk'?await chk():cur=='sub'?await sub():await mod(cur);if(cur=='sub')pay();if(cur=='mon')MT=setInterval(()=>{const a=document.activeElement;if(cur!='mon'||(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))||document.querySelector('details[open]'))return;draw()},30000)}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}}
 
 async function dash(){
  const w=await sb.from('work_orders').select('title,priority,due_date,status').eq('site_id',site).not('status','in','(done,cancelled)').order('due_date');
@@ -101,13 +112,15 @@ async function dash(){
 const SH=()=>$('site').selectedOptions[0]?.textContent||'';
 let SHARE={title:'',text:''},rp='daily';
 const bar=()=>`<div class="bar2 noprint"><button onclick="doPrint()">🖨 Print</button><button onclick="doMail()">✉ Email</button><button onclick="doShare()">↗ Share</button></div>`;
-const ph=t=>`<div class="ph">Steadyfix CMMS · ${esc(SH())} · ${new Date().toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'})}<br>${esc(t)}</div>`;
-function doPrint(){window.print()}
+let CO='';const LS=k=>{try{return localStorage.getItem(k)||''}catch(e){return''}};
+const ph=(t,dt)=>`<div class="ph"><div class="pl">${esc(LS('sf_label')||CO)}</div>${LS('sf_sub')?`<div>${esc(LS('sf_sub'))}</div>`:''}<div>${esc(SH())}</div><div><b>${esc(t)}</b></div><div>Date: ${dt?dd(dt):new Date().toLocaleDateString('en-ZA',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>`;
+const foot=(by,mgr,date)=>`<div class="po sig"><div><b>Done / checked by</b><br><br>Name: ${esc(by||'______________________')}<br><br>Signature: ______________________<br><br>Date: ______________</div><div><b>Signed off by (manager)</b><br><br>Name: ${esc(mgr||'______________________')}<br><br>Signature: ______________________<br><br>Date: ${date?esc(dd(date)):'______________'}</div></div>`;
+async function doPrint(){await MP;if(cur=='chk')await draw();setTimeout(()=>window.print(),150)}
 function doMail(){const t=SHARE.text,cut=t.length>1700;location.href='mailto:?subject='+encodeURIComponent(SHARE.title)+'&body='+encodeURIComponent(cut?t.slice(0,1700)+'\n...(shortened. Use Share or Print for the full report)':t)}
 async function doShare(){if(navigator.share){try{await navigator.share({title:SHARE.title,text:SHARE.text})}catch(e){}}else{try{await navigator.clipboard.writeText(SHARE.text);alert('Copied. Paste it into WhatsApp, an email or a message.')}catch(e){prompt('Copy this text:',SHARE.text)}}}
 const cap=s=>String(s??'').replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());
 const dd=s=>s?new Date(String(s).length>10?s:s+'T12:00:00').toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'}):'-';
-const chip=(v,l)=>{const x=String(v),c=['urgent','faulty','cancelled','stopped','overdue','past_due'].includes(x)?'r':['high','on_hold','in_service','active'].includes(x)?'a':['done','complete','delivered','running','available','low'].includes(x)?'g':'';return`<span class="chip ${c}">${esc(l)}</span>`};
+const chip=(v,l)=>{const x=String(v),c=['urgent','faulty','cancelled','stopped','overdue','past_due','theft','written_off'].includes(x)?'r':['high','on_hold','in_service','active','investigating','claim_lodged','needs_servicing','broken'].includes(x)?'a':['done','complete','delivered','running','available','low','closed','repaired'].includes(x)?'g':'';return`<span class="chip ${c}">${esc(l)}</span>`};
 const MONEY=/cost|amount|budget/i;
 function show(f,v,refs){if(v===null||v===undefined||v==='')return'-';
  if(f.t=='r')return(refs[f.o[0]].find(r=>r.id==v)||{})[f.o[1]]||'-';
@@ -119,7 +132,7 @@ function tg(r){const c=$('c'+r),e=c.querySelector('.ed');if(e.style.display!='no
 async function mod(id){
  const m=MOD[id], refs={};
  for(const f of m.f)if(f.t=='r'&&!refs[f.o[0]]){let q=sb.from(f.o[0]).select('id,'+f.o[1]).order(f.o[1]);if(f.o[0]=='assets')q=q.eq('site_id',site);refs[f.o[0]]=(await q).data||[]}
- let q=sb.from(id).select('*').order(m.f[0].k);if(m.s)q=q.eq('site_id',site);const{data:rows,error}=await q;if(error)throw error;
+ let q=sb.from(id).select('*').order(m.o||m.f[0].k,{ascending:!m.d});if(m.s)q=q.eq('site_id',site);const{data:rows,error}=await q;if(error)throw error;
  let oh={};if(id=='stock_items')(await sb.from('stock_levels').select('item_id,on_hand').eq('site_id',site)).data.forEach(l=>oh[l.item_id]=l.on_hand);
  let pre=m.note?`<div class="note">${m.note}</div>`:'',sumTxt='';
  if(id=='budgets'){const ex=(await sb.from('expenses').select('category,amount,spent_on').eq('site_id',site).gte('spent_on',yr+'-01-01')).data||[],mo=new Date().getMonth()+1;
@@ -129,38 +142,96 @@ async function mod(id){
  const cell=(f,v,rid)=>{const oc=`onchange="upd('${id}','${rid}','${f.k}','${f.t}',this.value,${f.v?1:0})"`;
   if(f.t=='s')return`<select ${oc}>${f.o.map(o=>`<option ${o==v?'selected':''}>${o}</option>`).join('')}</select>`;
   if(f.t=='r')return`<select ${oc}><option value="">-</option>${refs[f.o[0]].map(r=>`<option value="${r.id}" ${r.id==v?'selected':''}>${esc(r[f.o[1]])}</option>`).join('')}</select>`;
+  if(f.t=='x')return`<textarea ${oc}>${esc(v)}</textarea>`;
   return`<input ${oc} type="${{n:'number',d:'date',dt:'datetime-local'}[f.t]||'text'}" value="${esc(f.t=='dt'&&v?v.slice(0,16):v)}">`};
  const ty=f=>({n:'number',d:'date',dt:'datetime-local'}[f.t]||'text');
- const add=`<details class="p noprint"><summary>＋ Add new</summary><div class="f" style="margin-top:10px">${m.f.map((f,i)=>f.t=='s'?`<select id="n${i}">${f.o.map(o=>`<option>${o}</option>`).join('')}</select>`:f.t=='r'?`<select id="n${i}"><option value="">${f.l}</option>${refs[f.o[0]].map(r=>`<option value="${r.id}">${esc(r[f.o[1]])}</option>`).join('')}</select>`:`<input id="n${i}" placeholder="${f.l}" ${f.k=='year'?`value="${yr}"`:''} type="${ty(f)}">`).join('')}<button onclick="ins('${id}')">Add</button></div></details>`;
+ const add=`<details class="p noprint"><summary>＋ Add new</summary><div class="f" style="margin-top:10px">${m.f.map((f,i)=>f.t=='s'?`<select id="n${i}">${f.o.map(o=>`<option>${o}</option>`).join('')}</select>`:f.t=='r'?`<select id="n${i}"><option value="">${f.l}</option>${refs[f.o[0]].map(r=>`<option value="${r.id}">${esc(r[f.o[1]])}</option>`).join('')}</select>`:f.t=='x'?`<textarea id="n${i}" placeholder="${f.l}"></textarea>`:`<input id="n${i}" placeholder="${f.l}" ${f.k=='year'?`value="${yr}"`:''} type="${ty(f)}">`).join('')}<button onclick="ins('${id}')">Add</button></div></details>`;
  const V_=rows.map(r=>m.f.map(f=>f.v?(oh[r.id]??0):r[f.k]));
  const txt=rows.map((r,i)=>{const L=m.f.map((f,j)=>({f,s:show(f,V_[i][j],refs)}));return(i+1)+'. '+L[0].s+(id=='stock_items'&&(oh[r.id]||0)<r.min_level?' (REORDER)':'')+'\n'+L.slice(1).filter(x=>x.s!='-').map(x=>'   '+x.f.l+': '+x.s).join('\n')}).join('\n\n');
  SHARE={title:m.l+' - '+SH(),text:m.l+'\n'+SH()+' · '+dd(today)+'\n\n'+sumTxt+(txt||'Nothing recorded yet.')};
+ if(id=='damage_reports')DR={rows,refs};
  const cards=rows.map((r,i)=>{const v=V_[i],title=show(m.f[0],v[0],refs);
   const chips=m.f.map((f,j)=>f.t=='s'&&v[j]?chip(v[j],cap(v[j])):'').join('')+(id=='stock_items'?((oh[r.id]||0)<r.min_level?chip('overdue','Reorder'):chip('done','OK')):'');
   const kv=m.f.map((f,j)=>j==0||f.t=='s'?'':`<span>${f.l}</span><b>${esc(show(f,v[j],refs))}</b>`).join('');
   const ed=m.f.map((f,j)=>`<label class="el">${f.l}${cell(f,v[j],r.id)}</label>`).join('');
-  return`<div class="card" id="c${r.id}"><div class="vw"><div class="ct"><div>${esc(title)}</div><div class="chips">${chips}</div></div><div class="kv">${kv}</div></div><div class="ed" style="display:none">${ed}</div><div class="ca noprint"><button onclick="tg('${r.id}')">Edit</button>${isMgr()?`<button class="x2" onclick="del('${id}','${r.id}')">Delete</button>`:''}</div></div>`}).join('')||'<div class="p">Nothing here yet. Tap “Add new” to create the first one.</div>';
- return`${ph(m.l)}<h2>${m.l}</h2>${bar()}${pre}${add}${cards}`}
+  return`<div class="card" id="c${r.id}"><div class="vw"><div class="ct"><div>${esc(title)}</div><div class="chips">${chips}</div></div><div class="kv">${kv}</div></div><div class="ed" style="display:none">${ed}</div><div class="ca noprint"><button onclick="tg('${r.id}')">Edit</button>${id=='damage_reports'?`<button onclick="printOne('${r.id}')">Print</button>`:''}${isMgr()?`<button class="x2" onclick="del('${id}','${r.id}')">Delete</button>`:''}</div></div>`}).join('')||'<div class="p">Nothing here yet. Tap “Add new” to create the first one.</div>';
+ return`${ph(m.l)}<h2>${m.l}</h2>${bar()}${pre}${add}${cards}${foot('','','')}`}
 
+let repD='';
 async function rep(){
- const d0=new Date(),iso=d=>d.toISOString().slice(0,10);let start=today,label='Daily report · '+dd(today);
- if(rp=='weekly'){const x=new Date(d0);x.setDate(x.getDate()-6);start=iso(x);label='Weekly report · '+dd(start)+' to '+dd(today)}
- if(rp=='monthly'){start=today.slice(0,8)+'01';label='Monthly report · '+d0.toLocaleDateString('en-ZA',{month:'long',year:'numeric'})}
+ if(rp=='archive')return arch();
+ const end=repD||today,d0=new Date(end+'T12:00:00'),iso=d=>d.toISOString().slice(0,10);let start=end,label='Daily report · '+dd(end);
+ if(rp=='weekly'){const x=new Date(d0);x.setDate(x.getDate()-6);start=iso(x);label='Weekly report · '+dd(start)+' to '+dd(end)}
+ if(rp=='monthly'){start=end.slice(0,8)+'01';label='Monthly report · '+d0.toLocaleDateString('en-ZA',{month:'long',year:'numeric'})}
  const q=(t,c)=>sb.from(t).select(c).eq('site_id',site);
- const [wo,pm,tp,rn,it,lv,po,sd,as,vh,ex]=await Promise.all([q('work_orders','title,priority,status,due_date,created_at,completed_at'),q('pm_schedules','title,next_due').eq('active',true),q('checklist_templates','id,name,items'),q('checklist_runs','template_id,run_date,results').gte('run_date',start),sb.from('stock_items').select('id,name,min_level'),q('stock_levels','item_id,on_hand'),q('purchase_orders','po_number,status,total_cost,ordered_at,expected_at'),q('shutdowns','title,system,starts_at,status'),q('assets','name,wear_pct'),q('vehicles','name,odometer_km,next_service_km'),isMgr()?q('expenses','category,amount,spent_on').gte('spent_on',start):Promise.resolve({data:[]})]);
- const inP=x=>x&&String(x).slice(0,10)>=start,none=l=>l.length?l:['Nothing to report.'],S=[];
+ const [wo,pm,tp,rn,it,lv,po,sd,as,vh,ex,dr]=await Promise.all([q('work_orders','title,priority,status,due_date,created_at,completed_at'),q('pm_schedules','title,next_due').eq('active',true),q('checklist_templates','id,name,items'),q('checklist_runs','template_id,run_date,results').gte('run_date',start).lte('run_date',end),sb.from('stock_items').select('id,name,min_level'),q('stock_levels','item_id,on_hand'),q('purchase_orders','po_number,status,total_cost,ordered_at,expected_at'),q('shutdowns','title,system,starts_at,status'),q('assets','name,wear_pct'),q('vehicles','name,odometer_km,next_service_km'),isMgr()?q('expenses','category,amount,spent_on').gte('spent_on',start).lte('spent_on',end):Promise.resolve({data:[]}),q('damage_reports','title,report_type,status,date_noticed,estimated_cost')]);
+ const inP=x=>x&&String(x).slice(0,10)>=start&&String(x).slice(0,10)<=end,none=l=>l.length?l:['Nothing to report.'],S=[];
  const W=wo.data||[],op=x=>!['done','cancelled'].includes(x.status),od=W.filter(x=>op(x)&&x.due_date&&x.due_date<today),dn=W.filter(x=>inP(x.completed_at));
  S.push(['Work tasks',[`Opened: ${W.filter(x=>inP(x.created_at)).length} · Completed: ${dn.length} · Still open: ${W.filter(op).length} · Overdue: ${od.length}`,...dn.map(x=>'Done: '+x.title),...od.map(x=>`Overdue: ${x.title} (due ${dd(x.due_date)}, ${cap(x.priority)} priority)`)]]);
  const pmo=(pm.data||[]).filter(x=>x.next_due<today);S.push(['Preventive maintenance',[`Overdue: ${pmo.length}`,...pmo.map(x=>`${x.title}, due ${dd(x.next_due)}`)]]);
- const T=tp.data||[];S.push(['Checklists',none((rn.data||[]).map(r=>{const t=T.find(x=>x.id==r.template_id);return t?`${t.name} (${dd(r.run_date)}): ${Object.values(r.results||{}).filter(Boolean).length} of ${t.items.length} done`:null}).filter(Boolean))]);
+ const T=tp.data||[];S.push(['Checklists',none((rn.data||[]).map(r=>{const t=T.find(x=>x.id==r.template_id);return t?`${t.name} (${dd(r.run_date)}): ${Object.keys(r.results||{}).filter(k=>k!='_meta'&&r.results[k]).length} of ${t.items.length} done`:null}).filter(Boolean))]);
  const oh=Object.fromEntries((lv.data||[]).map(l=>[l.item_id,+l.on_hand]));S.push(['Stock to reorder',none((it.data||[]).filter(i=>(oh[i.id]||0)<i.min_level).map(i=>`${i.name}: ${oh[i.id]||0} on hand, minimum ${i.min_level}`))]);
  const P=po.data||[],ord=P.filter(x=>inP(x.ordered_at)),out=P.filter(x=>x.status=='ordered');S.push(['Orders',[`Ordered in this period: ${ord.length} (${R(ord.reduce((a,x)=>a+ +x.total_cost,0))}) · Outstanding: ${out.length}`,...out.map(x=>`${x.po_number}: expected ${dd(x.expected_at)}`)]]);
  S.push(['Shutdowns',none((sd.data||[]).filter(x=>inP(x.starts_at)).map(x=>`${x.title} (${x.system||'system'}), ${dd(x.starts_at)}, ${cap(x.status)}`))]);
  S.push(['Assets 75% or more worn',none((as.data||[]).filter(x=>x.wear_pct>=75).map(x=>`${x.name}: ${x.wear_pct}% worn`))]);
  S.push(['Fleet due for service',none((vh.data||[]).filter(x=>x.next_service_km&&x.odometer_km>=x.next_service_km).map(x=>`${x.name}: ${x.odometer_km} km (service due at ${x.next_service_km} km)`))]);
+ const DRR=dr.data||[],dop=DRR.filter(x=>!['closed','repaired','written_off'].includes(x.status));S.push(['Damage and incidents',[`New in this period: ${DRR.filter(x=>inP(x.date_noticed)).length} · Still open: ${dop.length}`,...dop.map(x=>`${cap(x.report_type)}: ${x.title} (${cap(x.status)}, est. ${R(x.estimated_cost)})`)]]);
  if(isMgr()){const E=ex.data||[],by={};E.forEach(e=>by[e.category]=(by[e.category]||0)+ +e.amount);S.push(['Spending',[`Total this period: ${R(E.reduce((a,e)=>a+ +e.amount,0))}`,...Object.entries(by).map(([c,a])=>`${c}: ${R(a)}`)]])}
  SHARE={title:label+' - '+SH(),text:label+'\n'+SH()+'\n\n'+S.map(([h,l])=>h.toUpperCase()+'\n'+l.map(x=>'- '+x).join('\n')).join('\n\n')};
- return`${ph(label)}<h2>Reports</h2><div class="tabs noprint">${['daily','weekly','monthly'].map(c=>`<button class="${c==rp?'on':''}" onclick="rp='${c}';draw()">${cap(c)}</button>`).join('')}</div><div class="note">${label} · ${esc(SH())}</div>${bar()}${S.map(([h,l])=>`<div class="p"><b>${h}</b>${l.map(x=>`<div class="rl">${esc(x)}</div>`).join('')}</div>`).join('')}`}
+ return`${ph(label,end)}<h2>Reports</h2>${repTabs()}<div class="note">${label}${rp=='daily'?'':''} · ${esc(SH())}</div>${bar()}${S.map(([h,l])=>`<div class="p"><b>${h}</b>${l.map(x=>`<div class="rl">${esc(x)}</div>`).join('')}</div>`).join('')}${foot('','','')}`}
+
+let DR={rows:[],refs:{}};
+function printOne(rid){const r=DR.rows.find(x=>x.id==rid);if(!r)return;const m=MOD.damage_reports,g=k=>show(m.f.find(f=>f.k==k),r[k],DR.refs),row=(l,v)=>`<tr><th style="width:32%">${l}</th><td>${esc(v)}</td></tr>`;
+ let sh=document.getElementById('sheet');if(!sh){sh=document.createElement('div');sh.id='sheet';document.body.appendChild(sh)}
+ sh.innerHTML=ph('Incident / damage report')+`<br><table class="pt">${row('Report type',g('report_type'))}${row('Title',g('title'))}${row('Asset',g('asset_id'))}${row('Where',g('location_text'))}${row('Date noticed',g('date_noticed'))}${row('Reported by',g('reported_by'))}${row('Estimated cost',g('estimated_cost'))}${row('Status',g('status'))}${row('Police case no.',g('police_case_no'))}${row('Insurer claim no.',g('insurer_claim_no'))}</table><p><b>What happened</b></p><div class="box">${esc(r.description||'')}</div><p><b>Action taken or needed</b></p><div class="box">${esc(r.action_taken||'')}</div>`+foot(r.reported_by,'','');
+ document.body.classList.add('one');setTimeout(()=>window.print(),120)}
+window.onafterprint=()=>document.body.classList.remove('one');
+function settings(){return`<h2>Print settings</h2><div class="p"><label class="el">Company, hotel or business name (printed at the top of every sheet)<input id="sl" value="${esc(LS('sf_label')||CO)}"></label><label class="el">Line under the name (department, address or phone)<input id="ss" value="${esc(LS('sf_sub'))}" placeholder="e.g. Maintenance Department"></label><br><button class="b" onclick="saveSet()">Save</button><div class="note">Saved on this device. Every printout, report and checklist sheet uses it, together with the site name and date.</div></div>`}
+function saveSet(){try{localStorage.setItem('sf_label',$('sl').value);localStorage.setItem('sf_sub',$('ss').value)}catch(e){}alert('Saved')}
+
+const repTabs=()=>`<div class="tabs noprint">${['daily','weekly','monthly','archive'].map(c=>`<button class="${c==rp?'on':''}" onclick="rp='${c}';draw()">${c=='archive'?'Saved checklists':cap(c)}</button>`).join('')}</div>`+(rp=='archive'?'':`<div class="f noprint"><label class="el" style="flex:1">Report date<input type="date" value="${repD||today}" onchange="repD=this.value;draw()"></label></div><div class="note noprint">Counts for the chosen day or period come from what was saved then. Open tasks, stock and overdue items show today's position.</div>`);
+let aFrom='',aTo='',aFreq='all',ARCH={runs:[],T:[]};
+async function arch(){
+ const d=new Date();d.setDate(d.getDate()-30);aFrom=aFrom||d.toISOString().slice(0,10);aTo=aTo||today;
+ const T=(await sb.from('checklist_templates').select('id,name,frequency,items').eq('site_id',site)).data||[];
+ let runs=(await sb.from('checklist_runs').select('*').eq('site_id',site).gte('run_date',aFrom).lte('run_date',aTo).order('run_date',{ascending:false})).data||[];
+ runs=runs.filter(r=>{const t=T.find(x=>x.id==r.template_id);return t&&(aFreq=='all'||t.frequency==aFreq)});ARCH={runs,T};
+ const info=r=>{const t=T.find(x=>x.id==r.template_id),m=r.results?._meta||{},n=Object.keys(r.results||{}).filter(k=>k!='_meta'&&r.results[k]).length;return{t,m,n,full:t.items.length>0&&n>=t.items.length}};
+ const cards=runs.map(r=>{const{t,m,n,full}=info(r);return`<div class="card"><div class="ct"><div>${esc(t.name)}</div><div class="chips">${chip(t.frequency,cap(t.frequency))}${chip(full?'done':'high',full?'Complete':'Partial')}</div></div><div class="kv"><span>Date</span><b>${dd(r.run_date)}</b><span>Done</span><b>${n} of ${t.items.length}</b><span>Checked by</span><b>${esc(m.by||'-')}</b><span>Signed off by</span><b>${esc(m.mgr||'-')}${m.date?' on '+dd(m.date):''}</b></div><div class="ca noprint"><button onclick="printRun('${r.id}')">View / Print</button></div></div>`}).join('')||'<div class="p">No saved checklists in this date range.</div>';
+ SHARE={title:'Saved checklists - '+SH(),text:'Saved checklists, '+dd(aFrom)+' to '+dd(aTo)+'\n'+SH()+'\n\n'+(runs.map(r=>{const{t,m,n}=info(r);return'- '+dd(r.run_date)+' '+t.name+' ('+cap(t.frequency)+'): '+n+' of '+t.items.length+' done, checked by '+(m.by||'-')+', signed off by '+(m.mgr||'-')}).join('\n')||'None')};
+ return`${ph('Saved checklists')}<h2>Reports</h2>${repTabs()}<div class="p noprint"><b>Find saved checklists</b><div class="f" style="margin-top:8px"><label class="el" style="flex:1">From<input type="date" value="${aFrom}" onchange="aFrom=this.value;draw()"></label><label class="el" style="flex:1">To<input type="date" value="${aTo}" onchange="aTo=this.value;draw()"></label><label class="el" style="flex:1">Type<select onchange="aFreq=this.value;draw()">${['all','daily','weekly','monthly','yearly'].map(c=>`<option value="${c}" ${c==aFreq?'selected':''}>${cap(c)}</option>`).join('')}</select></label></div><div class="note">Every checklist you tick is saved here automatically, exactly as it was that day. Weekly lists are dated by the Monday, monthly by the 1st, yearly by 1 January.</div></div>${bar()}${runs.length?`<div class="noprint" style="margin-bottom:10px"><button class="b" onclick="printAllRuns()">Print all ${runs.length}</button></div>`:''}${cards}`}
+function runSheet(t,r,last){const m=r.results?._meta||{},res=r.results||{};return`<div ${last?'':'class="pb"'}>${ph(t.name+' ('+cap(t.frequency)+' checklist)',r.run_date)}<br><p>Checked by: ${esc(m.by||'______________________')}</p><table class="pt"><tr><th style="width:60px">Done</th><th>Task</th></tr>${t.items.map((x,i)=>`<tr><td>${res[i]?'☑':'☐'}</td><td>${esc(x)}</td></tr>`).join('')}</table><p><b>Notes or issues found:</b> ${m.notes?esc(m.notes):'<br><br>__________________________________'}</p>${foot(m.by,m.mgr,m.date)}</div>`}
+function sheetPrint(h){let sh=document.getElementById('sheet');if(!sh){sh=document.createElement('div');sh.id='sheet';document.body.appendChild(sh)}sh.innerHTML=h;document.body.classList.add('one');setTimeout(()=>window.print(),120)}
+function printRun(id){const r=ARCH.runs.find(x=>x.id==id),t=r&&ARCH.T.find(x=>x.id==r.template_id);if(t)sheetPrint(runSheet(t,r,true))}
+function printAllRuns(){sheetPrint(ARCH.runs.map((r,i)=>runSheet(ARCH.T.find(x=>x.id==r.template_id),r,i==ARCH.runs.length-1)).join(''))}
+
+const KINDS={electricity:['⚡','Electricity','kW'],water:['💧','Water','L/min'],gas:['🔥','Gas','m³/h'],temperature:['🌡','Temperature','°C'],pressure:['⏲','Pressure','bar'],flow:['🚰','Flow','L/min'],current:['🔌','Current','A'],wifi_network:['📶','Wi-Fi network','1 = up'],router:['🌐','Router / internet','1 = up'],access_point:['📡','Wi-Fi access point','1 = up'],phone_system:['☎','Phone system','1 = up'],other:['📟','Other','']};
+const NETK=['wifi_network','router','access_point','phone_system'],OFFMIN=15;
+const ago=m=>m<1?'just now':m<60?Math.round(m)+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago';
+function spark(v,lo,hi){if(v.length<2)return'';const a=Math.min(...v,lo??Infinity),b=Math.max(...v,hi??-Infinity),r=(b-a)||1;return`<svg viewBox="0 0 120 30" preserveAspectRatio="none" style="width:100%;height:34px;display:block;margin-top:6px"><polyline fill="none" stroke="var(--ac)" stroke-width="1.5" points="${v.map((y,i)=>`${i*120/(v.length-1)},${28-(y-a)/r*26}`).join(' ')}"/></svg>`}
+function copyTxt(id){const t=$(id).textContent;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert('Copied')).catch(()=>prompt('Copy this:',t))}
+async function mon(){
+ const ss=(await sb.from('sensors').select('*').eq('site_id',site).order('name')).data||[],ids=ss.map(x=>x.id);
+ const rd=ids.length?(await sb.from('readings').select('sensor_id,value,read_at').in('sensor_id',ids).order('read_at',{ascending:false}).limit(900)).data||[]:[];
+ const by={};rd.forEach(r=>(by[r.sensor_id]=by[r.sensor_id]||[]).push(r));
+ const URL_=SUPABASE_URL+'/rest/v1/rpc/ingest_reading';let on=0,off=0,al=0;const txt=[];
+ const cards=ss.map(s=>{const h=by[s.id]||[],last=h[0],k=KINDS[s.kind]||KINDS.other,net=NETK.includes(s.kind),mins=last?(Date.now()-new Date(last.read_at))/60000:null,offl=!last||mins>OFFMIN,v=last?+last.value:null,alert=!!last&&((s.alert_min!=null&&v<+s.alert_min)||(s.alert_max!=null&&v>+s.alert_max));
+  offl?off++:on++;if(alert&&!offl)al++;
+  const stt=offl?chip('overdue','Offline'):alert?chip('overdue','Alert'):chip('done','OK'),disp=last?(net?(v>=1?'Up':'Down'):v+' '+(s.unit||k[2])):'No data yet';
+  txt.push('- '+s.name+': '+disp+' ('+(offl?'OFFLINE':alert?'ALERT':'OK')+(last?', last seen '+ago(mins):'')+')');
+  const curl=`curl -X POST ${URL_} -H "apikey: ${SUPABASE_ANON_KEY}" -H "Content-Type: application/json" -d '{"p_key":"${s.device_key}","p_value":${net?1:23.5}}'`;
+  const lim=(s.alert_min!=null?' · alert below '+s.alert_min:'')+(s.alert_max!=null?' · alert above '+s.alert_max:'');
+  return`<div class="card"><div class="ct"><div>${k[0]} ${esc(s.name)}</div><div class="chips">${stt}</div></div><div style="font-size:26px;font-weight:700;margin-top:6px" class="${alert||offl?'bad':''}">${esc(disp)}</div><div class="note" style="margin:2px 0">${esc(k[1])} · ${last?'last seen '+ago(mins):'waiting for first reading'}${lim}</div>${spark(h.slice(0,40).reverse().map(x=>+x.value),s.alert_min!=null?+s.alert_min:null,s.alert_max!=null?+s.alert_max:null)}
+<details class="noprint" style="margin-top:8px"><summary style="cursor:pointer;color:var(--ac);font-weight:600">Connect this device</summary><div class="note">Any device or system that can send a web request can report here. Test it from a computer with:</div><pre style="white-space:pre-wrap;word-break:break-all;background:var(--bg);padding:8px;font-size:12px" id="cu${s.id}">${esc(curl)}</pre><button class="b" onclick="copyTxt('cu${s.id}')">Copy</button><div class="note">Device key: <b>${s.device_key}</b>. Keep it private.</div></details>
+<details class="noprint" style="margin-top:6px"><summary style="cursor:pointer;color:var(--ac);font-weight:600">Settings</summary><label class="el">Name<input value="${esc(s.name)}" onchange="updS('${s.id}','name',this.value,'t')"></label><label class="el">Unit<input value="${esc(s.unit||'')}" onchange="updS('${s.id}','unit',this.value,'t')"></label><label class="el">Alert below<input type="number" value="${s.alert_min??''}" onchange="updS('${s.id}','alert_min',this.value,'n')"></label><label class="el">Alert above<input type="number" value="${s.alert_max??''}" onchange="updS('${s.id}','alert_max',this.value,'n')"></label>${isMgr()?`<br><button style="padding:6px 14px;background:none;border:1px solid var(--bad);color:var(--bad);border-radius:3px;cursor:pointer" onclick="delS('${s.id}')">Delete device</button>`:''}</details></div>`}).join('')||'<div class="p">No devices yet. Tap “Add device”, then open “Connect this device” on its card.</div>';
+ SHARE={title:'Monitoring status - '+SH(),text:'Monitoring status\n'+SH()+' · '+new Date().toLocaleString('en-ZA')+'\nOnline: '+on+' · Offline: '+off+' · Alerts: '+al+'\n\n'+(txt.join('\n')||'No devices yet')};
+ const add=`<details class="p noprint"><summary>＋ Add device</summary><div class="f" style="margin-top:10px"><input id="sn" placeholder="Name, e.g. Main router or Geyser block C"><select id="sk">${Object.entries(KINDS).map(([k,v])=>`<option value="${k}">${v[0]} ${v[1]}</option>`).join('')}</select><input id="su" placeholder="Unit (optional)"><input id="smin" type="number" placeholder="Alert below"><input id="smax" type="number" placeholder="Alert above"><button onclick="addS()">Add</button></div><div class="note">For Wi-Fi, router and phone-system checks leave the alert fields empty; the app raises an alert when the device reports down.</div></details>`;
+ const help=`<details class="p noprint"><summary>How to connect devices, Wi-Fi and phones</summary><div class="note"><b>Smart meters, sensors and controllers:</b> anything that can send a web request (ESP32 or Arduino boards, Shelly Gen2 and Pro units, Home Assistant, Node-RED, Zabbix or PRTG scripts) posts a number to the address shown under “Connect this device”. Devices without that ability, such as Tuya or Sonoff units, report through Home Assistant.<br><br><b>Wi-Fi network, routers, access points and the phone system:</b> run the Steadyfix gateway script on any PC or Raspberry Pi that stays on in the building. It scans the network for devices, checks the equipment you choose every minute, and reports up or down here.<br><br><b>Updates:</b> device firmware is updated in each device's own app. The gateway script is updated by replacing the file with the new version.</div></details>`;
+ return`${ph('Monitoring status')}<h2>Monitoring</h2>${bar()}<div class="g"><div class="k"><b>${on}</b><span>Online</span></div><div class="k"><b class="${off?'bad':''}">${off}</b><span>Offline</span></div><div class="k"><b class="${al?'bad':''}">${al}</b><span>Alerts</span></div></div>${add}${cards}${help}${foot('','','')}`}
+async function addS(){const n=$('sn').value.trim();if(!n)return alert('Type a name first.');const k=$('sk').value,r={company_id:me.company_id,site_id:site,name:n,kind:k,unit:$('su').value||null,alert_min:$('smin').value===''?null:+$('smin').value,alert_max:$('smax').value===''?null:+$('smax').value};
+ const{error}=await sb.from('sensors').insert(r);error?alert(error.message):draw()}
+async function updS(id,f,v,t){const{error}=await sb.from('sensors').update({[f]:val(t,v)}).eq('id',id);if(error)alert(error.message)}
+async function delS(id){if(!confirm('Delete this device and its readings?'))return;const{error}=await sb.from('sensors').delete().eq('id',id);error?alert(error.message):draw()}
 
 const val=(t,v)=>v===''?null:t=='n'?+v:t=='dt'?new Date(v).toISOString():v;
 async function upd(tb,rid,k,t,v,virt){const r=virt?await sb.from('stock_levels').upsert({item_id:rid,site_id:site,company_id:me.company_id,on_hand:+v}):await sb.from(tb).update({[k]:val(t,v)}).eq('id',rid);if(r.error)alert(r.error.message);else if(tb=='stock_items')draw()}
@@ -170,17 +241,34 @@ async function ins(id){const m=MOD[id],row={company_id:me.company_id};if(m.s)row
  if(id=='stock_items')await sb.from('stock_levels').upsert({item_id:data.id,site_id:site,company_id:me.company_id,on_hand:oh});draw()}
 async function del(tb,rid){if(!confirm('Delete this row?'))return;const{error}=await sb.from(tb).delete().eq('id',rid);error?alert(error.message):draw()}
 
-const STARTER={daily:['Walk-round: leaks, noises, alarms','Pool plant pressure & chlorine','Generator fuel & battery','Geyser valves','Log meter readings'],weekly:['Test emergency lighting','Grease pumps & motors','Inspect gas connections','Clean strainers & filters','Fleet tyre & oil check'],monthly:['Thermal scan DB boards','Test generator on load','Service booster pumps','Review stock vs min levels','Review overdue PMs']};
-function pkey(f){const d=new Date();if(f=='weekly'){d.setDate(d.getDate()-((d.getDay()+6)%7))}if(f=='monthly')d.setDate(1);return f=='daily'?today:d.toISOString().slice(0,10)}
+const STARTER={daily:['Walk-round: leaks, noises, alarms','Pool plant pressure & chlorine','Generator fuel & battery','Geyser valves','Log meter readings'],weekly:['Test emergency lighting','Grease pumps & motors','Inspect gas connections','Clean strainers & filters','Fleet tyre & oil check'],monthly:['Thermal scan DB boards','Test generator on load','Service booster pumps','Review stock vs min levels','Review overdue PMs'],yearly:['Fire equipment service check','Electrical compliance inspection','Gas safety inspection','Boiler and geyser inspection','Review asset replacement plan']};
+const FRQ=['daily','weekly','monthly','yearly'];let ct=null,ced=false,MP=Promise.resolve();
+function pk(f){const d=new Date(),z=n=>String(n).padStart(2,'0');if(f=='weekly')d.setDate(d.getDate()-((d.getDay()+6)%7));if(f=='monthly')d.setDate(1);if(f=='yearly'){d.setMonth(0);d.setDate(1)}return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())}
 async function chk(){
- const tp=(await sb.from('checklist_templates').select('*').eq('site_id',site)).data;
- if(!tp.length)return`<h2>Checklists</h2><div class="p">No checklists for this site yet.<br><br><button class="b" onclick="seed()">Add daily, weekly and monthly starter lists</button></div>`;
- const keys=['daily','weekly','monthly'].map(pkey), rn=(await sb.from('checklist_runs').select('*').eq('site_id',site).in('run_date',keys)).data;
- const t=tp.find(x=>x.frequency==cf)||tp[0], key=pkey(t.frequency), run=rn.find(r=>r.template_id==t.id&&r.run_date==key), res=run?.results||{};
- SHARE={title:cap(t.frequency)+' checklist - '+SH(),text:cap(t.frequency)+' checklist\n'+SH()+' · '+dd(key)+'\n\n'+t.items.map((x,i)=>(res[i]?'[x] ':'[ ] ')+x).join('\n')};
- return`${ph(cap(t.frequency)+' checklist')}<h2>Checklists</h2>${bar()}<div class="tabs">${['daily','weekly','monthly'].map(c=>`<button class="${c==t.frequency?'on':''}" onclick="cf='${c}';draw()">${c}</button>`).join('')}</div><div class="p">${t.items.map((x,i)=>`<label class="chk"><input type="checkbox" ${res[i]?'checked':''} onchange="tick('${t.id}','${key}',${i},this.checked)"><span class="${res[i]?'done':''}">${esc(x)}</span></label>`).join('')}</div><div class="note">Lists reset each day, week or month.</div>`}
-async function seed(){await sb.from('checklist_templates').insert(Object.entries(STARTER).map(([f,items])=>({company_id:me.company_id,site_id:site,name:f+' checks',frequency:f,items})));draw()}
-async function tick(tid,key,i,on){const{data}=await sb.from('checklist_runs').select('results').eq('template_id',tid).eq('run_date',key).maybeSingle();
+ const all=(await sb.from('checklist_templates').select('*').eq('site_id',site).order('name')).data||[],list=all.filter(x=>x.frequency==cf),t=list.find(x=>x.id==ct)||list[0];
+ const head=`<h2>Checklists</h2><div class="tabs noprint">${FRQ.map(c=>`<button class="${c==cf?'on':''}" onclick="cf='${c}';ct=null;ced=false;draw()">${cap(c)}</button>`).join('')}</div>`;
+ const newf=`<details class="p noprint"><summary>＋ New ${cf} checklist</summary><div class="f" style="margin-top:10px"><input id="ncn" placeholder="Name, e.g. Kitchen opening check"><button onclick="newList()">Create</button></div></details>`;
+ if(!t)return head+`<div class="p noprint">No ${cf} checklist yet. Create your own below${all.length?'.':', or add starter lists for every frequency.'}</div>${all.length?'':`<button class="b noprint" onclick="seed()">Add starter lists</button><br><br>`}${newf}`;
+ ct=t.id;const key=pk(cf),run=(await sb.from('checklist_runs').select('results').eq('template_id',t.id).eq('run_date',key).maybeSingle()).data,res=run?.results||{},meta=res._meta||{},by=meta.by??me.full_name;
+ SHARE={title:t.name+' - '+SH(),text:t.name+' ('+cap(cf)+' checklist)\n'+(LS('sf_label')||CO)+' · '+SH()+' · '+dd(key)+'\nChecked by: '+(by||'-')+'\n\n'+t.items.map((x,i)=>(res[i]?'[x] ':'[ ] ')+x).join('\n')+(meta.notes?'\n\nNotes: '+meta.notes:'')+'\n\nSigned off by: '+(meta.mgr||'-')+(meta.date?' on '+dd(meta.date):'')};
+ const mt=f=>`onchange="meta('${t.id}','${key}','${f}',this.value)"`;
+ const sel=list.length>1?`<div class="f noprint"><select onchange="ct=this.value;ced=false;draw()">${list.map(x=>`<option value="${x.id}" ${x.id==t.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>`:'';
+ const body=ced?`<div class="p noprint"><b>Edit this checklist</b><label class="el">List name<input value="${esc(t.name)}" onchange="renList('${t.id}',this.value)"></label>${t.items.map((x,i)=>`<div class="f" style="margin:8px 0 0"><input value="${esc(x)}" onchange="editTask('${t.id}',${i},this.value)"><button class="x" onclick="delTask('${t.id}',${i})">✕</button></div>`).join('')}<div class="f" style="margin-top:10px"><input id="nt" placeholder="New task"><button onclick="addTask('${t.id}')">Add task</button></div><button class="b" onclick="ced=false;draw()">Done editing</button> <button class="x2" style="padding:8px 12px;background:none;border:1px solid var(--bad);color:var(--bad);border-radius:3px;cursor:pointer" onclick="delList('${t.id}')">Delete this checklist</button></div>`
+ :`<div class="p noprint">${t.items.map((x,i)=>`<label class="chk"><input type="checkbox" ${res[i]?'checked':''} onchange="tick('${t.id}','${key}',${i},this.checked)"><span class="${res[i]?'done':''}">${esc(x)}</span></label>`).join('')||'<div class="rl">No tasks yet. Tap Edit tasks to add some.</div>'}<div style="margin-top:8px"><b>${t.items.filter((x,i)=>res[i]).length} of ${t.items.length} done</b> · ${esc(t.name)} · ${dd(key)}</div></div>
+ <div class="p noprint"><b>Sign-off</b><label class="el">Checked by (staff member)<input value="${esc(by)}" ${mt('by')}></label><label class="el">Signed off by (manager)<input value="${esc(meta.mgr||'')}" ${mt('mgr')}></label><label class="el">Sign-off date<input type="date" value="${esc(meta.date||'')}" ${mt('date')}></label><label class="el">Notes or issues found<textarea ${mt('notes')}>${esc(meta.notes||'')}</textarea></label></div>`;
+ const sheet=`<div class="po"><br><p><b>${esc(t.name)}</b> · ${cap(cf)} checklist · ${dd(key)}</p><p>Checked by: ${esc(by||'______________________')}</p><table class="pt"><tr><th style="width:60px">Done</th><th>Task</th></tr>${t.items.map((x,i)=>`<tr><td>${res[i]?'☑':'☐'}</td><td>${esc(x)}</td></tr>`).join('')}</table><p><b>Notes or issues found:</b> ${meta.notes?esc(meta.notes):'<br><br>______________________________________________'}</p></div>${foot(by,meta.mgr,meta.date)}`;
+ return head+sel+`${ph(t.name+' ('+cap(cf)+' checklist)')}`+bar()+(ced?'':`<div class="noprint" style="margin-bottom:10px"><button class="b" onclick="ced=true;draw()">Edit tasks</button> ${newf?'':''}</div>`)+body+sheet+(ced?'':newf)}
+async function seed(){await sb.from('checklist_templates').insert(Object.entries(STARTER).map(([f,items])=>({company_id:me.company_id,site_id:site,name:cap(f)+' checks',frequency:f,items})));draw()}
+async function newList(){const n=$('ncn').value.trim();if(!n)return alert('Type a name for the checklist first.');const{data,error}=await sb.from('checklist_templates').insert({company_id:me.company_id,site_id:site,name:n,frequency:cf,items:[]}).select('id').single();if(error)return alert(error.message);ct=data.id;ced=true;draw()}
+const getT=async id=>(await sb.from('checklist_templates').select('items').eq('id',id).single()).data.items||[];
+const setItems=async(id,items)=>{const{error}=await sb.from('checklist_templates').update({items}).eq('id',id);if(error)alert(error.message)};
+async function addTask(id){const v=$('nt').value.trim();if(!v)return;const it=await getT(id);it.push(v);await setItems(id,it);draw()}
+async function delTask(id,i){const it=await getT(id);it.splice(i,1);await setItems(id,it);draw()}
+async function editTask(id,i,v){const it=await getT(id);it[i]=v;await setItems(id,it)}
+async function renList(id,v){const{error}=await sb.from('checklist_templates').update({name:v}).eq('id',id);if(error)alert(error.message)}
+async function delList(id){if(!confirm('Delete this checklist and its history?'))return;await sb.from('checklist_templates').delete().eq('id',id);ct=null;ced=false;draw()}
+function meta(tid,key,f,v){MP=(async()=>{const{data}=await sb.from('checklist_runs').select('results').eq('template_id',tid).eq('run_date',key).maybeSingle();const results={...(data?.results||{})};results._meta={...(results._meta||{}),[f]:v};await sb.from('checklist_runs').upsert({company_id:me.company_id,site_id:site,template_id:tid,run_date:key,results,completed_by:me.id,completed_at:new Date().toISOString()},{onConflict:'template_id,run_date'})})()}
+async function tick(tid,key,i,on){await MP;const{data}=await sb.from('checklist_runs').select('results').eq('template_id',tid).eq('run_date',key).maybeSingle();
  const results={...(data?.results||{}),[i]:on};await sb.from('checklist_runs').upsert({company_id:me.company_id,site_id:site,template_id:tid,run_date:key,results,completed_by:me.id,completed_at:new Date().toISOString()},{onConflict:'template_id,run_date'});draw()}
 const PP_ID='BAAshiyibCQ9kJ0LRlICmsarQCMDDn_-hw-C21GIh3S077ex8wwvq_cTdKrUEV2Mqe9unUk5O5xLOICTas';
 const PLANS=[['P-3GX3005824536144DNLAQLII','Steadyfix CMMS monthly subscription: $75 USD per month']];

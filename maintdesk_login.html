@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Steadyfix CMMS</title>
+<title>STEADYFIX CMMS</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{--ink:#1b2831;--ac:#1f5f8b;--am:#e59f0f;--ln:#cfd5da;--bg:#e8eaed;--bad:#c23b2a}
@@ -13,13 +13,20 @@ button{background:var(--ac);color:#fff;border-color:var(--ac);font-weight:600;cu
 button.l{background:none;color:var(--ac);border:0;text-align:left;padding:4px 0}
 .err{color:var(--bad);min-height:20px}.row{padding:8px 0;border-bottom:1px solid var(--ln)}
 code{background:var(--bg);padding:2px 6px}
+#intro{position:fixed;inset:0;z-index:99;background:linear-gradient(160deg,#0f1a21,#1b2831 55%,#23404f);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;animation:fi .6s ease;transition:opacity .6s}
+#intro.out{opacity:0;pointer-events:none}@keyframes fi{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:none}}
+#intro h1{font-size:34px;letter-spacing:3px;margin:18px 0 4px;font-weight:800}#intro h1 small{display:block;color:#e59f0f;font-size:20px;letter-spacing:8px;margin-top:2px}
+#intro p{color:#c9d3da;margin:6px 0;max-width:420px}#intro .ic{display:flex;gap:16px;margin:22px 0 10px;flex-wrap:wrap;justify-content:center}
+#intro .ic svg{width:44px;height:44px;stroke:#e59f0f;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;padding:10px;border:1px solid #3a5565;border-radius:50%}
+#intro button{margin-top:22px;padding:12px 34px;border:0;border-radius:4px;background:#e59f0f;color:#1b2831;font:700 16px system-ui;cursor:pointer}
+@media print{#intro{display:none!important}}
 </style></head><body><div class="box" id="app"></div>
 <script>
 // 1) Paste your Supabase project values (Project settings > API)
 const SUPABASE_URL='https://wqggnimaglsikdusbvuh.supabase.co', SUPABASE_ANON_KEY='sb_publishable_NhiAgVZ451DMdfwzWTSGvQ_zQlbwW8l';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 const $=id=>document.getElementById(id), app=$('app');
-const head=(t,s)=>`<h1>Steadyfix CMMS</h1><p>${s||''}</p><h3>${t}</h3>`;
+const head=(t,s)=>`<h1>STEADYFIX CMMS</h1><p>${s||''}</p><h3>${t}</h3>`;
 const err=m=>{$('e').textContent=m||''};
 let mode='login';
 
@@ -66,4 +73,14 @@ async function route(){
  const{data:me}=await sb.from('profiles').select('id,company_id,full_name,role,companies(name)').eq('id',session.user.id).maybeSingle();
  me?home(me):setup()}
 route();
+function intro(){try{if(sessionStorage.getItem('sf_intro'))return;sessionStorage.setItem('sf_intro','1')}catch(e){}
+ const I=(d,x='')=>`<svg viewBox="0 0 24 24">${d}${x}</svg>`;
+ const el=document.createElement('div');el.id='intro';
+ el.innerHTML=`<svg viewBox="0 0 1024 1024" width="120" height="120"><circle cx="512" cy="512" r="290" fill="#E59F0F"/>${[0,45,90,135,180,225,270,315].map(a=>`<rect x="442" y="132" width="140" height="120" rx="22" fill="#E59F0F" transform="rotate(${a} 512 512)"/>`).join('')}<circle cx="512" cy="512" r="175" fill="#1B2831"/><polyline points="420,525 492,597 612,438" fill="none" stroke="#fff" stroke-width="68" stroke-linecap="round" stroke-linejoin="round"/></svg>
+ <h1>STEADYFIX<small>CMMS</small></h1><p>Maintenance management for every site</p>
+ <div class="ic">${I('<path d="M10 10V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5"/><path d="M14 6a6 6 0 0 1 6 6v3"/><path d="M4 15v-3a6 6 0 0 1 6-6"/><rect x="2" y="15" width="20" height="4" rx="1"/>')}${I('<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>')}${I('<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>')}${I('<path d="M3 3v18h18"/><rect x="6" y="6" width="7" height="3"/><rect x="9" y="11" width="9" height="3"/><rect x="7" y="16" width="6" height="3"/>')}${I('<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><path d="M12 20h.01"/>')}${I('<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>')}</div>
+ <p>Work orders · Preventive maintenance · Checklists · Stock · Monitoring · Reports</p><button id="introgo">Get started</button>`;
+ document.body.appendChild(el);const close=()=>{el.classList.add('out');setTimeout(()=>el.remove(),700)};
+ document.getElementById('introgo').onclick=close;setTimeout(close,6000)}
+intro();
 </script></body></html>

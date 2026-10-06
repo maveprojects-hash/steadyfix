@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Steadyfix CMMS</title>
+<title>STEADYFIX CMMS</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#e8eaed;--pn:#fff;--ink:#1b2831;--mut:#5d6b75;--ln:#cfd5da;--ac:#1f5f8b;--am:#e59f0f;--ok:#2e7d4f;--bad:#c23b2a;--nav:#1b2831}
@@ -51,8 +51,17 @@ details.p summary{font-weight:700;cursor:pointer;color:var(--ac)}
 .box{border:1px solid #888;min-height:70px;padding:8px;white-space:pre-wrap}.sig{grid-template-columns:1fr 1fr;gap:30px;margin-top:36px}
 @media print{.po{display:block!important}.po.sig{display:grid!important}body.one header,body.one nav,body.one main{display:none!important}body.one #sheet{display:block}.ph div{margin-bottom:2px}}
 .pb{page-break-after:always}
+
+.dg{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-bottom:14px}.dg .p{margin:0}
+#intro{position:fixed;inset:0;z-index:99;background:linear-gradient(160deg,#0f1a21,#1b2831 55%,#23404f);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;animation:fi .6s ease;transition:opacity .6s}
+#intro.out{opacity:0;pointer-events:none}@keyframes fi{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:none}}
+#intro h1{font-size:34px;letter-spacing:3px;margin:18px 0 4px;font-weight:800}#intro h1 small{display:block;color:#e59f0f;font-size:20px;letter-spacing:8px;margin-top:2px}
+#intro p{color:#c9d3da;margin:6px 0;max-width:420px}#intro .ic{display:flex;gap:16px;margin:22px 0 10px;flex-wrap:wrap;justify-content:center}
+#intro .ic svg{width:44px;height:44px;stroke:#e59f0f;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;padding:10px;border:1px solid #3a5565;border-radius:50%}
+#intro button{margin-top:22px;padding:12px 34px;border:0;border-radius:4px;background:#e59f0f;color:#1b2831;font:700 16px system-ui;cursor:pointer}
+@media print{#intro{display:none!important}}
 </style></head><body>
-<header><h1>Steadyfix CMMS</h1><select id="site"></select><a href="maintdesk_login.html">Team &amp; sites</a></header>
+<header><h1>STEADYFIX CMMS</h1><select id="site"></select><a href="maintdesk_login.html">Team &amp; sites</a></header>
 <nav id="nav"></nav><main id="v">Loading…</main>
 <script>
 const SUPABASE_URL='https://wqggnimaglsikdusbvuh.supabase.co', SUPABASE_ANON_KEY='sb_publishable_NhiAgVZ451DMdfwzWTSGvQ_zQlbwW8l';
@@ -98,17 +107,49 @@ let MT;
 async function draw(){clearInterval(MT);[...$('nav').children].forEach(b=>b.classList.toggle('on',b.dataset.t==cur));V.innerHTML='Loading…';
  try{V.innerHTML=cur=='dash'?await dash():cur=='rep'?await rep():cur=='mon'?await mon():cur=='set'?settings():cur=='chk'?await chk():cur=='sub'?await sub():await mod(cur);if(cur=='sub')pay();if(cur=='mon')MT=setInterval(()=>{const a=document.activeElement;if(cur!='mon'||(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))||document.querySelector('details[open]'))return;draw()},30000)}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}}
 
+const goTab=t=>{cur=t;draw()};
+const sec=(title,tab,lines,count)=>`<div class="p"><div class="ct" style="cursor:pointer" onclick="goTab('${tab}')"><div>${title}</div><div style="color:var(--ac);font-size:13px;font-weight:600;white-space:nowrap">${count!=null?count+' · ':''}Open →</div></div>${lines.length?lines.slice(0,6).map(l=>`<div class="rl">${l}</div>`).join(''):'<div class="rl" style="color:var(--mut)">Nothing to show.</div>'}${lines.length>6?`<div class="rl" style="color:var(--mut)">+ ${lines.length-6} more</div>`:''}</div>`;
+const tile=(n,l,tab,bad)=>`<div class="k" style="cursor:pointer" onclick="goTab('${tab}')"><b class="${bad?'bad':''}">${n}</b><span>${l}</span></div>`;
+const strip=h=>h.replace(/<[^>]+>/g,'').replace(/&amp;/g,'&');
 async function dash(){
- const w=await sb.from('work_orders').select('title,priority,due_date,status').eq('site_id',site).not('status','in','(done,cancelled)').order('due_date');
- const pm=await sb.from('pm_schedules').select('title,next_due').eq('site_id',site).eq('active',true).lt('next_due',today);
- const it=await sb.from('stock_items').select('id,name,min_level'), lv=await sb.from('stock_levels').select('item_id,on_hand').eq('site_id',site);
- const oh=Object.fromEntries((lv.data||[]).map(l=>[l.item_id,+l.on_hand])), low=(it.data||[]).filter(i=>(oh[i.id]||0)<i.min_level);
- const as=await sb.from('assets').select('name,wear_pct').eq('site_id',site).gte('wear_pct',75);
- const urg=(w.data||[]).filter(x=>x.priority=='urgent');
- SHARE={title:'Today at a glance - '+SH(),text:'Today at a glance\n'+SH()+'\nOpen work tasks: '+w.data.length+'\nOverdue PMs: '+pm.data.length+'\nBelow min stock: '+low.length+'\nAssets 75%+ worn: '+as.data.length+'\n\nNeeds attention:\n'+[...urg.map(x=>'- '+x.title+' (due '+(x.due_date||'no date')+')'),...pm.data.map(x=>'- PM overdue: '+x.title),...low.map(x=>'- Reorder '+x.name),...as.data.map(x=>'- '+x.name+' '+x.wear_pct+'% worn')].join('\n')};
- return`${ph('Today at a glance')}<h2>Today at a glance</h2>${bar()}<div class="g"><div class="k"><b>${w.data.length}</b><span>Open work tasks</span></div><div class="k"><b class="bad">${pm.data.length}</b><span>Overdue PMs</span></div><div class="k"><b>${low.length}</b><span>Below min stock</span></div><div class="k"><b>${as.data.length}</b><span>Assets 75%+ worn</span></div></div>
- <div class="p"><b>Needs attention</b>${urg.map(x=>`<div class="chk">🔧 ${esc(x.title)} (due ${x.due_date||'no date'})</div>`).join('')}${pm.data.map(x=>`<div class="chk">⏰ ${esc(x.title)} overdue since ${x.next_due}</div>`).join('')}${low.map(x=>`<div class="chk">📦 Reorder ${esc(x.name)}: ${oh[x.id]||0} on hand, min ${x.min_level}</div>`).join('')}${as.data.map(x=>`<div class="chk">⚙️ ${esc(x.name)} is ${x.wear_pct}% worn</div>`).join('')||''}</div>`}
-
+ const q=(t,c)=>sb.from(t).select(c).eq('site_id',site),ks=['daily','weekly','monthly','yearly'];
+ const [wo,pm,tp,rn,it,lv,po,sd,as,vh,dr,sn,sh,pf,su,ex,bu]=await Promise.all([
+  q('work_orders','title,priority,status,due_date').not('status','in','(done,cancelled)'),
+  q('pm_schedules','title,next_due').eq('active',true).order('next_due'),
+  q('checklist_templates','id,name,frequency,items'),
+  q('checklist_runs','template_id,run_date,results').in('run_date',ks.map(pk)),
+  sb.from('stock_items').select('id,name,min_level'),q('stock_levels','item_id,on_hand'),
+  q('purchase_orders','po_number,status,total_cost,expected_at').not('status','in','(delivered,cancelled)'),
+  q('shutdowns','title,system,starts_at,status').not('status','eq','complete').order('starts_at'),
+  q('assets','name,wear_pct'),q('vehicles','name,odometer_km,next_service_km'),
+  q('damage_reports','title,report_type,status,estimated_cost,date_noticed').order('date_noticed',{ascending:false}),
+  q('sensors','id,name,kind,unit,alert_min,alert_max'),q('shifts','user_id,shift_type').eq('shift_date',today),
+  sb.from('profiles').select('id,full_name'),sb.from('suppliers').select('name,kind,trade').order('name'),
+  isMgr()?q('expenses','amount,spent_on').gte('spent_on',yr+'-01-01'):Promise.resolve({data:[]}),
+  isMgr()?q('budgets','annual_amount,year').eq('year',yr):Promise.resolve({data:[]})]);
+ const sids=(sn.data||[]).map(x=>x.id),rd=sids.length?(await sb.from('readings').select('sensor_id,value,read_at').in('sensor_id',sids).order('read_at',{ascending:false}).limit(400)).data||[]:[];
+ const PR=['urgent','high','medium','low'],W=(wo.data||[]).slice().sort((a,b)=>PR.indexOf(a.priority)-PR.indexOf(b.priority)),od=W.filter(x=>x.due_date&&x.due_date<today);
+ const wl=W.map(x=>`${chip(x.priority,cap(x.priority))} ${esc(x.title)}${x.due_date?' · due '+dd(x.due_date):''}${x.due_date&&x.due_date<today?' <span class="bad">overdue</span>':''}`);
+ const P_=pm.data||[],pmo=P_.filter(x=>x.next_due<today),pl=P_.map(x=>`${esc(x.title)} · due ${dd(x.next_due)}${x.next_due<today?' <span class="bad">overdue</span>':''}`);
+ const T=tp.data||[],R_=rn.data||[],cl=T.map(t=>{const r=R_.find(x=>x.template_id==t.id&&x.run_date==pk(t.frequency)),n=r?Object.keys(r.results||{}).filter(k=>k!='_meta'&&r.results[k]).length:0;return{t,n,tot:t.items.length}});
+ const cll=cl.map(c=>{const full=c.tot>0&&c.n>=c.tot;return`${chip(full?'done':c.n?'high':'overdue',full?'Done':c.n?'In progress':'Not started')} ${esc(c.t.name)} (${cap(c.t.frequency)}): ${c.n} of ${c.tot}`}),dT=cl.filter(c=>c.t.frequency=='daily'),dPct=dT.length?Math.round(dT.reduce((a,c)=>a+(c.tot?c.n/c.tot:0),0)/dT.length*100)+'%':'-';
+ const oh=Object.fromEntries((lv.data||[]).map(l=>[l.item_id,+l.on_hand])),low=(it.data||[]).filter(i=>(oh[i.id]||0)<i.min_level),stl=low.map(i=>`${chip('overdue','Reorder')} ${esc(i.name)}: ${oh[i.id]||0} on hand, min ${i.min_level}`);
+ const O_=po.data||[],ol=O_.map(x=>`${esc(x.po_number)} · ${cap(x.status)}${x.expected_at?' · expected '+dd(x.expected_at):''}`);
+ const sl=(sd.data||[]).map(x=>`${esc(x.title)} (${esc(x.system||'system')}) · ${dd(x.starts_at)} · ${cap(x.status)}`);
+ const by={};rd.forEach(r=>(by[r.sensor_id]=by[r.sensor_id]||[]).push(r));let moff=0,mal=0;
+ const ml=(sn.data||[]).map(s=>{const last=(by[s.id]||[])[0],mins=last?(Date.now()-new Date(last.read_at))/60000:null,off=!last||mins>OFFMIN,v=last?+last.value:null,al=!!last&&((s.alert_min!=null&&v<+s.alert_min)||(s.alert_max!=null&&v>+s.alert_max)),net=NETK.includes(s.kind),k=KINDS[s.kind]||KINDS.other;if(off)moff++;else if(al)mal++;return{o:off?0:al?1:2,t:`${off?chip('overdue','Offline'):al?chip('overdue','Alert'):chip('done','OK')} ${k[0]} ${esc(s.name)}: ${last?esc(net?(v>=1?'Up':'Down'):v+' '+(s.unit||k[2])):'no data'}`}}).sort((a,b)=>a.o-b.o).map(x=>x.t);
+ const worn=(as.data||[]).filter(x=>x.wear_pct>=75),al_=worn.map(x=>`${esc(x.name)}: ${x.wear_pct}% worn`);
+ const names=Object.fromEntries((pf.data||[]).map(x=>[x.id,x.full_name])),shl=(sh.data||[]).filter(x=>x.shift_type!='off').map(x=>`${esc(names[x.user_id]||'Staff')}: ${cap(x.shift_type)}`);
+ const fl=(vh.data||[]).filter(x=>x.next_service_km&&x.odometer_km>=x.next_service_km).map(x=>`${esc(x.name)}: ${x.odometer_km} km (service due at ${x.next_service_km} km)`);
+ const D_=(dr.data||[]).filter(x=>!['closed','repaired','written_off'].includes(x.status)),dl=D_.map(x=>`${chip(x.report_type,cap(x.report_type))} ${esc(x.title)} · ${cap(x.status)}${x.estimated_cost?' · est. '+R(x.estimated_cost):''}`);
+ const sul=(su.data||[]).map(x=>`${esc(x.name)} · ${cap(x.kind)}${x.trade?' · '+esc(x.trade):''}`);
+ const tb=(bu.data||[]).reduce((a,x)=>a+ +x.annual_amount,0),ts=(ex.data||[]).reduce((a,x)=>a+ +x.amount,0),bl=tb?[`Spent ${R(ts)} of ${R(tb)} (${Math.round(ts/tb*100)}%) so far in ${yr}`]:[];
+ const rl=['Daily, weekly and monthly reports','Saved checklists: '+R_.filter(r=>r.run_date==pk('daily')).length+' saved today'];
+ const tiles=tile(W.length,'Open work tasks','work_orders',od.length)+tile(pmo.length,'Overdue PMs','pm_schedules',pmo.length)+tile(dPct,'Daily checklists done','chk',dT.length&&dPct!='100%')+tile(low.length,'Below min stock','stock_items',low.length)+tile(O_.length,'Orders in transit','purchase_orders')+tile(moff+mal,'Devices offline or alert','mon',moff+mal)+tile(worn.length,'Assets 75%+ worn','assets',worn.length)+tile(D_.length,'Open damage reports','damage_reports',D_.length);
+ const S=[['Work tasks','work_orders',wl,W.length],['Preventive maintenance','pm_schedules',pl,pmo.length+' overdue'],['Checklists today','chk',cll,null],['Stock','stock_items',stl,low.length+' to reorder'],['Orders','purchase_orders',ol,O_.length],['Shutdowns','shutdowns',sl,sl.length],['Monitoring','mon',ml,moff+' offline'],['Wear & life','assets',al_,worn.length],['Rosters today','shifts',shl,shl.length],['Damage reports','damage_reports',dl,D_.length],['Fleet due for service','vehicles',fl,fl.length],['Suppliers & contractors','suppliers',sul,sul.length]];
+ if(isMgr())S.push(['Budget','budgets',bl,null]);S.push(['Reports','rep',rl,null]);
+ SHARE={title:'Dashboard overview - '+SH(),text:'Dashboard overview\n'+SH()+' · '+dd(today)+'\n\n'+S.map(([h,,l])=>h.toUpperCase()+'\n'+(l.length?l.slice(0,10).map(x=>'- '+strip(x)).join('\n'):'- Nothing to show')).join('\n\n')};
+ return`${ph('Dashboard overview')}<h2>Dashboard</h2>${bar()}<div class="g">${tiles}</div><div class="dg">${S.map(([h,t,l,c])=>sec(h,t,l,c)).join('')}</div>${foot('','','')}`}
 const SH=()=>$('site').selectedOptions[0]?.textContent||'';
 let SHARE={title:'',text:''},rp='daily';
 const bar=()=>`<div class="bar2 noprint"><button onclick="doPrint()">🖨 Print</button><button onclick="doMail()">✉ Email</button><button onclick="doShare()">↗ Share</button></div>`;
@@ -226,7 +267,7 @@ async function mon(){
 <details class="noprint" style="margin-top:6px"><summary style="cursor:pointer;color:var(--ac);font-weight:600">Settings</summary><label class="el">Name<input value="${esc(s.name)}" onchange="updS('${s.id}','name',this.value,'t')"></label><label class="el">Unit<input value="${esc(s.unit||'')}" onchange="updS('${s.id}','unit',this.value,'t')"></label><label class="el">Alert below<input type="number" value="${s.alert_min??''}" onchange="updS('${s.id}','alert_min',this.value,'n')"></label><label class="el">Alert above<input type="number" value="${s.alert_max??''}" onchange="updS('${s.id}','alert_max',this.value,'n')"></label>${isMgr()?`<br><button style="padding:6px 14px;background:none;border:1px solid var(--bad);color:var(--bad);border-radius:3px;cursor:pointer" onclick="delS('${s.id}')">Delete device</button>`:''}</details></div>`}).join('')||'<div class="p">No devices yet. Tap “Add device”, then open “Connect this device” on its card.</div>';
  SHARE={title:'Monitoring status - '+SH(),text:'Monitoring status\n'+SH()+' · '+new Date().toLocaleString('en-ZA')+'\nOnline: '+on+' · Offline: '+off+' · Alerts: '+al+'\n\n'+(txt.join('\n')||'No devices yet')};
  const add=`<details class="p noprint"><summary>＋ Add device</summary><div class="f" style="margin-top:10px"><input id="sn" placeholder="Name, e.g. Main router or Geyser block C"><select id="sk">${Object.entries(KINDS).map(([k,v])=>`<option value="${k}">${v[0]} ${v[1]}</option>`).join('')}</select><input id="su" placeholder="Unit (optional)"><input id="smin" type="number" placeholder="Alert below"><input id="smax" type="number" placeholder="Alert above"><button onclick="addS()">Add</button></div><div class="note">For Wi-Fi, router and phone-system checks leave the alert fields empty; the app raises an alert when the device reports down.</div></details>`;
- const help=`<details class="p noprint"><summary>How to connect devices, Wi-Fi and phones</summary><div class="note"><b>Smart meters, sensors and controllers:</b> anything that can send a web request (ESP32 or Arduino boards, Shelly Gen2 and Pro units, Home Assistant, Node-RED, Zabbix or PRTG scripts) posts a number to the address shown under “Connect this device”. Devices without that ability, such as Tuya or Sonoff units, report through Home Assistant.<br><br><b>Wi-Fi network, routers, access points and the phone system:</b> run the Steadyfix gateway script on any PC or Raspberry Pi that stays on in the building. It scans the network for devices, checks the equipment you choose every minute, and reports up or down here.<br><br><b>Updates:</b> device firmware is updated in each device's own app. The gateway script is updated by replacing the file with the new version.</div></details>`;
+ const help=`<details class="p noprint"><summary>How to connect devices, Wi-Fi and phones</summary><div class="note"><b>Smart meters, sensors and controllers:</b> anything that can send a web request (ESP32 or Arduino boards, Shelly Gen2 and Pro units, Home Assistant, Node-RED, Zabbix or PRTG scripts) posts a number to the address shown under “Connect this device”. Devices without that ability, such as Tuya or Sonoff units, report through Home Assistant.<br><br><b>Wi-Fi network, routers, access points and the phone system:</b> run the STEADYFIX gateway script on any PC or Raspberry Pi that stays on in the building. It scans the network for devices, checks the equipment you choose every minute, and reports up or down here.<br><br><b>Updates:</b> device firmware is updated in each device's own app. The gateway script is updated by replacing the file with the new version.</div></details>`;
  return`${ph('Monitoring status')}<h2>Monitoring</h2>${bar()}<div class="g"><div class="k"><b>${on}</b><span>Online</span></div><div class="k"><b class="${off?'bad':''}">${off}</b><span>Offline</span></div><div class="k"><b class="${al?'bad':''}">${al}</b><span>Alerts</span></div></div>${add}${cards}${help}${foot('','','')}`}
 async function addS(){const n=$('sn').value.trim();if(!n)return alert('Type a name first.');const k=$('sk').value,r={company_id:me.company_id,site_id:site,name:n,kind:k,unit:$('su').value||null,alert_min:$('smin').value===''?null:+$('smin').value,alert_max:$('smax').value===''?null:+$('smax').value};
  const{error}=await sb.from('sensors').insert(r);error?alert(error.message):draw()}
@@ -271,11 +312,23 @@ function meta(tid,key,f,v){MP=(async()=>{const{data}=await sb.from('checklist_ru
 async function tick(tid,key,i,on){await MP;const{data}=await sb.from('checklist_runs').select('results').eq('template_id',tid).eq('run_date',key).maybeSingle();
  const results={...(data?.results||{}),[i]:on};await sb.from('checklist_runs').upsert({company_id:me.company_id,site_id:site,template_id:tid,run_date:key,results,completed_by:me.id,completed_at:new Date().toISOString()},{onConflict:'template_id,run_date'});draw()}
 const PP_ID='BAAshiyibCQ9kJ0LRlICmsarQCMDDn_-hw-C21GIh3S077ex8wwvq_cTdKrUEV2Mqe9unUk5O5xLOICTas';
-const PLANS=[['P-3GX3005824536144DNLAQLII','Steadyfix CMMS monthly subscription: $75 USD per month']];
+const PLANS=[['P-3GX3005824536144DNLAQLII','STEADYFIX CMMS monthly subscription: $75 USD per month']];
 async function sub(){const Q=()=>sb.from('companies').select('name,plan,subscription_status,max_sites,trial_ends_at').eq('id',me.company_id).single();let{data:c}=await Q();if(c.subscription_status=='pending'){try{await sb.functions.invoke('paypal-webhook',{body:{action:'sync'}})}catch(e){}c=(await Q()).data}const act=c.subscription_status=='active',pen=c.subscription_status=='pending';
  return`<h2>Subscription</h2><div class="p"><b>${esc(c.name)}</b><br>Plan: ${esc(c.plan)} · Status: <b class="${act?'':'bad'}">${esc(c.subscription_status)}</b> · Sites allowed: ${c.max_sites}${act||pen||!c.trial_ends_at?'':`<br>Trial ends ${new Date(c.trial_ends_at).toLocaleDateString('en-ZA')}`}${pen?'<br>Payment received. We are confirming it and will activate your plan shortly.':''}</div>`+(act?'':`<div class="note">${pen?'Payment not completed? You can try again below. ':''}Pay securely with PayPal. Your plan is activated as soon as PayPal confirms your payment.</div>`+PLANS.map(p=>`<div class="p"><b>${p[1]}</b><div id="pp-${p[0]}"></div></div>`).join(''))}
 function pay(){if(!document.getElementById('pp-'+PLANS[0][0]))return;
  const go=()=>PLANS.forEach(([id])=>paypal.Buttons({style:{shape:'rect',color:'gold',layout:'vertical',label:'subscribe'},createSubscription:(d,a)=>a.subscription.create({plan_id:id,custom_id:me.company_id}),onApprove:async d=>{const{error}=await sb.rpc('record_subscription',{p_sub:d.subscriptionID});alert(error?'Payment received but not recorded ('+error.message+'). Reference: '+d.subscriptionID:'Thank you! Your subscription is being activated.');draw()}}).render('#pp-'+id));
  if(window.paypal&&paypal.Buttons)return go();const t=document.createElement('script');t.src='https://www.paypal.com/sdk/js?client-id='+PP_ID+'&vault=true&intent=subscription';t.setAttribute('data-sdk-integration-source','button-factory');t.onload=go;document.head.appendChild(t)}
+
+function intro(){try{if(sessionStorage.getItem('sf_intro'))return;sessionStorage.setItem('sf_intro','1')}catch(e){}
+ const I=(d,x='')=>`<svg viewBox="0 0 24 24">${d}${x}</svg>`;
+ const el=document.createElement('div');el.id='intro';
+ el.innerHTML=`<svg viewBox="0 0 1024 1024" width="120" height="120"><circle cx="512" cy="512" r="290" fill="#E59F0F"/>${[0,45,90,135,180,225,270,315].map(a=>`<rect x="442" y="132" width="140" height="120" rx="22" fill="#E59F0F" transform="rotate(${a} 512 512)"/>`).join('')}<circle cx="512" cy="512" r="175" fill="#1B2831"/><polyline points="420,525 492,597 612,438" fill="none" stroke="#fff" stroke-width="68" stroke-linecap="round" stroke-linejoin="round"/></svg>
+ <h1>STEADYFIX<small>CMMS</small></h1><p>Maintenance management for every site</p>
+ <div class="ic">${I('<path d="M10 10V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5"/><path d="M14 6a6 6 0 0 1 6 6v3"/><path d="M4 15v-3a6 6 0 0 1 6-6"/><rect x="2" y="15" width="20" height="4" rx="1"/>')}${I('<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>')}${I('<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>')}${I('<path d="M3 3v18h18"/><rect x="6" y="6" width="7" height="3"/><rect x="9" y="11" width="9" height="3"/><rect x="7" y="16" width="6" height="3"/>')}${I('<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><path d="M12 20h.01"/>')}${I('<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>')}</div>
+ <p>Work orders · Preventive maintenance · Checklists · Stock · Monitoring · Reports</p><button id="introgo">Get started</button>`;
+ document.body.appendChild(el);const close=()=>{el.classList.add('out');setTimeout(()=>el.remove(),700)};
+ document.getElementById('introgo').onclick=close;setTimeout(close,6000)}
+
 boot();
+intro();
 </script></body></html>

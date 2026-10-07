@@ -91,7 +91,7 @@ const MOD={
  suppliers:{l:'Suppliers',f:[F('name','Name','t'),F('kind','Type','s',['supplier','subcontractor']),F('trade','Trade','t'),F('phone','Phone','t'),F('rating','Rating (1-5)','n')]},
  damage_reports:{l:'Damage report',s:1,df:'date_noticed',o:'date_noticed',d:1,note:'Record theft, damage, breakages or items that need servicing. Tap Print on any report for a sheet you can sign and use for insurance or your records.',f:[F('title','What was damaged or stolen','t'),F('report_type','Type','s',['damage','theft','broken','needs_servicing','insurance_claim','other']),ASSET,F('location_text','Where','t'),F('date_noticed','Date noticed','d'),F('reported_by','Reported by','t'),F('description','What happened','x'),F('estimated_cost','Estimated cost','n'),F('police_case_no','Police case no.','t'),F('insurer_claim_no','Insurer claim no.','t'),F('action_taken','Action taken or needed','x'),F('status','Status','s',['open','investigating','claim_lodged','repaired','closed','written_off'])]},
  vehicles:{l:'Fleet',s:1,f:[F('name','Vehicle','t'),F('reg_no','Reg','t'),F('odometer_km','Odometer km','n'),F('next_service_km','Next service km','n'),F('status','Status','s',['available','in_use','in_service'])]}};
-const TABS=[['dash','Dashboard'],['rep','Reports'],['work_orders'],['pm_schedules'],['chk','Checklists'],['damage_reports'],['stock_items'],['purchase_orders'],['shutdowns'],['mon','Monitoring'],['assets'],['shifts'],['budgets'],['expenses'],['suppliers'],['vehicles'],['set','Settings'],['sub','Subscribe']];
+const TABS=[['dash','Dashboard'],['rep','Reports'],['work_orders'],['pm_schedules'],['chk','Checklists'],['damage_reports'],['stock_items'],['purchase_orders'],['shutdowns'],['mon','Monitoring'],['assets'],['shifts'],['budgets'],['expenses'],['suppliers'],['vehicles'],['sup','Support'],['inbox','Support inbox'],['set','Settings'],['sub','Subscribe']];
 const isMgr=()=>['owner','manager'].includes(me.role);
 const yr=new Date().getFullYear(), today=new Date().toISOString().slice(0,10);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
@@ -99,19 +99,19 @@ const R=n=>'R '+Math.round(n||0).toLocaleString('en-ZA');
 
 async function boot(){
  const{data:{session}}=await sb.auth.getSession(); if(!session)return location.href='maintdesk_login.html';
- const{data}=await sb.from('profiles').select('id,company_id,full_name,role').eq('id',session.user.id).maybeSingle();
+ let pr_=await sb.from('profiles').select('id,company_id,full_name,role,is_admin').eq('id',session.user.id).maybeSingle();if(pr_.error)pr_=await sb.from('profiles').select('id,company_id,full_name,role').eq('id',session.user.id).maybeSingle();const data=pr_.data;
  if(!data)return location.href='maintdesk_login.html'; me=data;
  const{data:sites}=await sb.from('sites').select('id,name').order('name'); site=sites[0]?.id;
  $('site').innerHTML=sites.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
  $('site').onchange=e=>{site=e.target.value;draw()};
- $('nav').innerHTML=TABS.filter(t=>isMgr()||!['budgets','expenses','sub'].includes(t[0])).map(t=>`<button data-t="${t[0]}">${t[1]||MOD[t[0]].l}</button>`).join('');
+ $('nav').innerHTML=TABS.filter(t=>(isMgr()||!['budgets','expenses','sub'].includes(t[0]))&&(t[0]!='inbox'||me.is_admin)).map(t=>`<button data-t="${t[0]}">${t[1]||MOD[t[0]].l}</button>`).join('');
  $('nav').onclick=e=>{if(e.target.dataset.t){cur=e.target.dataset.t;draw()}};
  try{CO=(await sb.from('companies').select('name').eq('id',me.company_id).single()).data.name}catch(e){}
  draw()}
 
 let MT;
 async function draw(){clearInterval(MT);[...$('nav').children].forEach(b=>b.classList.toggle('on',b.dataset.t==cur));V.innerHTML='Loading…';
- try{V.innerHTML=cur=='dash'?await dash():cur=='rep'?await rep():cur=='mon'?await mon():cur=='shifts'?await ros():cur=='set'?settings():cur=='chk'?await chk():cur=='sub'?await sub():await mod(cur);if(cur=='sub')pay();if(cur=='mon')MT=setInterval(()=>{const a=document.activeElement;if(cur!='mon'||(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))||document.querySelector('details[open]'))return;draw()},30000)}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}}
+ try{V.innerHTML=cur=='dash'?await dash():cur=='rep'?await rep():cur=='mon'?await mon():cur=='sup'?await sup():cur=='inbox'?await inbox():cur=='shifts'?await ros():cur=='set'?settings():cur=='chk'?await chk():cur=='sub'?await sub():await mod(cur);if(cur=='sub')pay();if(cur=='mon')MT=setInterval(()=>{const a=document.activeElement;if(cur!='mon'||(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))||document.querySelector('details[open]'))return;draw()},30000)}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}}
 
 const goTab=t=>{cur=t;draw()};
 const sec=(title,tab,lines,count)=>`<div class="p"><div class="ct" style="cursor:pointer" onclick="goTab('${tab}')"><div>${title}</div><div style="color:var(--ac);font-size:13px;font-weight:600;white-space:nowrap">${count!=null?count+' · ':''}Open →</div></div>${lines.length?lines.slice(0,6).map(l=>`<div class="rl">${l}</div>`).join(''):'<div class="rl" style="color:var(--mut)">Nothing to show.</div>'}${lines.length>6?`<div class="rl" style="color:var(--mut)">+ ${lines.length-6} more</div>`:''}</div>`;
@@ -331,6 +331,33 @@ async function copyPrev(){const R=rng('weekly',RD||today),a=new Date(R.da),b=new
  if(!data||!data.length)return alert('Nothing to copy from last week.');if(!confirm("Copy last week's roster into this week? Shifts already set this week will be replaced."))return;
  const rows=data.map(x=>{const d=new Date(x.shift_date+'T12:00:00');d.setDate(d.getDate()+7);return{company_id:me.company_id,site_id:site,staff_id:x.staff_id,shift_date:ymd(d),shift_type:x.shift_type}});
  const{error}=await sb.from('roster_shifts').upsert(rows,{onConflict:'staff_id,shift_date'});error?alert(error.message):draw()}
+
+// Fill these in so the "Email us" and "WhatsApp" buttons appear on the Support screen
+const SUPPORT_EMAIL='',SUPPORT_WA='';
+const KT={question:'A question',help:'Help using the app',problem:'Problem',custom:'Customization',billing:'Billing or plan'};
+const stc=v=>chip(v=='open'?'high':v=='in_progress'?'on_hold':v=='answered'?'done':'closed',v=='open'?'Open':v=='in_progress'?'In progress':v=='answered'?'Answered':'Closed');
+const FAQ=[['How do I add or change a checklist?','Open Checklists, pick Daily, Weekly, Monthly or Yearly, then tap “Edit tasks” to add, rename or remove tasks, or “New checklist” to make your own. Ticks, names and sign-off are saved automatically and kept under Reports, Saved checklists.'],
+['How do I print, email or share a sheet?','Every section has Print, Email and Share buttons at the top. Print opens your phone’s print screen, where you can choose “Save as PDF”. Your company name comes from Settings.'],
+['How do I build a roster?','Open Rosters, tap “Manage staff”, add names, then tap the blocks in the grid to set Day, Night, Standby, Off or Leave. “Copy last week” fills the week from the one before.'],
+['How do I connect a device or my Wi-Fi?','Open Monitoring. Add a device and use “Connect this device” for meters and sensors. The PRO plan also includes the computer gateway, which finds the devices on your network automatically.'],
+['How do I change my plan or cancel?','Open Subscribe to see the plans. To cancel, log in to PayPal, open Subscriptions and cancel there. To change plan, send us a billing request below.'],
+['Can the app be customized for our business?','Yes. Send a “Customization” request describing what you need, for example your own report layout, extra fields, branding or a connection to another system, and we will reply here with options.']];
+async function sup(){
+ const{data:{session}}=await sb.auth.getSession(),em=session?.user?.email||'';
+ const tk=await sb.from('support_tickets').select('*').order('created_at',{ascending:false});
+ if(tk.error)return`<h2>Support</h2><div class="p">Support needs one more database step. Run the support SQL I sent, then reload this page.</div>`;
+ const btn='class="b" style="display:inline-block;text-decoration:none;text-align:center;flex:1;padding:10px"';
+ const contact=(SUPPORT_EMAIL||SUPPORT_WA)?`<div class="p"><b>Contact us directly</b><div class="f" style="margin-top:8px">${SUPPORT_EMAIL?`<a ${btn} href="mailto:${esc(SUPPORT_EMAIL)}?subject=STEADYFIX%20support">✉ Email us</a>`:''}${SUPPORT_WA?`<a ${btn} href="https://wa.me/${esc(SUPPORT_WA)}">WhatsApp</a>`:''}</div></div>`:'';
+ const form=`<div class="p"><b>Send us a request</b><label class="el">What do you need?<select id="sk2">${Object.entries(KT).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label><label class="el">Subject<input id="ss2"></label><label class="el">Details<textarea id="sm2" placeholder="Tell us what you need. For a problem, say which screen you were on and what happened."></textarea></label><br><button class="b" onclick="sendTicket('${esc(em)}')">Send</button></div>`;
+ const list=(tk.data||[]).map(t=>`<div class="card"><div class="ct"><div>${esc(t.subject)}</div><div class="chips">${chip('x',KT[t.kind]||cap(t.kind))}${stc(t.status)}</div></div><div class="kv"><span>Sent</span><b>${dd(t.created_at)}</b><span>Details</span><b>${esc(t.message)}</b>${t.reply?`<span>Our reply</span><b>${esc(t.reply)}</b>`:''}</div></div>`).join('')||'<div class="p">No requests yet.</div>';
+ const faq=`<div class="p"><b>Help and how-to</b>${FAQ.map(([q,a])=>`<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:600">${q}</summary><div class="note">${a}</div></details>`).join('')}</div>`;
+ return`<h2>Support</h2>${contact}${form}<h3>Your requests</h3>${list}${faq}`}
+async function sendTicket(em){const sj=$('ss2').value.trim(),ms=$('sm2').value.trim();if(!sj||!ms)return alert('Please add a subject and some details.');
+ const{error}=await sb.from('support_tickets').insert({company_id:me.company_id,user_id:me.id,name:me.full_name,email:em,kind:$('sk2').value,subject:sj,message:ms});
+ if(error)return alert(error.message);alert('Sent. Our reply will appear under “Your requests” on this screen.');draw()}
+async function inbox(){const r=await sb.rpc('support_inbox');if(r.error)return`<h2>Support inbox</h2><div class="p">${esc(r.error.message)}</div>`;const T=r.data||[],op=T.filter(t=>t.status!='closed').length;
+ return`<h2>Support inbox</h2><div class="note">${op} open · ${T.length} in total, from all customers.</div>`+(T.map(t=>`<div class="card"><div class="ct"><div>${esc(t.subject)}</div><div class="chips">${chip('x',KT[t.kind]||cap(t.kind))}${stc(t.status)}</div></div><div class="kv"><span>From</span><b>${esc(t.company)} · ${esc(t.name||'')} ${esc(t.email||'')}</b><span>Sent</span><b>${dd(t.created_at)}</b><span>Details</span><b>${esc(t.message)}</b>${t.reply?`<span>Reply sent</span><b>${esc(t.reply)}</b>`:''}</div><label class="el">Your reply<textarea id="rp_${t.id}">${esc(t.reply||'')}</textarea></label><div class="f" style="margin-top:8px"><select id="rs_${t.id}"><option value="answered">Mark answered</option><option value="in_progress">Mark in progress</option><option value="closed">Close</option></select><button onclick="replyT('${t.id}')">Send reply</button></div></div>`).join('')||'<div class="p">No requests yet.</div>')}
+async function replyT(id){const{error}=await sb.rpc('support_reply',{p_id:id,p_reply:$('rp_'+id).value,p_status:$('rs_'+id).value});error?alert(error.message):draw()}
 
 const val=(t,v)=>v===''?null:t=='n'?+v:t=='dt'?new Date(v).toISOString():v;
 async function upd(tb,rid,k,t,v,virt){const r=virt?await sb.from('stock_levels').upsert({item_id:rid,site_id:site,company_id:me.company_id,on_hand:+v}):await sb.from(tb).update({[k]:val(t,v)}).eq('id',rid);if(r.error)alert(r.error.message);else if(tb=='stock_items')draw()}

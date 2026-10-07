@@ -60,6 +60,11 @@ details.p summary{font-weight:700;cursor:pointer;color:var(--ac)}
 #intro .ic svg{width:44px;height:44px;stroke:#e59f0f;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;padding:10px;border:1px solid #3a5565;border-radius:50%}
 #intro button{margin-top:22px;padding:12px 34px;border:0;border-radius:4px;background:#e59f0f;color:#1b2831;font:700 16px system-ui;cursor:pointer}
 @media print{#intro{display:none!important}}
+table.rost{min-width:0;width:auto;border-collapse:collapse;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.rost th,.rost td{border:1px solid var(--ln);padding:5px 7px;text-align:center;font-size:13px}.rost .nm{text-align:left;position:sticky;left:0;background:var(--pn);min-width:96px;font-weight:600}
+.rost .we{background:#eef0f2}.rc{cursor:pointer;min-width:36px;font-weight:700}.rost .tt,.rost .on{font-weight:700}
+.rost.m th,.rost.m td{padding:3px 2px;font-size:11px;min-width:26px}.rost.m .nm{min-width:84px}
+.rpage{page:rost}@page rost{size:landscape}
 </style></head><body>
 <header><h1>STEADYFIX CMMS</h1><select id="site"></select><a href="maintdesk_login.html">Team &amp; sites</a></header>
 <nav id="nav"></nav><main id="v">Loading…</main>
@@ -71,19 +76,20 @@ let me,site,cur='dash',cf='daily';
 const F=(k,l,t,o)=>({k,l,t,o});
 const st=['open','in_progress','on_hold','done','cancelled'], PR=['low','medium','high','urgent'];
 const ASSET=F('asset_id','Asset','r',['assets','name']), STAFF=k=>F(k,'Assigned to','r',['profiles','full_name']);
+const NAME=F('assigned_name','Assigned to','t');
 const MOD={
- work_orders:{l:'Work tasks',s:1,f:[F('title','Task','t'),ASSET,STAFF('assigned_to'),F('priority','Priority','s',PR),F('due_date','Due','d'),F('status','Status','s',st)]},
- pm_schedules:{l:'PM schedules',s:1,f:[F('title','PM task','t'),ASSET,STAFF('assigned_to'),F('frequency_days','Every (days)','n'),F('next_due','Next due','d')]},
+ work_orders:{l:'Work tasks',s:1,df:'due_date',f:[F('title','Task','t'),ASSET,NAME,F('priority','Priority','s',PR),F('due_date','Due','d'),F('status','Status','s',st)]},
+ pm_schedules:{l:'PM schedules',s:1,df:'next_due',f:[F('title','PM task','t'),ASSET,NAME,F('frequency_days','Every (days)','n'),F('next_due','Next due','d')]},
  stock_items:{l:'Stock',f:[F('name','Item','t'),F('sku','SKU','t'),F('unit_cost','Unit cost','n'),F('min_level','Min level','n'),F('on_hand','On hand (this site)','n',0,1)]},
- purchase_orders:{l:'Orders',s:1,f:[F('po_number','PO number','t'),F('supplier_id','Supplier','r',['suppliers','name']),F('total_cost','Cost','n'),F('expected_at','Expected','d'),F('status','Status','s',['draft','ordered','delivered','cancelled'])]},
- shutdowns:{l:'Shutdowns',s:1,f:[F('title','Shutdown','t'),F('system','System','t'),F('starts_at','Starts','dt'),F('duration_hrs','Hours','n'),F('status','Status','s',['planned','notified','active','complete'])]},
+ purchase_orders:{l:'Orders',s:1,df:'expected_at',f:[F('po_number','PO number','t'),F('supplier_id','Supplier','r',['suppliers','name']),F('total_cost','Cost','n'),F('expected_at','Expected','d'),F('status','Status','s',['draft','ordered','delivered','cancelled'])]},
+ shutdowns:{l:'Shutdowns',s:1,df:'starts_at',dt:1,f:[F('title','Shutdown','t'),F('system','System','t'),F('starts_at','Starts','dt'),F('duration_hrs','Hours','n'),F('status','Status','s',['planned','notified','active','complete'])]},
  sensors:{l:'Monitoring',s:1,note:'Register each meter or sensor here. Live readings arrive from your WiFi devices using each sensor\u2019s device key. That feed is the next build step.',f:[F('name','Sensor','t'),F('kind','Type','s',['electricity','water','gas','temperature','pressure','current','flow']),F('unit','Unit','t'),F('alert_min','Alert below','n'),F('alert_max','Alert above','n')]},
  assets:{l:'Wear & life',s:1,f:[F('name','Asset','t'),F('category','Category','t'),F('installed_on','Installed','d'),F('life_years','Life (yrs)','n'),F('wear_pct','Wear %','n'),F('replace_cost','Replace cost','n'),F('status','Status','s',['running','faulty','stopped','retired'])]},
  shifts:{l:'Rosters',s:1,f:[STAFF('user_id'),F('shift_date','Date','d'),F('shift_type','Shift','s',['day','night','standby','off','leave'])]},
  budgets:{l:'Budget',s:1,m:1,f:[F('category','Category','t'),F('year','Year','n'),F('annual_amount','Annual budget','n')]},
- expenses:{l:'Expenses',s:1,m:1,f:[F('category','Category','t'),F('amount','Amount','n'),F('spent_on','Date','d')]},
+ expenses:{l:'Expenses',s:1,df:'spent_on',m:1,f:[F('category','Category','t'),F('amount','Amount','n'),F('spent_on','Date','d')]},
  suppliers:{l:'Suppliers',f:[F('name','Name','t'),F('kind','Type','s',['supplier','subcontractor']),F('trade','Trade','t'),F('phone','Phone','t'),F('rating','Rating (1-5)','n')]},
- damage_reports:{l:'Damage report',s:1,o:'date_noticed',d:1,note:'Record theft, damage, breakages or items that need servicing. Tap Print on any report for a sheet you can sign and use for insurance or your records.',f:[F('title','What was damaged or stolen','t'),F('report_type','Type','s',['damage','theft','broken','needs_servicing','insurance_claim','other']),ASSET,F('location_text','Where','t'),F('date_noticed','Date noticed','d'),F('reported_by','Reported by','t'),F('description','What happened','x'),F('estimated_cost','Estimated cost','n'),F('police_case_no','Police case no.','t'),F('insurer_claim_no','Insurer claim no.','t'),F('action_taken','Action taken or needed','x'),F('status','Status','s',['open','investigating','claim_lodged','repaired','closed','written_off'])]},
+ damage_reports:{l:'Damage report',s:1,df:'date_noticed',o:'date_noticed',d:1,note:'Record theft, damage, breakages or items that need servicing. Tap Print on any report for a sheet you can sign and use for insurance or your records.',f:[F('title','What was damaged or stolen','t'),F('report_type','Type','s',['damage','theft','broken','needs_servicing','insurance_claim','other']),ASSET,F('location_text','Where','t'),F('date_noticed','Date noticed','d'),F('reported_by','Reported by','t'),F('description','What happened','x'),F('estimated_cost','Estimated cost','n'),F('police_case_no','Police case no.','t'),F('insurer_claim_no','Insurer claim no.','t'),F('action_taken','Action taken or needed','x'),F('status','Status','s',['open','investigating','claim_lodged','repaired','closed','written_off'])]},
  vehicles:{l:'Fleet',s:1,f:[F('name','Vehicle','t'),F('reg_no','Reg','t'),F('odometer_km','Odometer km','n'),F('next_service_km','Next service km','n'),F('status','Status','s',['available','in_use','in_service'])]}};
 const TABS=[['dash','Dashboard'],['rep','Reports'],['work_orders'],['pm_schedules'],['chk','Checklists'],['damage_reports'],['stock_items'],['purchase_orders'],['shutdowns'],['mon','Monitoring'],['assets'],['shifts'],['budgets'],['expenses'],['suppliers'],['vehicles'],['set','Settings'],['sub','Subscribe']];
 const isMgr=()=>['owner','manager'].includes(me.role);
@@ -105,7 +111,7 @@ async function boot(){
 
 let MT;
 async function draw(){clearInterval(MT);[...$('nav').children].forEach(b=>b.classList.toggle('on',b.dataset.t==cur));V.innerHTML='Loading…';
- try{V.innerHTML=cur=='dash'?await dash():cur=='rep'?await rep():cur=='mon'?await mon():cur=='set'?settings():cur=='chk'?await chk():cur=='sub'?await sub():await mod(cur);if(cur=='sub')pay();if(cur=='mon')MT=setInterval(()=>{const a=document.activeElement;if(cur!='mon'||(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))||document.querySelector('details[open]'))return;draw()},30000)}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}}
+ try{V.innerHTML=cur=='dash'?await dash():cur=='rep'?await rep():cur=='mon'?await mon():cur=='shifts'?await ros():cur=='set'?settings():cur=='chk'?await chk():cur=='sub'?await sub():await mod(cur);if(cur=='sub')pay();if(cur=='mon')MT=setInterval(()=>{const a=document.activeElement;if(cur!='mon'||(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))||document.querySelector('details[open]'))return;draw()},30000)}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}}
 
 const goTab=t=>{cur=t;draw()};
 const sec=(title,tab,lines,count)=>`<div class="p"><div class="ct" style="cursor:pointer" onclick="goTab('${tab}')"><div>${title}</div><div style="color:var(--ac);font-size:13px;font-weight:600;white-space:nowrap">${count!=null?count+' · ':''}Open →</div></div>${lines.length?lines.slice(0,6).map(l=>`<div class="rl">${l}</div>`).join(''):'<div class="rl" style="color:var(--mut)">Nothing to show.</div>'}${lines.length>6?`<div class="rl" style="color:var(--mut)">+ ${lines.length-6} more</div>`:''}</div>`;
@@ -123,8 +129,8 @@ async function dash(){
   q('shutdowns','title,system,starts_at,status').not('status','eq','complete').order('starts_at'),
   q('assets','name,wear_pct'),q('vehicles','name,odometer_km,next_service_km'),
   q('damage_reports','title,report_type,status,estimated_cost,date_noticed').order('date_noticed',{ascending:false}),
-  q('sensors','id,name,kind,unit,alert_min,alert_max'),q('shifts','user_id,shift_type').eq('shift_date',today),
-  sb.from('profiles').select('id,full_name'),sb.from('suppliers').select('name,kind,trade').order('name'),
+  q('sensors','id,name,kind,unit,alert_min,alert_max'),q('roster_shifts','staff_id,shift_type').eq('shift_date',today),
+  q('staff_members','id,name'),sb.from('suppliers').select('name,kind,trade').order('name'),
   isMgr()?q('expenses','amount,spent_on').gte('spent_on',yr+'-01-01'):Promise.resolve({data:[]}),
   isMgr()?q('budgets','annual_amount,year').eq('year',yr):Promise.resolve({data:[]})]);
  const sids=(sn.data||[]).map(x=>x.id),rd=sids.length?(await sb.from('readings').select('sensor_id,value,read_at').in('sensor_id',sids).order('read_at',{ascending:false}).limit(400)).data||[]:[];
@@ -139,7 +145,7 @@ async function dash(){
  const by={};rd.forEach(r=>(by[r.sensor_id]=by[r.sensor_id]||[]).push(r));let moff=0,mal=0;
  const ml=(sn.data||[]).map(s=>{const last=(by[s.id]||[])[0],mins=last?(Date.now()-new Date(last.read_at))/60000:null,off=!last||mins>OFFMIN,v=last?+last.value:null,al=!!last&&((s.alert_min!=null&&v<+s.alert_min)||(s.alert_max!=null&&v>+s.alert_max)),net=NETK.includes(s.kind),k=KINDS[s.kind]||KINDS.other;if(off)moff++;else if(al)mal++;return{o:off?0:al?1:2,t:`${off?chip('overdue','Offline'):al?chip('overdue','Alert'):chip('done','OK')} ${k[0]} ${esc(s.name)}: ${last?esc(net?(v>=1?'Up':'Down'):v+' '+(s.unit||k[2])):'no data'}`}}).sort((a,b)=>a.o-b.o).map(x=>x.t);
  const worn=(as.data||[]).filter(x=>x.wear_pct>=75),al_=worn.map(x=>`${esc(x.name)}: ${x.wear_pct}% worn`);
- const names=Object.fromEntries((pf.data||[]).map(x=>[x.id,x.full_name])),shl=(sh.data||[]).filter(x=>x.shift_type!='off').map(x=>`${esc(names[x.user_id]||'Staff')}: ${cap(x.shift_type)}`);
+ const names=Object.fromEntries((pf.data||[]).map(x=>[x.id,x.name])),shl=(sh.data||[]).filter(x=>x.shift_type!='off').map(x=>`${esc(names[x.staff_id]||'Staff')}: ${cap(x.shift_type)}`);
  const fl=(vh.data||[]).filter(x=>x.next_service_km&&x.odometer_km>=x.next_service_km).map(x=>`${esc(x.name)}: ${x.odometer_km} km (service due at ${x.next_service_km} km)`);
  const D_=(dr.data||[]).filter(x=>!['closed','repaired','written_off'].includes(x.status)),dl=D_.map(x=>`${chip(x.report_type,cap(x.report_type))} ${esc(x.title)} · ${cap(x.status)}${x.estimated_cost?' · est. '+R(x.estimated_cost):''}`);
  const sul=(su.data||[]).map(x=>`${esc(x.name)} · ${cap(x.kind)}${x.trade?' · '+esc(x.trade):''}`);
@@ -173,7 +179,10 @@ function tg(r){const c=$('c'+r),e=c.querySelector('.ed');if(e.style.display!='no
 async function mod(id){
  const m=MOD[id], refs={};
  for(const f of m.f)if(f.t=='r'&&!refs[f.o[0]]){let q=sb.from(f.o[0]).select('id,'+f.o[1]).order(f.o[1]);if(f.o[0]=='assets')q=q.eq('site_id',site);refs[f.o[0]]=(await q).data||[]}
- let q=sb.from(id).select('*').order(m.o||m.f[0].k,{ascending:!m.d});if(m.s)q=q.eq('site_id',site);const{data:rows,error}=await q;if(error)throw error;
+ let q=sb.from(id).select('*').order(m.o||m.f[0].k,{ascending:!m.d});if(m.s)q=q.eq('site_id',site);
+ const pr=PER[id]||{p:'all',d:''};let plabel='';
+ if(m.df&&pr.p!='all'){const R=rng(pr.p,pr.d||today);q=m.dt?q.gte(m.df,R.a+'T00:00:00').lte(m.df,R.b+'T23:59:59'):q.gte(m.df,R.a).lte(m.df,R.b);plabel=pr.p=='daily'?dd(R.a):dd(R.a)+' to '+dd(R.b)}
+ const{data:rows,error}=await q;if(error)throw error;
  let oh={};if(id=='stock_items')(await sb.from('stock_levels').select('item_id,on_hand').eq('site_id',site)).data.forEach(l=>oh[l.item_id]=l.on_hand);
  let pre=m.note?`<div class="note">${m.note}</div>`:'',sumTxt='';
  if(id=='budgets'){const ex=(await sb.from('expenses').select('category,amount,spent_on').eq('site_id',site).gte('spent_on',yr+'-01-01')).data||[],mo=new Date().getMonth()+1;
@@ -184,19 +193,21 @@ async function mod(id){
   if(f.t=='s')return`<select ${oc}>${f.o.map(o=>`<option ${o==v?'selected':''}>${o}</option>`).join('')}</select>`;
   if(f.t=='r')return`<select ${oc}><option value="">-</option>${refs[f.o[0]].map(r=>`<option value="${r.id}" ${r.id==v?'selected':''}>${esc(r[f.o[1]])}</option>`).join('')}</select>`;
   if(f.t=='x')return`<textarea ${oc}>${esc(v)}</textarea>`;
-  return`<input ${oc} type="${{n:'number',d:'date',dt:'datetime-local'}[f.t]||'text'}" value="${esc(f.t=='dt'&&v?v.slice(0,16):v)}">`};
+  return`<input ${oc} ${f.k=='assigned_name'?'list="stafflist"':''} type="${{n:'number',d:'date',dt:'datetime-local'}[f.t]||'text'}" value="${esc(f.t=='dt'&&v?v.slice(0,16):v)}">`};
  const ty=f=>({n:'number',d:'date',dt:'datetime-local'}[f.t]||'text');
- const add=`<details class="p noprint"><summary>＋ Add new</summary><div class="f" style="margin-top:10px">${m.f.map((f,i)=>f.t=='s'?`<select id="n${i}">${f.o.map(o=>`<option>${o}</option>`).join('')}</select>`:f.t=='r'?`<select id="n${i}"><option value="">${f.l}</option>${refs[f.o[0]].map(r=>`<option value="${r.id}">${esc(r[f.o[1]])}</option>`).join('')}</select>`:f.t=='x'?`<textarea id="n${i}" placeholder="${f.l}"></textarea>`:`<input id="n${i}" placeholder="${f.l}" ${f.k=='year'?`value="${yr}"`:''} type="${ty(f)}">`).join('')}<button onclick="ins('${id}')">Add</button></div></details>`;
+ const add=`<details class="p noprint"><summary>＋ Add new</summary><div class="f" style="margin-top:10px">${m.f.map((f,i)=>f.t=='s'?`<select id="n${i}">${f.o.map(o=>`<option>${o}</option>`).join('')}</select>`:f.t=='r'?`<select id="n${i}"><option value="">${f.l}</option>${refs[f.o[0]].map(r=>`<option value="${r.id}">${esc(r[f.o[1]])}</option>`).join('')}</select>`:f.t=='x'?`<textarea id="n${i}" placeholder="${f.l}"></textarea>`:`<input id="n${i}" placeholder="${f.l}" ${f.k=='assigned_name'?'list="stafflist"':''} ${f.k=='year'?`value="${yr}"`:''} type="${ty(f)}">`).join('')}<button onclick="ins('${id}')">Add</button></div></details>`;
  const V_=rows.map(r=>m.f.map(f=>f.v?(oh[r.id]??0):r[f.k]));
  const txt=rows.map((r,i)=>{const L=m.f.map((f,j)=>({f,s:show(f,V_[i][j],refs)}));return(i+1)+'. '+L[0].s+(id=='stock_items'&&(oh[r.id]||0)<r.min_level?' (REORDER)':'')+'\n'+L.slice(1).filter(x=>x.s!='-').map(x=>'   '+x.f.l+': '+x.s).join('\n')}).join('\n\n');
- SHARE={title:m.l+' - '+SH(),text:m.l+'\n'+SH()+' · '+dd(today)+'\n\n'+sumTxt+(txt||'Nothing recorded yet.')};
+ SHARE={title:m.l+' - '+SH(),text:m.l+(plabel?' ('+pr.p+': '+plabel+')':'')+'\n'+SH()+' · '+dd(today)+'\n\n'+sumTxt+(txt||'Nothing recorded yet.')};
  if(id=='damage_reports')DR={rows,refs};
  const cards=rows.map((r,i)=>{const v=V_[i],title=show(m.f[0],v[0],refs);
   const chips=m.f.map((f,j)=>f.t=='s'&&v[j]?chip(v[j],cap(v[j])):'').join('')+(id=='stock_items'?((oh[r.id]||0)<r.min_level?chip('overdue','Reorder'):chip('done','OK')):'');
   const kv=m.f.map((f,j)=>j==0||f.t=='s'?'':`<span>${f.l}</span><b>${esc(show(f,v[j],refs))}</b>`).join('');
   const ed=m.f.map((f,j)=>`<label class="el">${f.l}${cell(f,v[j],r.id)}</label>`).join('');
   return`<div class="card" id="c${r.id}"><div class="vw"><div class="ct"><div>${esc(title)}</div><div class="chips">${chips}</div></div><div class="kv">${kv}</div></div><div class="ed" style="display:none">${ed}</div><div class="ca noprint"><button onclick="tg('${r.id}')">Edit</button>${id=='damage_reports'?`<button onclick="printOne('${r.id}')">Print</button>`:''}${isMgr()?`<button class="x2" onclick="del('${id}','${r.id}')">Delete</button>`:''}</div></div>`}).join('')||'<div class="p">Nothing here yet. Tap “Add new” to create the first one.</div>';
- return`${ph(m.l)}<h2>${m.l}</h2>${bar()}${pre}${add}${cards}${foot('','','')}`}
+ let sdl='';if(m.f.some(f=>f.k=='assigned_name')){const sn=(await sb.from('staff_members').select('name').eq('site_id',site)).data||[];sdl='<datalist id="stafflist">'+sn.map(x=>`<option value="${esc(x.name)}">`).join('')+'</datalist>'}
+ const fb=m.df?`<div class="tabs noprint">${['all','daily','weekly','monthly'].map(c=>`<button class="${c==pr.p?'on':''}" onclick="setP('${id}','${c}')">${cap(c)}</button>`).join('')}</div>${pr.p!='all'?`<div class="f noprint"><button class="b" style="flex:0 0 44px" onclick="stepP('${id}',-1)">‹</button><input type="date" value="${pr.d||today}" onchange="PER['${id}']={p:'${pr.p}',d:this.value};draw()"><button class="b" style="flex:0 0 44px" onclick="stepP('${id}',1)">›</button></div><div class="note noprint">Showing ${esc(plabel)}. Items with no date appear under All.</div>`:''}`:'';
+ return`${ph(m.l+(plabel?' · '+plabel:''))}<h2>${m.l}</h2>${fb}${bar()}${sdl}${pre}${add}${cards}${foot('','','')}`}
 
 let repD='';
 async function rep(){
@@ -253,7 +264,8 @@ function spark(v,lo,hi){if(v.length<2)return'';const a=Math.min(...v,lo??Infinit
 function copyTxt(id){const t=$(id).textContent;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert('Copied')).catch(()=>prompt('Copy this:',t))}
 async function mon(){
  const ss=(await sb.from('sensors').select('*').eq('site_id',site).order('name')).data||[],ids=ss.map(x=>x.id);
- const rd=ids.length?(await sb.from('readings').select('sensor_id,value,read_at').in('sensor_id',ids).order('read_at',{ascending:false}).limit(900)).data||[]:[];
+ const since=new Date(Date.now()-({day:1,week:7,month:30}[MPD])*864e5).toISOString();
+ const rd=ids.length?(await sb.from('readings').select('sensor_id,value,read_at').in('sensor_id',ids).gte('read_at',since).order('read_at',{ascending:false}).limit(5000)).data||[]:[];
  const by={};rd.forEach(r=>(by[r.sensor_id]=by[r.sensor_id]||[]).push(r));
  const URL_=SUPABASE_URL+'/rest/v1/rpc/ingest_reading';let on=0,off=0,al=0;const txt=[];
  const co=(await sb.from('companies').select('max_devices,gateway_access').eq('id',me.company_id).single()).data||{};
@@ -263,7 +275,8 @@ async function mon(){
   txt.push('- '+s.name+': '+disp+' ('+(offl?'OFFLINE':alert?'ALERT':'OK')+(last?', last seen '+ago(mins):'')+')');
   const curl=`curl -X POST ${URL_} -H "apikey: ${SUPABASE_ANON_KEY}" -H "Content-Type: application/json" -d '{"p_key":"${s.device_key}","p_value":${net?1:23.5}}'`;
   const lim=(s.alert_min!=null?' · alert below '+s.alert_min:'')+(s.alert_max!=null?' · alert above '+s.alert_max:'');
-  return`<div class="card"><div class="ct"><div>${k[0]} ${esc(s.name)}</div><div class="chips">${stt}</div></div><div style="font-size:26px;font-weight:700;margin-top:6px" class="${alert||offl?'bad':''}">${esc(disp)}</div><div class="note" style="margin:2px 0">${esc(k[1])} · ${last?'last seen '+ago(mins):'waiting for first reading'}${lim}</div>${spark(h.slice(0,40).reverse().map(x=>+x.value),s.alert_min!=null?+s.alert_min:null,s.alert_max!=null?+s.alert_max:null)}
+  const vals=h.map(x=>+x.value),avg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0,st_=vals.length?(net?'Uptime '+Math.round(avg*100)+'% over '+vals.length+' checks':'Min '+Math.min(...vals).toFixed(1)+' · Average '+avg.toFixed(1)+' · Max '+Math.max(...vals).toFixed(1)):'';
+  return`<div class="card"><div class="ct"><div>${k[0]} ${esc(s.name)}</div><div class="chips">${stt}</div></div><div style="font-size:26px;font-weight:700;margin-top:6px" class="${alert||offl?'bad':''}">${esc(disp)}</div><div class="note" style="margin:2px 0">${esc(k[1])} · ${last?'last seen '+ago(mins):'waiting for first reading'}${lim}</div><div class="note" style="margin:2px 0">${st_}</div>${spark(bin(h.slice().reverse().map(x=>+x.value),60),s.alert_min!=null?+s.alert_min:null,s.alert_max!=null?+s.alert_max:null)}
 <details class="noprint" style="margin-top:8px"><summary style="cursor:pointer;color:var(--ac);font-weight:600">Connect this device</summary><div class="note">Any device or system that can send a web request can report here. Test it from a computer with:</div><pre style="white-space:pre-wrap;word-break:break-all;background:var(--bg);padding:8px;font-size:12px" id="cu${s.id}">${esc(curl)}</pre><button class="b" onclick="copyTxt('cu${s.id}')">Copy</button><div class="note">Device key: <b>${s.device_key}</b>. Keep it private.</div></details>
 <details class="noprint" style="margin-top:6px"><summary style="cursor:pointer;color:var(--ac);font-weight:600">Settings</summary><label class="el">Name<input value="${esc(s.name)}" onchange="updS('${s.id}','name',this.value,'t')"></label><label class="el">Unit<input value="${esc(s.unit||'')}" onchange="updS('${s.id}','unit',this.value,'t')"></label><label class="el">Alert below<input type="number" value="${s.alert_min??''}" onchange="updS('${s.id}','alert_min',this.value,'n')"></label><label class="el">Alert above<input type="number" value="${s.alert_max??''}" onchange="updS('${s.id}','alert_max',this.value,'n')"></label>${isMgr()?`<br><button style="padding:6px 14px;background:none;border:1px solid var(--bad);color:var(--bad);border-radius:3px;cursor:pointer" onclick="delS('${s.id}')">Delete device</button>`:''}</details></div>`}).join('')||'<div class="p">No devices yet. Tap “Add device”, then open “Connect this device” on its card.</div>';
  SHARE={title:'Monitoring status - '+SH(),text:'Monitoring status\n'+SH()+' · '+new Date().toLocaleString('en-ZA')+'\nOnline: '+on+' · Offline: '+off+' · Alerts: '+al+'\n\n'+(txt.join('\n')||'No devices yet')};
@@ -273,11 +286,51 @@ async function mon(){
  if(co.gateway_access){const ak=(await sb.from('sites').select('agent_key').eq('id',site).single()).data?.agent_key||'';
   gw=`<details class="p noprint"><summary>Computer gateway: find Wi-Fi and network devices automatically</summary><div class="note"><b>1.</b> On a PC that stays on in the building, install Python 3 (python.org).<br><b>2.</b> <a href="steadyfix_gateway.py" download>Download the gateway software</a>.<br><b>3.</b> Run it with <b>python3 steadyfix_gateway.py</b> and paste this site key when it asks:</div><pre id="agk" style="white-space:pre-wrap;word-break:break-all;background:var(--bg);padding:8px;font-size:12px">${esc(ak)}</pre><button class="b" onclick="copyTxt('agk')">Copy key</button><div class="note">Devices on your network then appear here by themselves within a couple of minutes, and the gateway updates itself. Rename a device in its Settings.</div></details>`}
  else gw=`<div class="p noprint"><b>Computer gateway software</b><div class="note">Finds your Wi-Fi network devices automatically. Included with the PRO plan ($120 per month).</div><button class="b" onclick="goTab('sub')">See plans</button></div>`;
- return`${ph('Monitoring status')}<h2>Monitoring</h2>${bar()}<div class="g"><div class="k"><b>${on}</b><span>Online</span></div><div class="k"><b class="${off?'bad':''}">${off}</b><span>Offline</span></div><div class="k"><b class="${al?'bad':''}">${al}</b><span>Alerts</span></div><div class="k"><b>${ss.length}${co.max_devices!=null?' / '+co.max_devices:''}</b><span>Devices${co.max_devices==null?' (unlimited)':' used'}</span></div></div>${gw}${add}${cards}${help}${foot('','','')}`}
+ return`${ph('Monitoring status')}<h2>Monitoring</h2><div class="tabs noprint">${[['day','Last 24 hours'],['week','Last 7 days'],['month','Last 30 days']].map(([k,l])=>`<button class="${k==MPD?'on':''}" onclick="MPD='${k}';draw()">${l}</button>`).join('')}</div>${bar()}<div class="g"><div class="k"><b>${on}</b><span>Online</span></div><div class="k"><b class="${off?'bad':''}">${off}</b><span>Offline</span></div><div class="k"><b class="${al?'bad':''}">${al}</b><span>Alerts</span></div><div class="k"><b>${ss.length}${co.max_devices!=null?' / '+co.max_devices:''}</b><span>Devices${co.max_devices==null?' (unlimited)':' used'}</span></div></div>${gw}${add}${cards}${help}${foot('','','')}`}
 async function addS(){const n=$('sn').value.trim();if(!n)return alert('Type a name first.');const k=$('sk').value,r={company_id:me.company_id,site_id:site,name:n,kind:k,unit:$('su').value||null,alert_min:$('smin').value===''?null:+$('smin').value,alert_max:$('smax').value===''?null:+$('smax').value};
  const{error}=await sb.from('sensors').insert(r);error?alert(error.message):draw()}
 async function updS(id,f,v,t){const{error}=await sb.from('sensors').update({[f]:val(t,v)}).eq('id',id);if(error)alert(error.message)}
 async function delS(id){if(!confirm('Delete this device and its readings?'))return;const{error}=await sb.from('sensors').delete().eq('id',id);error?alert(error.message):draw()}
+
+const PER={};let MPD='day',RP='weekly',RD='',RS={},RC={staff:[],days:[]};
+const bin=(a,n)=>{if(a.length<=n)return a;const k=a.length/n,o=[];for(let i=0;i<n;i++){const x=a.slice(Math.floor(i*k),Math.floor((i+1)*k));o.push(x.reduce((u,v)=>u+v,0)/x.length)}return o};
+const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function rng(p,d0){const d=new Date(d0+'T12:00:00');let a=new Date(d),b=new Date(d);if(p=='weekly'){a.setDate(d.getDate()-((d.getDay()+6)%7));b=new Date(a);b.setDate(a.getDate()+6)}else if(p=='monthly'){a=new Date(d.getFullYear(),d.getMonth(),1);b=new Date(d.getFullYear(),d.getMonth()+1,0)}return{a:ymd(a),b:ymd(b),da:a,db:b}}
+function shiftDate(p,d0,n){const d=new Date((d0||today)+'T12:00:00');if(p=='daily')d.setDate(d.getDate()+n);else if(p=='weekly')d.setDate(d.getDate()+7*n);else{d.setDate(1);d.setMonth(d.getMonth()+n)}return ymd(d)}
+function setP(id,p){PER[id]={p,d:(PER[id]||{}).d||''};draw()}
+function stepP(id,n){const x=PER[id]||{p:'daily',d:''};PER[id]={p:x.p,d:shiftDate(x.p,x.d,n)};draw()}
+const SHT={day:['D','Day','#bfe3cd'],night:['N','Night','#b8d6ea'],standby:['S','Standby','#f8e0a0'],off:['O','Off','#e1e5e8'],leave:['L','Leave','#f4c2ba']},SHK=['day','night','standby','off','leave'],MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function rnav(n){RD=shiftDate(RP,RD||today,n);draw()}
+async function ros(){
+ const d0=RD||today,R_=rng(RP,d0),lab=RP=='daily'?dd(R_.a):dd(R_.a)+' to '+dd(R_.b);
+ const st=await sb.from('staff_members').select('*').eq('site_id',site).eq('active',true).order('name');
+ if(st.error)return`<h2>Rosters</h2><div class="p">The roster needs one more database step. Run the roster SQL I sent, then reload this page.</div>`;
+ const sh=(await sb.from('roster_shifts').select('staff_id,shift_date,shift_type').eq('site_id',site).gte('shift_date',R_.a).lte('shift_date',R_.b)).data||[];
+ RS={};sh.forEach(x=>RS[x.staff_id+'|'+x.shift_date]=x.shift_type);
+ const days=[];for(let d=new Date(R_.da);d<=R_.db;d.setDate(d.getDate()+1))days.push(new Date(d));
+ const S_=st.data||[];RC={staff:S_.map(x=>x.id),days:days.map(ymd)};
+ const wk=d=>[0,6].includes(d.getDay()),wd=RP=='monthly'?['Su','Mo','Tu','We','Th','Fr','Sa']:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+ const th1=days.map(d=>`<th class="${wk(d)?'we':''}">${wd[d.getDay()]}</th>`).join(''),th2=days.map(d=>`<th class="${wk(d)?'we':''}">${RP=='monthly'?d.getDate():d.getDate()+' '+MN[d.getMonth()]}</th>`).join('');
+ const rows=S_.map(s=>`<tr><td class="nm">${esc(s.name)}${s.role?`<br><small style="font-weight:400">${esc(s.role)}</small>`:''}</td>${days.map(d=>{const ds=ymd(d),v=RS[s.id+'|'+ds];return`<td class="rc ${wk(d)?'we':''}" id="c_${s.id}_${ds}" onclick="rcyc('${s.id}','${ds}')" style="${v?'background:'+SHT[v][2]:''}">${v?SHT[v][0]:''}</td>`}).join('')}<td class="tt" id="tt_${s.id}"></td></tr>`).join('');
+ const onrow=`<tr><td class="nm">On duty</td>${days.map(d=>`<td class="on" id="on_${ymd(d)}"></td>`).join('')}<td></td></tr>`;
+ const manage=`<details class="p noprint"><summary>Manage staff</summary><div class="f" style="margin-top:10px"><input id="stn" placeholder="Staff name"><input id="str" placeholder="Role (optional)"><button onclick="addStaff()">Add</button></div>${S_.map(s=>`<div class="f" style="margin-top:8px"><input value="${esc(s.name)}" onchange="renStaff('${s.id}','name',this.value)"><input value="${esc(s.role||'')}" placeholder="Role" onchange="renStaff('${s.id}','role',this.value)">${isMgr()?`<button class="x" onclick="delStaff('${s.id}')">✕</button>`:''}</div>`).join('')}</details>`;
+ const code=v=>v?SHT[v][0]:'-';
+ SHARE={title:cap(RP)+' roster - '+SH(),text:cap(RP)+' roster: '+lab+'\n'+SH()+'\nD=Day N=Night S=Standby O=Off L=Leave\n\n'+(S_.map(s=>s.name+(s.role?' ('+s.role+')':'')+': '+days.map(d=>(RP=='daily'?'':wd[d.getDay()]+' '+d.getDate()+'=')+code(RS[s.id+'|'+ymd(d)])).join(' ')).join('\n')||'No staff yet')};
+ setTimeout(rtot,50);
+ return`<div class="rpage">${ph(cap(RP)+' roster · '+lab)}<h2>Rosters</h2><div class="tabs noprint">${['daily','weekly','monthly'].map(c=>`<button class="${c==RP?'on':''}" onclick="RP='${c}';draw()">${cap(c)}</button>`).join('')}</div><div class="f noprint"><button class="b" style="flex:0 0 44px" onclick="rnav(-1)">‹</button><input type="date" value="${d0}" onchange="RD=this.value;draw()"><button class="b" style="flex:0 0 44px" onclick="rnav(1)">›</button></div>${bar()}${RP=='weekly'?'<div class="noprint" style="margin-bottom:10px"><button class="b" onclick="copyPrev()">Copy last week</button></div>':''}<div class="note">${cap(RP)} roster · ${lab} · ${esc(SH())}</div><div class="sc"><table class="rost ${RP=='monthly'?'m':''}"><tr><th rowspan="2" class="nm">Staff</th>${th1}<th rowspan="2">Days</th></tr><tr>${th2}</tr>${rows||'<tr><td colspan="40">No staff yet. Add your first staff member under Manage staff.</td></tr>'}${S_.length?onrow:''}</table></div><div class="note">D = Day · N = Night · S = Standby · O = Off · L = Leave. Tap a block to change it. “Days” counts day, night and standby shifts.</div>${manage}${foot('','','')}</div>`}
+function rtot(){const W=['day','night','standby'];RC.staff.forEach(id=>{let n=0;RC.days.forEach(d=>{if(W.includes(RS[id+'|'+d]))n++});const e=$('tt_'+id);if(e)e.textContent=n});RC.days.forEach(d=>{let n=0;RC.staff.forEach(id=>{if(W.includes(RS[id+'|'+d]))n++});const e=$('on_'+d);if(e)e.textContent=n})}
+async function rcyc(sid,ds){const k=sid+'|'+ds,i=SHK.indexOf(RS[k]),nx=i+1<SHK.length?SHK[i+1]:null,el=$('c_'+sid+'_'+ds);
+ if(nx){RS[k]=nx;el.textContent=SHT[nx][0];el.style.background=SHT[nx][2]}else{delete RS[k];el.textContent='';el.style.background=''}rtot();
+ const r=nx?await sb.from('roster_shifts').upsert({company_id:me.company_id,site_id:site,staff_id:sid,shift_date:ds,shift_type:nx},{onConflict:'staff_id,shift_date'}):await sb.from('roster_shifts').delete().eq('staff_id',sid).eq('shift_date',ds);
+ if(r.error)alert(r.error.message)}
+async function addStaff(){const n=$('stn').value.trim();if(!n)return alert('Type a name first.');const{error}=await sb.from('staff_members').insert({company_id:me.company_id,site_id:site,name:n,role:$('str').value.trim()||null});error?alert(error.message):draw()}
+async function renStaff(id,f,v){const{error}=await sb.from('staff_members').update({[f]:v||null}).eq('id',id);if(error)alert(error.message)}
+async function delStaff(id){if(!confirm('Remove this staff member and their roster entries?'))return;const{error}=await sb.from('staff_members').delete().eq('id',id);error?alert(error.message):draw()}
+async function copyPrev(){const R=rng('weekly',RD||today),a=new Date(R.da),b=new Date(R.db);a.setDate(a.getDate()-7);b.setDate(b.getDate()-7);
+ const{data}=await sb.from('roster_shifts').select('staff_id,shift_date,shift_type').eq('site_id',site).gte('shift_date',ymd(a)).lte('shift_date',ymd(b));
+ if(!data||!data.length)return alert('Nothing to copy from last week.');if(!confirm("Copy last week's roster into this week? Shifts already set this week will be replaced."))return;
+ const rows=data.map(x=>{const d=new Date(x.shift_date+'T12:00:00');d.setDate(d.getDate()+7);return{company_id:me.company_id,site_id:site,staff_id:x.staff_id,shift_date:ymd(d),shift_type:x.shift_type}});
+ const{error}=await sb.from('roster_shifts').upsert(rows,{onConflict:'staff_id,shift_date'});error?alert(error.message):draw()}
 
 const val=(t,v)=>v===''?null:t=='n'?+v:t=='dt'?new Date(v).toISOString():v;
 async function upd(tb,rid,k,t,v,virt){const r=virt?await sb.from('stock_levels').upsert({item_id:rid,site_id:site,company_id:me.company_id,on_hand:+v}):await sb.from(tb).update({[k]:val(t,v)}).eq('id',rid);if(r.error)alert(r.error.message);else if(tb=='stock_items')draw()}

@@ -317,7 +317,7 @@ function meta(tid,key,f,v){MP=(async()=>{const{data}=await sb.from('checklist_ru
 async function tick(tid,key,i,on){await MP;const{data}=await sb.from('checklist_runs').select('results').eq('template_id',tid).eq('run_date',key).maybeSingle();
  const results={...(data?.results||{}),[i]:on};await sb.from('checklist_runs').upsert({company_id:me.company_id,site_id:site,template_id:tid,run_date:key,results,completed_by:me.id,completed_at:new Date().toISOString()},{onConflict:'template_id,run_date'});draw()}
 const PP_ID='BAAshiyibCQ9kJ0LRlICmsarQCMDDn_-hw-C21GIh3S077ex8wwvq_cTdKrUEV2Mqe9unUk5O5xLOICTas';
-const PRO_ID='';
+const PRO_ID='P-6BL49939LY725041UNLC5AEI';
 const PLANS=[['P-3GX3005824536144DNLAQLII','STANDARD','$75 USD per month',['Up to 10 monitored devices','Up to 3 sites','All sections, reports, checklists and printing']],[PRO_ID,'PRO','$120 USD per month',['Unlimited devices and sites','Computer gateway software: finds your Wi-Fi and network devices automatically','Everything in Standard']]];
 async function sub(){
  const Q=()=>sb.from('companies').select('name,plan,subscription_status,max_sites,max_devices,gateway_access,trial_ends_at').eq('id',me.company_id).single();

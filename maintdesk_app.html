@@ -65,7 +65,7 @@ table.rost{min-width:0;width:auto;border-collapse:collapse;-webkit-print-color-a
 .rost .we{background:#eef0f2}.rc{cursor:pointer;min-width:36px;font-weight:700}.rost .tt,.rost .on{font-weight:700}
 .rost.m th,.rost.m td{padding:3px 2px;font-size:11px;min-width:26px}.rost.m .nm{min-width:84px}
 .rpage{page:rost}@page rost{size:landscape}
-</style></head><body>
+</style><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1b2831"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"></head><body>
 <header><h1>STEADYFIX CMMS</h1><select id="site"></select><a href="maintdesk_login.html">Team &amp; sites</a></header>
 <nav id="nav"></nav><main id="v">Loading…</main>
 <script>
@@ -104,13 +104,18 @@ async function boot(){
  const{data:sites}=await sb.from('sites').select('id,name').order('name'); site=sites[0]?.id;
  $('site').innerHTML=sites.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
  $('site').onchange=e=>{site=e.target.value;draw()};
- $('nav').innerHTML=TABS.filter(t=>(isMgr()||!['budgets','expenses','sub'].includes(t[0]))&&(t[0]!='inbox'||me.is_admin)).map(t=>`<button data-t="${t[0]}">${t[1]||MOD[t[0]].l}</button>`).join('');
+ await lockCheck();buildNav();
  $('nav').onclick=e=>{if(e.target.dataset.t){cur=e.target.dataset.t;draw()}};
  try{CO=(await sb.from('companies').select('name').eq('id',me.company_id).single()).data.name}catch(e){}
  draw()}
 
+let LOCK=null,TRIAL=null;
+async function lockCheck(){try{const c=(await sb.from('companies').select('subscription_status,trial_ends_at').eq('id',me.company_id).single()).data,st=c.subscription_status,left=c.trial_ends_at?Math.ceil((new Date(c.trial_ends_at)-Date.now())/864e5):0;TRIAL=null;LOCK=null;
+ if(st=='trialing'){if(left>0)TRIAL=left;else LOCK='Your free trial has ended.'}else if(st=='cancelled')LOCK='Your subscription has been cancelled.'}catch(e){}}
+function buildNav(){const ok=t=>t[0]=='inbox'?!!me.is_admin:LOCK?['sub','sup','set'].includes(t[0]):(isMgr()||!['budgets','expenses','sub'].includes(t[0]));$('nav').innerHTML=TABS.filter(ok).map(t=>`<button data-t="${t[0]}">${t[1]||MOD[t[0]].l}</button>`).join('')}
+
 let MT;
-async function draw(){clearInterval(MT);[...$('nav').children].forEach(b=>b.classList.toggle('on',b.dataset.t==cur));V.innerHTML='Loading…';
+async function draw(){clearInterval(MT);if(LOCK&&!['sub','sup','set','inbox'].includes(cur))cur='sub';[...$('nav').children].forEach(b=>b.classList.toggle('on',b.dataset.t==cur));V.innerHTML='Loading…';
  try{V.innerHTML=cur=='dash'?await dash():cur=='rep'?await rep():cur=='mon'?await mon():cur=='sup'?await sup():cur=='inbox'?await inbox():cur=='shifts'?await ros():cur=='set'?settings():cur=='chk'?await chk():cur=='sub'?await sub():await mod(cur);if(cur=='sub')pay();if(cur=='mon')MT=setInterval(()=>{const a=document.activeElement;if(cur!='mon'||(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))||document.querySelector('details[open]'))return;draw()},30000)}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}}
 
 const goTab=t=>{cur=t;draw()};
@@ -155,7 +160,7 @@ async function dash(){
  const S=[['Work tasks','work_orders',wl,W.length],['Preventive maintenance','pm_schedules',pl,pmo.length+' overdue'],['Checklists today','chk',cll,null],['Stock','stock_items',stl,low.length+' to reorder'],['Orders','purchase_orders',ol,O_.length],['Shutdowns','shutdowns',sl,sl.length],['Monitoring','mon',ml,moff+' offline'],['Wear & life','assets',al_,worn.length],['Rosters today','shifts',shl,shl.length],['Damage reports','damage_reports',dl,D_.length],['Fleet due for service','vehicles',fl,fl.length],['Suppliers & contractors','suppliers',sul,sul.length]];
  if(isMgr())S.push(['Budget','budgets',bl,null]);S.push(['Reports','rep',rl,null]);
  SHARE={title:'Dashboard overview - '+SH(),text:'Dashboard overview\n'+SH()+' · '+dd(today)+'\n\n'+S.map(([h,,l])=>h.toUpperCase()+'\n'+(l.length?l.slice(0,10).map(x=>'- '+strip(x)).join('\n'):'- Nothing to show')).join('\n\n')};
- return`${ph('Dashboard overview')}<h2>Dashboard</h2>${bar()}<div class="g">${tiles}</div><div class="dg">${S.map(([h,t,l,c])=>sec(h,t,l,c)).join('')}</div>${foot('','','')}`}
+ return`${ph('Dashboard overview')}<h2>Dashboard</h2>${TRIAL!=null?`<div class="note noprint">Free trial: ${TRIAL} day${TRIAL==1?'':'s'} left. <a href="#" onclick="goTab('sub');return false">See plans</a></div>`:''}${bar()}<div class="g">${tiles}</div><div class="dg">${S.map(([h,t,l,c])=>sec(h,t,l,c)).join('')}</div>${foot('','','')}`}
 const SH=()=>$('site').selectedOptions[0]?.textContent||'';
 let SHARE={title:'',text:''},rp='daily';
 const bar=()=>`<div class="bar2 noprint"><button onclick="doPrint()">🖨 Print</button><button onclick="doMail()">✉ Email</button><button onclick="doShare()">↗ Share</button></div>`;
@@ -238,7 +243,7 @@ function printOne(rid){const r=DR.rows.find(x=>x.id==rid);if(!r)return;const m=M
  sh.innerHTML=ph('Incident / damage report')+`<br><table class="pt">${row('Report type',g('report_type'))}${row('Title',g('title'))}${row('Asset',g('asset_id'))}${row('Where',g('location_text'))}${row('Date noticed',g('date_noticed'))}${row('Reported by',g('reported_by'))}${row('Estimated cost',g('estimated_cost'))}${row('Status',g('status'))}${row('Police case no.',g('police_case_no'))}${row('Insurer claim no.',g('insurer_claim_no'))}</table><p><b>What happened</b></p><div class="box">${esc(r.description||'')}</div><p><b>Action taken or needed</b></p><div class="box">${esc(r.action_taken||'')}</div>`+foot(r.reported_by,'','');
  document.body.classList.add('one');setTimeout(()=>window.print(),120)}
 window.onafterprint=()=>document.body.classList.remove('one');
-function settings(){return`<h2>Print settings</h2><div class="p"><label class="el">Company, hotel or business name (printed at the top of every sheet)<input id="sl" value="${esc(LS('sf_label')||CO)}"></label><label class="el">Line under the name (department, address or phone)<input id="ss" value="${esc(LS('sf_sub'))}" placeholder="e.g. Maintenance Department"></label><br><button class="b" onclick="saveSet()">Save</button><div class="note">Saved on this device. Every printout, report and checklist sheet uses it, together with the site name and date.</div></div>`}
+function settings(){return`<h2>Print settings</h2><div class="p"><label class="el">Company, hotel or business name (printed at the top of every sheet)<input id="sl" value="${esc(LS('sf_label')||CO)}"></label><label class="el">Line under the name (department, address or phone)<input id="ss" value="${esc(LS('sf_sub'))}" placeholder="e.g. Maintenance Department"></label><br><button class="b" onclick="saveSet()">Save</button><div class="note">Saved on this device. Every printout, report and checklist sheet uses it, together with the site name and date.</div></div><div class="p"><b>Install on your phone</b><div class="note">In Chrome tap the ⋮ menu, then “Add to Home screen” or “Install app”. STEADYFIX then opens like a normal app.</div></div>`}
 function saveSet(){try{localStorage.setItem('sf_label',$('sl').value);localStorage.setItem('sf_sub',$('ss').value)}catch(e){}alert('Saved')}
 
 const repTabs=()=>`<div class="tabs noprint">${['daily','weekly','monthly','archive'].map(c=>`<button class="${c==rp?'on':''}" onclick="rp='${c}';draw()">${c=='archive'?'Saved checklists':cap(c)}</button>`).join('')}</div>`+(rp=='archive'?'':`<div class="f noprint"><label class="el" style="flex:1">Report date<input type="date" value="${repD||today}" onchange="repD=this.value;draw()"></label></div><div class="note noprint">Counts for the chosen day or period come from what was saved then. Open tasks, stock and overdue items show today's position.</div>`);
@@ -333,7 +338,7 @@ async function copyPrev(){const R=rng('weekly',RD||today),a=new Date(R.da),b=new
  const{error}=await sb.from('roster_shifts').upsert(rows,{onConflict:'staff_id,shift_date'});error?alert(error.message):draw()}
 
 // Fill these in so the "Email us" and "WhatsApp" buttons appear on the Support screen
-const SUPPORT_EMAIL='',SUPPORT_WA='';
+const SUPPORT_EMAIL='support.easyfix@gmail.com',SUPPORT_WA='27622338013';
 const KT={question:'A question',help:'Help using the app',problem:'Problem',custom:'Customization',billing:'Billing or plan'};
 const stc=v=>chip(v=='open'?'high':v=='in_progress'?'on_hold':v=='answered'?'done':'closed',v=='open'?'Open':v=='in_progress'?'In progress':v=='answered'?'Answered':'Closed');
 const FAQ=[['How do I add or change a checklist?','Open Checklists, pick Daily, Weekly, Monthly or Yearly, then tap “Edit tasks” to add, rename or remove tasks, or “New checklist” to make your own. Ticks, names and sign-off are saved automatically and kept under Reports, Saved checklists.'],
@@ -406,7 +411,8 @@ async function sub(){
  const act=c.subscription_status=='active',pen=c.subscription_status=='pending';
  const pl=(await sb.from('plans').select('paypal_plan_id,name')).data||[],pn=(pl.find(x=>x.paypal_plan_id==c.plan)||{}).name||cap(c.plan);
  const{count}=await sb.from('sensors').select('id',{count:'exact',head:true});
- const head=`<h2>Subscription</h2><div class="p"><b>${esc(c.name)}</b><br>Plan: ${esc(pn)} · Status: <b class="${act?'':'bad'}">${esc(c.subscription_status)}</b><br>Devices: ${count||0} of ${c.max_devices??'unlimited'} · Sites allowed: ${c.max_sites}${c.gateway_access?' · Computer gateway software included':''}${act||pen||!c.trial_ends_at?'':`<br>Trial ends ${new Date(c.trial_ends_at).toLocaleDateString('en-ZA')}`}${pen?'<br>Payment received. We are confirming it and will activate your plan shortly.':''}</div>`;
+ if(act&&LOCK){LOCK=null;buildNav()}
+ const head=`<h2>Subscription</h2>${LOCK?`<div class="p" style="border-left:5px solid var(--bad)"><b>🔒 ${LOCK}</b><div class="note">Your information is safe and will be here when you subscribe. Choose a plan below to carry on.</div></div>`:''}<div class="p"><b>${esc(c.name)}</b><br>Plan: ${esc(pn)} · Status: <b class="${act?'':'bad'}">${esc(c.subscription_status)}</b><br>Devices: ${count||0} of ${c.max_devices??'unlimited'} · Sites allowed: ${c.max_sites}${c.gateway_access?' · Computer gateway software included':''}${act||pen||!c.trial_ends_at?'':`<br>Trial ends ${new Date(c.trial_ends_at).toLocaleDateString('en-ZA')}`}${pen?'<br>Payment received. We are confirming it and will activate your plan shortly.':''}</div>`;
  const cards=PLANS.map(p=>`<div class="p"><div class="ct"><div>${p[1]}</div><div>${p[2]}</div></div>${p[3].map(f=>`<div class="rl">✓ ${esc(f)}</div>`).join('')}${p[0]?`<div id="pp-${p[0]}" style="margin-top:10px"></div>`:'<div class="note">This plan is available soon.</div>'}</div>`).join('');
  return head+(act?'':`<div class="note">${pen?'Payment not completed? You can try again below. ':''}Pay securely with PayPal. Your plan is activated as soon as PayPal confirms your payment.</div>`+cards)}
 function pay(){const L=PLANS.filter(p=>p[0]&&document.getElementById('pp-'+p[0]));if(!L.length)return;
@@ -425,4 +431,5 @@ function intro(){try{if(sessionStorage.getItem('sf_intro'))return;sessionStorage
 
 boot();
 intro();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script></body></html>

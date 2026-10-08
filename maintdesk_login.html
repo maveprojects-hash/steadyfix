@@ -20,7 +20,7 @@ code{background:var(--bg);padding:2px 6px}
 #intro .ic svg{width:44px;height:44px;stroke:#e59f0f;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;padding:10px;border:1px solid #3a5565;border-radius:50%}
 #intro button{margin-top:22px;padding:12px 34px;border:0;border-radius:4px;background:#e59f0f;color:#1b2831;font:700 16px system-ui;cursor:pointer}
 @media print{#intro{display:none!important}}
-</style></head><body><div class="box" id="app"></div>
+</style><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1b2831"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"></head><body><div class="box" id="app"></div>
 <script>
 // 1) Paste your Supabase project values (Project settings > API)
 const SUPABASE_URL='https://wqggnimaglsikdusbvuh.supabase.co', SUPABASE_ANON_KEY='sb_publishable_NhiAgVZ451DMdfwzWTSGvQ_zQlbwW8l';
@@ -83,4 +83,5 @@ function intro(){try{if(sessionStorage.getItem('sf_intro'))return;sessionStorage
  document.body.appendChild(el);const close=()=>{el.classList.add('out');setTimeout(()=>el.remove(),700)};
  document.getElementById('introgo').onclick=close;setTimeout(close,6000)}
 intro();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script></body></html>

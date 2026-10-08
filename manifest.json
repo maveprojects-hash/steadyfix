@@ -1,0 +1,28 @@
+{
+ "name": "STEADYFIX CMMS",
+ "short_name": "STEADYFIX",
+ "description": "Maintenance management for every site",
+ "start_url": "maintdesk_login.html",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#1b2831",
+ "theme_color": "#1b2831",
+ "icons": [
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}

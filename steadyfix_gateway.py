@@ -23,10 +23,17 @@ WIN = platform.system().lower() == "windows"
 
 
 def ping(host):
-    cmd = ["ping", "-n", "1", "-w", "1500", host] if WIN else ["ping", "-c", "1", "-W", "2", host]
+    if WIN:
+        cmd = ["ping", "-n", "1", "-w", "1500", host]
+    elif platform.system() == "Darwin":
+        cmd = ["ping", "-c", "1", "-t", "2", host]
+    else:
+        cmd = ["ping", "-c", "1", "-W", "2", host]
     try:
-        return subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
-    except OSError:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=6)
+        # Windows can exit 0 on "destination unreachable", so it must also show a TTL
+        return r.returncode == 0 and (not WIN or "TTL=" in r.stdout.upper())
+    except (OSError, subprocess.TimeoutExpired):
         return False
 
 
@@ -43,8 +50,12 @@ def local_network():
 
 
 def parse_arp(text):
-    return {m.group(1): m.group(2).lower().replace("-", ":") for m in re.finditer(
-        r"(\d+\.\d+\.\d+\.\d+).*?([0-9a-fA-F]{2}(?:[:-][0-9a-fA-F]{2}){5})", text)}
+    out = {}
+    for m in re.finditer(r"(\d+\.\d+\.\d+\.\d+)[^\n]*?((?:[0-9a-fA-F]{1,2}[:-]){5}[0-9a-fA-F]{1,2})", text):
+        mac = ":".join(p.zfill(2) for p in re.split(r"[:-]", m.group(2))).lower()
+        if mac not in ("ff:ff:ff:ff:ff:ff", "00:00:00:00:00:00"):
+            out[m.group(1)] = mac
+    return out
 
 
 def scan():

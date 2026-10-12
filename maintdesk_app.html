@@ -73,14 +73,14 @@ const SUPABASE_URL='https://wqggnimaglsikdusbvuh.supabase.co', SUPABASE_ANON_KEY
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 const $=id=>document.getElementById(id), V=$('v');
 let me,site,cur='dash',cf='daily';
-const F=(k,l,t,o)=>({k,l,t,o});
+const F=(k,l,t,o,v)=>({k,l,t,o,v});
 const st=['open','in_progress','on_hold','done','cancelled'], PR=['low','medium','high','urgent'];
 const STAFF=k=>F(k,'Assigned to','r',['profiles','full_name']);
 const NAME=F('assigned_name','Assigned to','t');
 const MOD={
  work_orders:{l:'Work tasks',s:1,df:'due_date',f:[F('title','Task','t'),NAME,F('priority','Priority','s',PR),F('due_date','Due','d'),F('status','Status','s',st)]},
  pm_schedules:{l:'PM schedules',s:1,df:'next_due',f:[F('title','PM task','t'),NAME,F('frequency_days','Every (days)','n'),F('next_due','Next due','d')]},
- stock_items:{l:'Stock',f:[F('name','Item','t'),F('sku','SKU','t'),F('unit_cost','Unit cost','n'),F('min_level','Min level','n'),F('on_hand','On hand (this site)','n',0,1)]},
+ stock_items:{l:'Stock',f:[F('name','Item','t'),F('on_hand','Quantity in stock','n',0,1),F('min_level','Reorder when below','n'),F('unit_cost','Unit cost','n'),F('sku','Item code (optional)','t')]},
  purchase_orders:{l:'Orders',s:1,df:'expected_at',f:[F('po_number','PO number','t'),F('supplier_id','Supplier','r',['suppliers','name']),F('total_cost','Cost','n'),F('expected_at','Expected','d'),F('status','Status','s',['draft','ordered','delivered','cancelled'])]},
  shutdowns:{l:'Shutdowns',s:1,df:'starts_at',dt:1,f:[F('title','Shutdown','t'),F('system','System','t'),F('starts_at','Starts','dt'),F('duration_hrs','Hours','n'),F('status','Status','s',['planned','notified','active','complete'])]},
  sensors:{l:'Monitoring',s:1,note:'Register each meter or sensor here. Live readings arrive from your WiFi devices using each sensor\u2019s device key. That feed is the next build step.',f:[F('name','Sensor','t'),F('kind','Type','s',['electricity','water','gas','temperature','pressure','current','flow']),F('unit','Unit','t'),F('alert_min','Alert below','n'),F('alert_max','Alert above','n')]},
@@ -185,7 +185,8 @@ function show(f,v,refs){if(v===null||v===undefined||v==='')return'-';
  if(f.t=='s')return cap(v);if(f.t=='d')return dd(v);
  if(f.t=='dt')return new Date(v).toLocaleString('en-ZA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
  if(f.t=='n')return MONEY.test(f.k)?R(v):f.k=='wear_pct'?v+'%':String(v);return String(v)}
-function tg(r){const c=$('c'+r),e=c.querySelector('.ed');if(e.style.display!='none')return draw();e.style.display='block';c.querySelector('.vw').style.display='none';c.querySelector('.ca button').textContent='Done'}
+function tg(r){const c=$('c'+r),e=c.querySelector('.ed');if(e.style.display!='none')return draw();e.style.display='block';c.querySelector('.vw').style.display='none';c.querySelector('.eb').textContent='Done'}
+async function adjStock(rid,d){const nv=Math.max(0,(+(LAST.oh[rid]||0))+d),{error}=await sb.from('stock_levels').upsert({item_id:rid,site_id:site,company_id:me.company_id,on_hand:nv});error?alert(error.message):draw()}
 
 async function mod(id){
  const m=MOD[id], refs={};
@@ -216,7 +217,7 @@ async function mod(id){
   const chips=m.f.map((f,j)=>f.t=='s'&&v[j]?chip(v[j],cap(v[j])):'').join('')+(id=='stock_items'?((oh[r.id]||0)<r.min_level?chip('overdue','Reorder'):chip('done','OK')):'');
   const kv=m.f.map((f,j)=>j==0||f.t=='s'?'':`<span>${f.l}</span><b>${esc(show(f,v[j],refs))}</b>`).join('');
   const ed=m.f.map((f,j)=>`<label class="el">${f.l}${cell(f,v[j],r.id)}</label>`).join('');
-  return`<div class="card" id="c${r.id}"><div class="vw"><div class="ct"><div>${esc(title)}</div><div class="chips">${chips}</div></div><div class="kv">${kv}</div></div><div class="ed" style="display:none">${ed}</div><div class="ca noprint"><button onclick="tg('${r.id}')">Edit</button>${id=='damage_reports'?`<button onclick="printOne('${r.id}')">Print</button>`:''}${isMgr()?`<button class="x2" onclick="del('${id}','${r.id}')">Delete</button>`:''}</div></div>`}).join('')||'<div class="p">Nothing here yet. Tap “Add new” to create the first one.</div>';
+  return`<div class="card" id="c${r.id}"><div class="vw"><div class="ct"><div>${esc(title)}</div><div class="chips">${chips}</div></div><div class="kv">${kv}</div></div><div class="ed" style="display:none">${ed}</div><div class="ca noprint">${id=='stock_items'?`<button onclick="adjStock('${r.id}',-1)">− 1</button><button onclick="adjStock('${r.id}',1)">+ 1</button>`:''}<button class="eb" onclick="tg('${r.id}')">Edit</button>${id=='damage_reports'?`<button onclick="printOne('${r.id}')">Print</button>`:''}${isMgr()?`<button class="x2" onclick="del('${id}','${r.id}')">Delete</button>`:''}</div></div>`}).join('')||'<div class="p">Nothing here yet. Tap “Add new” to create the first one.</div>';
  let sdl='';if(m.f.some(f=>f.k=='assigned_name')){const sn=(await sb.from('staff_members').select('name').eq('site_id',site)).data||[];sdl='<datalist id="stafflist">'+sn.map(x=>`<option value="${esc(x.name)}">`).join('')+'</datalist>'}
  let cdl='';if(m.f.some(f=>f.k=='category')){const cs=[...new Set([...((await sb.from('budgets').select('category').eq('site_id',site)).data||[]).map(x=>x.category),...DEFCATS])];cdl='<datalist id="catlist">'+cs.map(x=>`<option value="${esc(x)}">`).join('')+'</datalist>'}
  const srch=`<div class="f noprint"><input placeholder="Search ${m.l.toLowerCase()}…" value="${esc(Q_[id]||'')}" onchange="Q_['${id}']=this.value;draw()"></div>`,tot=m.sum?`<div class="note">${rows.length} shown · total <b>${R(rows.reduce((a,r)=>a+ +(r[m.sum]||0),0))}</b></div>`:'';LAST={id,rows,refs,oh};

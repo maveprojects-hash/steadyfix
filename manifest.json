@@ -1,7 +1,7 @@
 {
  "name": "STEADYFIX CMMS",
  "short_name": "STEADYFIX",
- "description": "Maintenance management for every site",
+ "description": "Maintain excellence. Maintenance management for every site",
  "start_url": "maintdesk_login.html",
  "scope": "./",
  "display": "standalone",

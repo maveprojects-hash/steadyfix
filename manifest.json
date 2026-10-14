@@ -2,8 +2,8 @@
  "name": "STEADYFIX CMMS",
  "short_name": "STEADYFIX",
  "description": "Maintain excellence. Maintenance management for every site",
- "start_url": "maintdesk_login.html",
- "scope": "./",
+ "start_url": "/maintdesk_login.html",
+ "scope": "/",
  "display": "standalone",
  "background_color": "#1b2831",
  "theme_color": "#1b2831",
@@ -24,5 +24,12 @@
    "type": "image/png",
    "purpose": "maskable"
   }
- ]
+ ],
+ "id": "/maintdesk_login.html",
+ "lang": "en-ZA",
+ "categories": [
+  "business",
+  "productivity"
+ ],
+ "orientation": "any"
 }

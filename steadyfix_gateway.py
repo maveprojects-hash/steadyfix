@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 VERSION = "2.0"
 SUPABASE_URL = "https://wqggnimaglsikdusbvuh.supabase.co"
 PUBLISHABLE_KEY = "sb_publishable_NhiAgVZ451DMdfwzWTSGvQ_zQlbwW8l"
-UPDATE_URL = "https://maveprojects-hash.github.io/steadyfix/steadyfix_gateway.py"
+UPDATE_URL = "https://steadyfixcmms.com/steadyfix_gateway.py"
 INTERVAL = 120  # seconds between scans
 HERE = os.path.dirname(os.path.abspath(__file__))
 KEYFILE = os.path.join(HERE, "steadyfix_key.txt")

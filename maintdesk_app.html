@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>STEADYFIX CMMS</title>
+<title>STEADYFIX CMMS</title><meta name="robots" content="noindex">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#e8eaed;--pn:#fff;--ink:#1b2831;--mut:#5d6b75;--ln:#cfd5da;--ac:#1f5f8b;--am:#e59f0f;--ok:#2e7d4f;--bad:#c23b2a;--nav:#1b2831}
@@ -416,7 +416,7 @@ async function soft(){
  const desk=/STEADYFIXDesktop/.test(navigator.userAgent),ver=(navigator.userAgent.match(/STEADYFIXDesktop\/([\d.]+)/)||[])[1],REL='https://github.com/maveprojects-hash/steadyfix-desktop/releases/latest';
  let rel=null;try{const r=await fetch('https://api.github.com/repos/maveprojects-hash/steadyfix-desktop/releases/latest');if(r.ok)rel=await r.json()}catch(e){}
  const as=(rel&&rel.assets)||[],mb=a=>Math.max(1,Math.round(a.size/1048576))+' MB',lab=a=>/arm64/i.test(a.name)?' (Apple Silicon, M1 and newer)':/x64|intel/i.test(a.name)&&/dmg/i.test(a.name)?' (Intel)':'';
- const row=(ic,name,desc,list)=>`<div class="card"><div class="ct"><div>${ic} <b>${name}</b></div></div><div class="note">${desc}</div>${list.length?list.map(a=>`<div style="margin-top:8px"><button class="b" onclick="window.open('${a.browser_download_url}','_blank')">⬇ Download${esc(lab(a))} · ${mb(a)}</button></div>`).join(''):`<div style="margin-top:8px"><button class="b" onclick="window.open('${REL}','_blank')">Open the download page</button></div>`}</div>`;
+ const row=(ic,name,desc,list)=>`<div class="card"><div class="ct"><div>${ic} <b>${name}</b></div></div><div class="note">${desc}</div>${list.length?list.map(a=>`<div style="margin-top:8px"><button class="b" onclick="window.open('${a.browser_download_url}','_blank')">⬇ Download${esc(lab(a))} · ${mb(a)}</button></div>`).join(''):`<div class="note" style="margin-top:8px">This installer is being prepared. Please check back shortly.</div><div style="margin-top:8px"><button onclick="window.open('${REL}','_blank')">Open the download page</button></div>`}</div>`;
  const ak=isMgr()?((await sb.from('sites').select('agent_key').eq('id',site).single()).data||{}).agent_key||'':'';
  return`<h2>Software</h2>${desk?`<div class="p" style="border-left:5px solid var(--ok,#2e7d32)"><b>You are using the STEADYFIX computer app${ver?' (version '+esc(ver)+')':''}.</b><div class="note">It updates itself. Use the downloads below to install it on other computers.</div></div>`:''}
 <div class="p"><b>Computer app</b><div class="note">The full STEADYFIX app in its own window, showing the same data as your phone, with automatic Wi-Fi and network device monitoring.${rel?' Latest version: '+esc(rel.tag_name)+'.':''}${rel?'':' The latest downloads could not be listed just now, so the buttons open the download page.'}</div>${row('🪟','Windows','Windows 10 or 11',as.filter(a=>/\.exe$/i.test(a.name)))}${row('🍎','Mac','macOS',as.filter(a=>/\.dmg$/i.test(a.name)))}${row('🐧','Linux','Most Linux computers (AppImage)',as.filter(a=>/\.AppImage$/i.test(a.name)))}</div>

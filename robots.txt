@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /maintdesk_app.html
+Disallow: /maintdesk_login.html
+Sitemap: https://steadyfixcmms.com/sitemap.xml

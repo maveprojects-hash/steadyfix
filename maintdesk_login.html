@@ -22,6 +22,8 @@ code{background:var(--bg);padding:2px 6px}
 @media print{#intro{display:none!important}}
 </style><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1b2831"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"></head><body><div class="box" id="app"></div>
 <script>
+(function(){try{var p=new URLSearchParams(location.search),a={};['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid'].forEach(function(k){if(p.get(k))a[k]=p.get(k).slice(0,120)});if(document.referrer&&document.referrer.indexOf('steadyfixcmms.com')<0)a.ref=new URL(document.referrer).hostname;if(Object.keys(a).length&&!sessionStorage.getItem('sf_attr'))sessionStorage.setItem('sf_attr',JSON.stringify(a))}catch(e){}})();
+
 // 1) Paste your Supabase project values (Project settings > API)
 const SUPABASE_URL='https://wqggnimaglsikdusbvuh.supabase.co', SUPABASE_ANON_KEY='sb_publishable_NhiAgVZ451DMdfwzWTSGvQ_zQlbwW8l';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -37,7 +39,7 @@ function auth(){
  <button class="l" id="sw">${mode=='login'?'New here? Create an account':'Have an account? Log in'}</button>`;
  $('sw').onclick=()=>{mode=mode=='login'?'signup':'login';auth()};
  $('go').onclick=async()=>{err();const c={email:$('em').value.trim(),password:$('pw').value};
-  const r=mode=='login'?await sb.auth.signInWithPassword(c):await sb.auth.signUp(c);
+  const r=mode=='login'?await sb.auth.signInWithPassword(c):await sb.auth.signUp({...c,options:{data:{attr:(()=>{try{return JSON.parse(sessionStorage.getItem('sf_attr')||'{}')}catch(e){return{}}})()}}});
   if(r.error)return err(r.error.message);
   if(!r.data.session){app.innerHTML=head('Check your email','')+'<p>We sent a confirmation link. Confirm your email, then log in.</p>';return}
   route()}}

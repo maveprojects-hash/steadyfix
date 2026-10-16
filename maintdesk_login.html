@@ -82,6 +82,6 @@ function intro(){try{if(sessionStorage.getItem('sf_intro'))return;sessionStorage
  <p>Work orders · Preventive maintenance · Checklists · Stock · Monitoring · Reports</p><button id="introgo">Get started</button>`;
  document.body.appendChild(el);const close=()=>{el.classList.add('out');setTimeout(()=>el.remove(),700)};
  document.getElementById('introgo').onclick=close;setTimeout(close,6000)}
-intro();
+/* opening screen removed so visitors reach sign-up immediately */
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script></body></html>

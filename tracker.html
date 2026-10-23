@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>STEADYFIX phone tracker</title>
+<style>*{box-sizing:border-box}body{margin:0;font:16px/1.5 system-ui,Segoe UI,Roboto,sans-serif;background:#1b2831;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 18px}
+h1{margin:0;font-size:22px;letter-spacing:2px}.sl{color:#e59f0f;font-weight:800;letter-spacing:.14em;font-size:12px;margin:2px 0 20px}.card{background:#fff;color:#1b2831;border-radius:12px;padding:18px;width:100%;max-width:460px}
+input{width:100%;padding:12px;border:1px solid #d6dce0;border-radius:8px;font:inherit;margin:6px 0 12px}button{width:100%;padding:16px;border:0;border-radius:10px;font:700 18px system-ui;background:#e59f0f;color:#1b2831;cursor:pointer}button.stop{background:#c0392b;color:#fff}
+.big{font-size:44px;font-weight:900;margin:6px 0}.m{color:#5d6b75;font-size:14px}.ok{color:#1d7a46;font-weight:700}.bad{color:#c0392b;font-weight:700}</style></head><body>
+<h1>STEADYFIX</h1><div class="sl">PHONE TRACKER</div>
+<div class="card"><div class="m">Vehicle</div><div id="vn" style="font-weight:800;font-size:20px;margin-bottom:10px">-</div>
+<label class="m">Tracker key</label><input id="key" autocomplete="off" placeholder="Paste the key from STEADYFIX">
+<button id="go">Start tracking</button>
+<div style="margin-top:14px"><div class="m">Speed</div><div class="big" id="sp">-</div><div id="st" class="m">Not started.</div><div id="ls" class="m"></div></div>
+<p class="m" style="margin-top:14px">Keep this page open and the screen on while driving, with location switched on. Only track a vehicle with the driver's knowledge and agreement. Tap Stop when the trip is finished.</p></div>
+<script>
+const URL_='https://wqggnimaglsikdusbvuh.supabase.co/rest/v1/rpc/ingest_position',KEY_='sb_publishable_NhiAgVZ451DMdfwzWTSGvQ_zQlbwW8l';
+const $=id=>document.getElementById(id),q=new URLSearchParams(location.search);let wid=null,lock=null,lastSent=0,sent=0,run=false,pos=null;
+$('key').value=q.get('key')||'';$('vn').textContent=q.get('name')||'Your vehicle';
+async function send(p){const c=p.coords,now=Date.now();if(now-lastSent<20000)return;lastSent=now;
+ try{const r=await fetch(URL_,{method:'POST',headers:{apikey:KEY_,'Content-Type':'application/json'},body:JSON.stringify({p_key:$('key').value.trim(),p_lat:c.latitude,p_lng:c.longitude,p_speed:c.speed!=null?Math.round(c.speed*3.6*10)/10:0,p_heading:c.heading!=null&&!isNaN(c.heading)?c.heading:null})});
+  if(r.ok){sent++;$('st').innerHTML='<span class="ok">Sending. '+sent+' updates sent.</span>';$('ls').textContent='Last update '+new Date().toLocaleTimeString()}
+  else{let m='';try{m=(await r.json()).message||''}catch(e){}$('st').innerHTML='<span class="bad">'+(/Unknown/.test(m)?'That key is not recognised. Check it and try again.':'Could not send: '+(m||r.status))+'</span>'}}
+ catch(e){$('st').innerHTML='<span class="bad">No signal. Will keep trying.</span>'}}
+function start(){if(!$('key').value.trim()){$('st').innerHTML='<span class="bad">Paste the tracker key first.</span>';return}
+ if(!navigator.geolocation){$('st').innerHTML='<span class="bad">This browser cannot share location.</span>';return}
+ run=true;$('go').textContent='Stop tracking';$('go').className='stop';$('st').textContent='Finding your location…';
+ wid=navigator.geolocation.watchPosition(p=>{pos=p;const s=p.coords.speed!=null?Math.round(p.coords.speed*3.6):0;$('sp').textContent=s+' km/h';send(p)},e=>{$('st').innerHTML='<span class="bad">'+(e.code==1?'Location is switched off for this page. Allow it in your browser settings.':'Could not get your location.')+'</span>'},{enableHighAccuracy:true,maximumAge:5000,timeout:30000});
+ try{if(navigator.wakeLock)navigator.wakeLock.request('screen').then(l=>lock=l).catch(()=>{})}catch(e){}}
+function stop(){run=false;if(wid!=null)navigator.geolocation.clearWatch(wid);wid=null;if(lock){lock.release();lock=null}$('go').textContent='Start tracking';$('go').className='';$('st').textContent='Stopped.'}
+$('go').onclick=()=>run?stop():start();
+document.addEventListener('visibilitychange',()=>{if(run&&document.visibilityState=='visible'&&navigator.wakeLock)navigator.wakeLock.request('screen').then(l=>lock=l).catch(()=>{})});
+</script></body></html>

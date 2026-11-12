@@ -855,10 +855,41 @@ async function sub(){
  const head=`<h2>Subscription</h2>${LOCK?`<div class="p" style="border-left:5px solid var(--bad)"><b>🔒 ${LOCK}</b><div class="note">Your information is safe and will be here when you subscribe. Choose a plan below to carry on.</div></div>`:''}<div class="p"><b>${esc(c.name)}</b><br>Plan: ${esc(pn)} · Status: <b class="${act?'':'bad'}">${esc(c.subscription_status)}</b><br>Devices: ${count||0} of ${c.max_devices??'unlimited'} · Sites allowed: ${c.max_sites}${c.gateway_access?' · Computer gateway software included':''}${act||pen||!c.trial_ends_at?'':`<br>Trial ends ${new Date(c.trial_ends_at).toLocaleDateString('en-ZA')}`}${pen?'<br>Payment received. We are confirming it and will activate your plan shortly.':''}</div>`;
  const cards=(up?PLANS.filter(p=>p[1]=='PRO'):PLANS).map(p=>`<div class="p"><div class="ct"><div>${p[1]}</div><div>${p[2]}</div></div>${p[3].map(f=>`<div class="rl">✓ ${esc(f)}</div>`).join('')}${p[0]?`<div id="pp-${p[0]}" style="margin-top:10px"></div>`:'<div class="note">This plan is available soon.</div>'}</div>`).join('');
  const promise='<div class="p" style="background:linear-gradient(135deg,#0b1a24,#14354a);color:#fff"><b style="color:#ffc53d;font-size:18px">One company. One subscription. Your whole team.</b><div style="margin-top:6px;color:#d5e0e8">Plans are priced per company, never per person. Your team members get their own logins at no extra cost. No setup fees. No hidden fees. Cancel any time.</div></div>';
- return head+(act&&!up?'':`<div class="note">${pen?'Payment not completed? You can try again below. ':''}${up?'<b>Upgrade to PRO.</b> Upgrading starts a new PRO subscription. Once it is active, cancel your STANDARD subscription in PayPal (Subscriptions) so you are not billed twice. ':''}Pay securely with PayPal. Your plan is activated as soon as PayPal confirms your payment.</div>`+cards+promise)}
-function pay(){const L=PLANS.filter(p=>p[0]&&document.getElementById('pp-'+p[0]));if(!L.length)return;
- const go=()=>L.forEach(([id])=>paypal.Buttons({style:{shape:'rect',color:'gold',layout:'vertical',label:'subscribe'},createSubscription:(d,a)=>a.subscription.create({plan_id:id,custom_id:me.company_id}),onApprove:async d=>{const{error}=await sb.rpc('record_subscription',{p_sub:d.subscriptionID});alert(error?'Payment received but not recorded ('+error.message+'). Reference: '+d.subscriptionID:'Thank you! Your subscription is being activated.');draw()}}).render('#pp-'+id));
- if(window.paypal&&paypal.Buttons)return go();const t=document.createElement('script');t.src='https://www.paypal.com/sdk/js?client-id='+PP_ID+'&vault=true&intent=subscription';t.setAttribute('data-sdk-integration-source','button-factory');t.onload=go;document.head.appendChild(t)}
+ return head+(act&&!up?'':`<div class="note">${pen?'Payment not completed? You can try again below. ':''}${up?'<b>Upgrade to PRO.</b> Upgrading starts a new PRO subscription. Once it is active, cancel your STANDARD subscription in PayPal (Subscriptions) so you are not billed twice. ':''}Pay securely with PayPal. Your plan is activated as soon as PayPal confirms your payment.</div><div id="pp-error" class="p" role="alert" style="display:none;border-left:5px solid var(--bad);color:var(--bad)"></div>`+cards+promise)}
+function pay(){
+  const L=PLANS.filter(p=>p[0]&&document.getElementById('pp-'+p[0]));if(!L.length)return;
+  const message=m=>{const e=document.getElementById('pp-error');if(e){e.textContent=m;e.style.display='block'}else alert(m)};
+  const go=()=>L.forEach(([id])=>{
+   const host=document.getElementById('pp-'+id);if(!host||host.dataset.paypalMounted==='1')return;
+   if(!window.paypal||!paypal.Buttons){message('PayPal could not be loaded. Please refresh the page or try again shortly.');return}
+   try{
+    const buttons=paypal.Buttons({
+     style:{shape:'rect',color:'gold',layout:'vertical',label:'subscribe'},
+     createSubscription:(d,a)=>a.subscription.create({plan_id:id,custom_id:me.company_id}),
+     onApprove:async d=>{
+      let msg='Thank you. PayPal has approved your subscription; STEADYFIX is confirming activation.';
+      const{error}=await sb.rpc('record_subscription',{p_sub:d.subscriptionID});
+      if(error)msg='PayPal approved the payment, but STEADYFIX could not record it automatically. Please contact support with reference '+d.subscriptionID+'. Do not pay again.';
+      else{try{await sb.functions.invoke('paypal-webhook',{body:{action:'sync'}})}catch(e){}}
+      alert(msg);await draw();
+     },
+     onCancel:()=>message('Checkout was cancelled. No subscription was activated. You can try again whenever you are ready.'),
+     onError:e=>message('PayPal checkout could not complete. Please try again. If the problem continues, contact support.')
+    });
+    const rendered=buttons.render('#pp-'+id);
+    if(rendered&&typeof rendered.then==='function')rendered.then(()=>{host.dataset.paypalMounted='1'}).catch(()=>message('The PayPal payment button could not be displayed. Please refresh and try again.'));
+    else host.dataset.paypalMounted='1';
+   }catch(e){message('PayPal checkout could not start. Please refresh and try again.')}
+  });
+  if(window.paypal&&paypal.Buttons){go();return}
+  if(window.SF_PAYPAL_LOADING){window.SF_PAYPAL_LOADING.then(go).catch(()=>message('PayPal could not be loaded. Please refresh the page or try again shortly.'));return}
+  window.SF_PAYPAL_LOADING=new Promise((resolve,reject)=>{
+   const existing=document.querySelector('script[data-sf-paypal-sdk="1"]');
+   if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',reject,{once:true});return}
+   const t=document.createElement('script');t.src='https://www.paypal.com/sdk/js?client-id='+encodeURIComponent(PP_ID)+'&vault=true&intent=subscription';t.setAttribute('data-sdk-integration-source','button-factory');t.dataset.sfPaypalSdk='1';t.onload=resolve;t.onerror=()=>reject(new Error('PayPal SDK failed to load'));document.head.appendChild(t);
+  });
+  window.SF_PAYPAL_LOADING.then(go).catch(()=>message('PayPal could not be loaded. Check your connection and try again. No payment has been taken.'));
+}
 
 function intro(){try{if(sessionStorage.getItem('sf_intro'))return;sessionStorage.setItem('sf_intro','1')}catch(e){}
  const I=(d,x='')=>`<svg viewBox="0 0 24 24">${d}${x}</svg>`;

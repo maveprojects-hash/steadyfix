@@ -59,6 +59,10 @@ create index messages_conversation_created_idx
   on public.messages(conversation_id, created_at desc);
 create index messages_company_created_idx
   on public.messages(company_id, created_at desc);
+create index messages_conversation_company_fk_idx
+  on public.messages(conversation_id, company_id);
+create index messages_sender_fk_idx
+  on public.messages(sender_id);
 
 alter table public.company_conversations enable row level security;
 alter table public.conversation_members enable row level security;

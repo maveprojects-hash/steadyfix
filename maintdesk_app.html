@@ -696,15 +696,55 @@ function docHtml(d,c,o){o=o||{};const m=dModel(d,c),lay=o.layout||CS.doc_layout|
 // ---------- preview, PDF and sharing ----------
 function ovl(html){let o=$('pv');if(o)o.remove();o=document.createElement('div');o.id='pv';o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;overflow:auto;padding:10px';o.innerHTML=`<div style="max-width:800px;margin:0 auto"><button class="b" onclick="$('pv').remove()" style="position:sticky;top:0;margin-bottom:8px">Close preview</button><div style="background:#fff;overflow-x:auto">${html}</div></div>`;document.body.appendChild(o)}
 function loadPdfLib(){return window.html2pdf?Promise.resolve():new Promise((ok,bad)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';s.onload=ok;s.onerror=()=>bad(new Error('load'));document.head.appendChild(s)})}
-async function shareHtml(html,fname,subject,text,to){let el;
- try{await loadPdfLib();el=document.createElement('div');el.style.cssText='position:fixed;left:-10000px;top:0;width:794px;background:#fff';el.innerHTML=html;document.body.appendChild(el);
-  const blob=await html2pdf().set({margin:0,image:{type:'jpeg',quality:.96},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(el).outputPdf('blob');el.remove();el=null;
-  const file=new File([blob],fname.replace(/[^\w-]+/g,'_')+'.pdf',{type:'application/pdf'});
-  if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:subject,text});return}catch(e){if(e&&e.name=='AbortError')return}}
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;document.body.appendChild(a);a.click();a.remove();
-  alert('The PDF was saved to your downloads. Your email app opens next. Attach the PDF to the email.');
-  location.href='mailto:'+(to||'')+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(text)
- }catch(e){if(el)el.remove();alert('Could not make the PDF here. The print page opens next: choose Save as PDF.');sheetPrint(html)}}
+async function shareHtml(html,fname,subject,text,to){
+ let el=null,url=null;
+ try{
+  if(!html||!String(html).trim())throw new Error('The document is empty.');
+  await loadPdfLib();
+  if(typeof window.html2pdf!=='function')throw new Error('The PDF library did not load.');
+  el=document.createElement('div');
+  el.setAttribute('aria-hidden','true');
+  el.style.cssText='position:absolute;left:0;top:0;width:794px;min-height:1123px;background:#fff;color:#111;z-index:2147483647;pointer-events:none;display:block;visibility:visible;opacity:1;overflow:visible;contain:layout style';
+  el.innerHTML=html;
+  document.body.appendChild(el);
+  if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+  const imgs=Array.from(el.querySelectorAll('img'));
+  await Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;setTimeout(resolve,5000)})));
+  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  const docNode=el.querySelector('.dx');
+  if(!docNode||!docNode.textContent||!docNode.textContent.trim())throw new Error('The quote or invoice layout did not render.');
+  const rect=docNode.getBoundingClientRect();
+  const width=Math.max(794,Math.ceil(rect.width)),height=Math.max(1123,Math.ceil(rect.height));
+  if(!width||!height)throw new Error('The document has no printable size.');
+  const blob=await html2pdf().set({
+   margin:0,
+   image:{type:'jpeg',quality:.94},
+   html2canvas:{scale:1.5,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',logging:false,windowWidth:width,windowHeight:height,scrollX:0,scrollY:0},
+   jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+   pagebreak:{mode:['css','legacy']}
+  }).from(docNode).outputPdf('blob');
+  el.remove();el=null;
+  if(!blob||blob.size<1500)throw new Error('The PDF file was generated empty. Please use Print / Save as PDF.');
+  const safeName=(fname||'STEADYFIX_document').replace(/[^\\w-]+/g,'_');
+  const file=new File([blob],safeName+'.pdf',{type:'application/pdf'});
+  let shared=false;
+  try{
+   if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+    await navigator.share({files:[file],title:subject,text});
+    shared=true;
+   }
+  }catch(e){if(e&&e.name==='AbortError')return}
+  if(shared)return;
+  url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=file.name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>{try{URL.revokeObjectURL(url)}catch(e){}},60000);
+  alert('Your PDF has been created and saved to Downloads. Open it to check the document before attaching it to WhatsApp or email.');
+ }catch(e){
+  console.error('STEADYFIX CMMS PDF sharing error:',e);
+  alert('STEADYFIX could not create the PDF: '+(e&&e.message?e.message:'Unknown error')+'. The print view will open next; choose Save as PDF.');
+  sheetPrint(html);
+ }finally{if(el&&el.parentNode)el.remove()}
+}
 function docPreview(l){const col=$('cs_doc_color')?$('cs_doc_color').value:CS.doc_color,logo=LOGO_NEW!==undefined?LOGO_NEW:CS.logo,d={kind:'invoice',number:'INV-0001',reference:'Job 123',issue_date:today,due_date:addDays(30),sales_rep:'',discount_pct:0,paid_amount:0,vat_rate:CS.tax_rate??15,customer_name:'Sample Customer',lines:[{d:'Service call and repair',q:1,p:1200,x:0},{d:'Spare parts',q:3,p:350,x:0}],notes:CS.terms||''};ovl(docHtml(d,{name:'Sample Customer',contact_person:'Alex Sample',address:'PO Box 1\nTown 6500',physical_address:'12 Main Road\nTown 6500',email:'customer@example.com',phone:'044 000 0000'},{layout:l,color:col,logo}))}
 function logoPick(inp){const f=inp.files[0];if(!f)return;if(!/^image\//.test(f.type))return alert('Please choose a picture (PNG or JPG).');const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,500/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));let x=c.getContext('2d');x.drawImage(im,0,0,c.width,c.height);let u=c.toDataURL('image/png');if(u.length>250000){x.globalCompositeOperation='destination-over';x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);u=c.toDataURL('image/jpeg',.85)}LOGO_NEW=u;$('lg_prev').innerHTML=`<img src="${u}" style="max-height:80px;max-width:200px"><div class="note">Tap Save at the bottom to keep it.</div>`};im.onerror=()=>alert('That picture could not be read. Try a PNG or JPG.');im.src=rd.result};rd.readAsDataURL(f)}
 function logoClear(){LOGO_NEW=null;$('lg_prev').innerHTML='<div class="note">Logo removed. Tap Save at the bottom to keep this.</div>'}

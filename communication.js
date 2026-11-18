@@ -116,10 +116,10 @@ async function loadCommunicationMessages(conversationId) {
   const { data, error } = await sb.from('messages')
     .select('id,conversation_id,sender_id,body,created_at')
     .eq('conversation_id', conversationId)
-    .order('created_at', { ascending:true })
+    .order('created_at', { ascending:false })
     .limit(100);
   if (error) throw error;
-  COMM_STATE.messages = data || [];
+  COMM_STATE.messages = (data || []).reverse();
 }
 
 function communicationThreadMarkup(conversation) {
@@ -163,7 +163,7 @@ async function communicationCentre() {
   await loadCommunicationData();
   if (COMM_STATE.activeId && !COMM_STATE.conversations.some(c => c.id === COMM_STATE.activeId)) COMM_STATE.activeId = null;
   const active = COMM_STATE.conversations.find(c => c.id === COMM_STATE.activeId) || null;
-  if (active && COMM_STATE.tab === 'chats') {
+  if (active && COMM_STATE.tab !== 'activity') {
     await loadCommunicationMessages(active.id);
     await sb.from('conversation_members').update({ last_read_at:new Date().toISOString() })
       .eq('conversation_id', active.id).eq('user_id', me.id);

@@ -206,7 +206,7 @@ const st=['open','in_progress','on_hold','done','cancelled'], PR=['low','medium'
 const STAFF=k=>F(k,'Staff account (notifications)','r',['profiles','full_name']);
 const NAME=F('assigned_name','Assigned to','t');
 const MOD={
- work_orders:{l:'Work tasks',s:1,df:'due_date',f:[F('title','Task','t'),NAME,STAFF('assigned_to'),F('priority','Priority','s',PR),F('due_date','Due','d'),F('status','Status','s',st),F('lines','Parts and materials used','li',{tot:'parts_cost'})]},
+ work_orders:{l:'Work tasks',s:1,df:'due_date',f:[F('title','Task','t'),F('assigned_name','Assigned name (display)','t'),STAFF('assigned_to'),F('priority','Priority','s',PR),F('due_date','Due','d'),F('status','Status','s',st),F('lines','Parts and materials used','li',{tot:'parts_cost'})]},
  pm_schedules:{l:'PM schedules',s:1,df:'next_due',f:[F('title','PM task','t'),NAME,F('frequency_days','Every (days)','n'),F('next_due','Next due','d')]},
  stock_items:{l:'Stock',f:[F('name','Item','t'),F('on_hand','Quantity in stock','n',0,1),F('min_level','Reorder when below','n'),F('unit_cost','Unit cost','n'),F('sku','Item code (optional)','t')]},
  purchase_orders:{l:'Orders',s:1,df:'expected_at',note:'Add every item you are ordering with its quantity and price. The total adds up for you. Tap Print or Share PDF on an order to send it to the supplier.',f:[F('po_number','PO number','t'),F('supplier_id','Supplier','r',['suppliers','name']),F('lines','Items ordered','li',{tot:'total_cost'}),F('total_cost','Total cost (adds up from the items)','n'),F('expected_at','Expected','d'),F('status','Status','s',['draft','ordered','delivered','cancelled'])]},

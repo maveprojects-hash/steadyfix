@@ -53,7 +53,7 @@ begin
   if v_role not in ('owner','manager','technician') then raise exception 'You are not allowed to capture customer approval'; end if;
   if p_customer_consent is distinct from true then raise exception 'Customer consent is required'; end if;
   if p_signer_name is null or length(btrim(p_signer_name))<2 or length(btrim(p_signer_name))>160 then
-    raise exception 'Enter the customer's full name';
+    raise exception 'Enter the customer full name';
   end if;
   if p_notes is not null and length(p_notes)>2000 then raise exception 'Customer notes are too long'; end if;
   if p_signature_points is null or jsonb_typeof(p_signature_points)<>'array' then raise exception 'A signature is required'; end if;

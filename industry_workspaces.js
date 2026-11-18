@@ -38,7 +38,7 @@ function sfIndustryModules(slug){
     automation:[['🧰','Service job cards','Create service calls, assign technicians, record labour, progress, faults and parts used','work_orders'],['🖨️','Customer equipment','Register copiers and devices, serial numbers and page meter readings','assets'],['📑','Service contracts','Manage covered devices, service levels, meter allowances and contract dates','service_contracts'],['📦','Stock & consumables','Track toner, drums, staples, spares and reorder levels','stock_items'],['🛒','Parts purchasing','Create supplier purchase orders','purchase_orders'],['👥','Customers','Manage customer accounts and service contacts','customers'],['💳','Quotes & invoicing','Prepare quotes, invoices and customer billing','inv'],['🤝','Suppliers','Manage parts suppliers and service partners','suppliers'],['🔁','Preventive maintenance','Schedule recurring device servicing','pm_schedules'],['☑️','Service checklists','Use repeatable callout, installation and service checklists','chk']],
     'fleet-management':[['🚚','Fleet & tracking','Vehicles, GPS positions, utilisation and alerts','fleet'],['🧰','Maintenance work','Create and assign vehicle maintenance work','work_orders'],['🔁','Service schedules','Plan recurring vehicle maintenance','pm_schedules'],['📦','Parts & stock','Manage workshop parts and consumables','stock_items'],['🛒','Purchasing','Order parts and supplies','purchase_orders'],['☑️','Inspections','Vehicle and fleet checklists','chk'],['📊','Reports','Fleet and maintenance reporting','rep']],
     workshops:[['🔧','Workshop & job cards','Workshop bookings, vehicle job cards and repair progress','fleet'],['🧰','Work orders','Assign maintenance and repair tasks','work_orders'],['📦','Workshop stock','Parts and materials','stock_items'],['🛒','Parts purchasing','Supplier orders','purchase_orders'],['👥','Customers','Customer records','customers'],['💳','Quotes & invoicing','Customer billing','inv'],['☑️','Quality checklists','Inspection and sign-off lists','chk']],
-    'logistics-transport':[['🚛','Fleet & GPS tracking','Vehicle locations, movement and alerts','fleet'],['🧰','Depot maintenance','Work orders for vehicles, depots and equipment','work_orders'],['🔁','Maintenance schedules','Planned maintenance','pm_schedules'],['📦','Stock & supplies','Depot stock and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['☑️','Inspections','Vehicle and facility checks','chk'],['📊','Reports','Operations and maintenance reporting','rep']],
+    'logistics-transport':[['📦','Parcel operations','Create waybills, track consignments, record depot scans and capture proof of delivery','logistics_ops'],['🚛','Fleet & GPS tracking','Vehicle locations, movement and alerts','fleet'],['🧰','Depot maintenance','Work orders for vehicles, depots and equipment','work_orders'],['🔁','Maintenance schedules','Planned maintenance','pm_schedules'],['📦','Stock & supplies','Depot stock and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['☑️','Inspections','Vehicle and facility checks','chk'],['📊','Reports','Operations and maintenance reporting','rep']],
     'hospitality-tourism':[['🏨','Property assets','Rooms, plant, equipment and facilities','assets'],['🛠️','Maintenance requests','Guest and staff maintenance tasks','work_orders'],['🔁','Preventive maintenance','Recurring room, plant and facility tasks','pm_schedules'],['☑️','Operating checklists','Daily, weekly and monthly checks','chk'],['📦','Stores & stock','Maintenance stock and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['🦺','Safety & fire','Inspections, incidents and fire equipment','ohs']],
     'food-beverage':[['🍽️','Venue equipment','Kitchen, refrigeration and dining equipment','assets'],['🛠️','Maintenance tasks','Repairs and breakdowns','work_orders'],['🔁','Planned servicing','Recurring equipment maintenance','pm_schedules'],['☑️','Hygiene & operating checks','Repeatable operating and maintenance checklists','chk'],['📦','Stock & supplies','Maintenance consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['🦺','Safety','Workplace and fire safety','ohs']],
     'property-management-facilities':[['🏢','Properties & assets','Buildings, blocks, campuses and facility assets','assets'],['🛠️','Service requests','Tenant, occupant and facilities work orders','work_orders'],['🔁','Preventive maintenance','Recurring building and plant maintenance','pm_schedules'],['☑️','Inspections','Property and facilities checklists','chk'],['⚠️','Damage reports','Record damage and corrective actions','damage_reports'],['📦','Stock & supplies','Maintenance stock','stock_items'],['🤝','Suppliers','Contractors and service providers','suppliers']],
@@ -59,7 +59,7 @@ async function sfIndustryWorkspace(){
   html+='</div><div class="dg">';
   sfIndustryModules(slug).forEach(m=>{html+='<div class="card"><div class="ct"><div>'+m[0]+' '+esc(m[1])+'</div></div><div class="note">'+esc(m[2])+'</div><div class="ca"><button class="b" onclick="goTab(\''+m[3]+'\')">Open</button></div></div>'});
   html+='</div>';
-  if(slug==='logistics-transport')html+='<div class="p"><b>Logistics extension</b><div class="note">Dedicated parcel tracking, waybills and proof-of-delivery are not in the current base modules yet. Existing fleet GPS tracking and maintenance tools are available now; parcel and waybill workflows need their own build.</div></div>';
+  if(slug==='logistics-transport')html+='<div class="p"><b>Connected logistics workflow</b><div class="note">Create a consignment, issue its waybill, record tracking scans as it moves through depots, and capture the receiving person and proof-of-delivery reference at delivery. Fleet GPS and vehicle maintenance remain available alongside parcel operations.</div></div>';
   return html;
 }
 
@@ -142,12 +142,144 @@ function sfPrintServiceJobCard(id){
   document.body.classList.add('one');setTimeout(()=>window.print(),120);
 }
 
+
+
+// ---------- Job card labour and controlled stock issue ----------
+async function sfOpenJobOperations(id){
+  SF_JOB_OPERATIONS_ID=id;cur='job_operations';draw();
+}
+let SF_JOB_OPERATIONS_ID=null;
+async function sfJobOperations(){
+  const id=SF_JOB_OPERATIONS_ID;if(!id)return '<h2>Job operations</h2><div class="p">Choose a service job card first.</div>';
+  const [wr,tm,mi,st,lv,ps]=await Promise.all([
+    sb.from('work_orders').select('*').eq('id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle(),
+    sb.from('work_order_time_entries').select('*').eq('work_order_id',id).eq('site_id',site).order('work_date',{ascending:false}).order('created_at',{ascending:false}),
+    sb.from('work_order_material_issues').select('*').eq('work_order_id',id).eq('site_id',site).order('issued_at',{ascending:false}),
+    sb.from('stock_items').select('id,name,sku,unit,unit_cost').eq('company_id',me.company_id).order('name'),
+    sb.from('stock_levels').select('item_id,on_hand').eq('company_id',me.company_id).eq('site_id',site),
+    sb.from('profiles').select('id,full_name,role').eq('company_id',me.company_id).eq('active',true).order('full_name')
+  ]);
+  if(wr.error)throw wr.error;if(!wr.data)return '<h2>Job operations</h2><div class="p">This job card is not available at the selected site.</div>';
+  for(const x of [tm,mi,st,lv,ps])if(x.error)throw x.error;
+  const w=wr.data,items=st.data||[],levels=Object.fromEntries((lv.data||[]).map(x=>[x.item_id,+x.on_hand||0]));
+  const staff=(ps.data||[]).filter(p=>isMgr()||p.id===me.id);
+  const chosen=staff.some(p=>p.id===w.assigned_to)?w.assigned_to:me.id;
+  const timeRows=tm.data||[],materialRows=mi.data||[];
+  const timeTotal=timeRows.reduce((a,x)=>a+(+x.hours||0),0),labourCost=timeRows.reduce((a,x)=>a+(+x.hours||0)*(+x.hourly_rate||0),0);
+  const timeHtml=timeRows.map(x=>'<div class="rl"><b>'+esc((ps.data||[]).find(p=>p.id===x.technician_id)?.full_name||'Technician')+'</b> · '+esc(x.work_date)+' · '+esc(x.hours)+' h'+(x.hourly_rate?' · '+R((+x.hours||0)*(+x.hourly_rate||0)):'')+(x.notes?'<div class="note">'+esc(x.notes)+'</div>':'')+'</div>').join('')||'<div class="note">No labour entries recorded yet.</div>';
+  const matHtml=materialRows.map(x=>'<div class="rl"><b>'+esc(x.item_name||items.find(i=>i.id===x.stock_item_id)?.name||'Stock item')+'</b> · '+esc(x.quantity)+' '+esc(x.unit||'units')+' · '+R(x.total_cost||0)+'<div class="note">'+esc(new Date(x.issued_at).toLocaleString('en-ZA'))+(x.notes?' · '+esc(x.notes):'')+'</div></div>').join('')||'<div class="note">No stock has been issued to this job card yet.</div>';
+  const staffOptions=staff.map(p=>'<option value="'+p.id+'" '+(p.id===chosen?'selected':'')+'>'+esc(p.full_name)+' · '+esc(p.role)+'</option>').join('');
+  const itemOptions=items.map(i=>'<option value="'+i.id+'">'+esc(i.name)+(i.sku?' · '+esc(i.sku):'')+' — '+levels[i.id]+' '+esc(i.unit||'units')+' available</option>').join('');
+  return '<div class="bar2 noprint"><button onclick="goTab(\'work_orders\')">← Back to job cards</button><button onclick="sfPrintServiceJobCard(\''+id+'\')">Print job card</button></div>'+
+    '<h2>Job operations · '+esc(w.job_number||w.title||'Service job')+'</h2>'+
+    '<div class="p"><b>'+esc(w.title||'Service job')+'</b><div class="note">'+esc(w.reported_problem||w.description||'No fault description recorded')+'</div><div class="kv"><span>Status</span><b>'+esc(cap(w.status))+'</b><span>Assigned technician</span><b>'+esc(w.assigned_name||'-')+'</b><span>Labour logged</span><b>'+timeTotal.toFixed(2)+' hours</b><span>Labour value</span><b>'+R(labourCost)+'</b><span>Parts issued</span><b>'+materialRows.length+' issue entries</b></div></div>'+
+    '<div class="dg"><div class="p"><b>Record technician labour</b><div class="note">Record actual time spent against this job card. Technicians can record their own time; managers can record time for the team.</div>'+
+    '<label class="el">Technician<select id="sfTimeTech" '+(!isMgr()?'disabled':'')+'>'+staffOptions+'</select></label>'+
+    '<label class="el">Work date<input id="sfTimeDate" type="date" value="'+today+'"></label><label class="el">Hours worked<input id="sfTimeHours" type="number" min="0.01" max="24" step="0.25" placeholder="e.g. 1.5"></label>'+
+    '<label class="el">Hourly rate (optional)<input id="sfTimeRate" type="number" min="0" step="0.01" value="0"></label><label class="el">Work notes<textarea id="sfTimeNotes" placeholder="What work was completed during this time?"></textarea></label>'+
+    '<button class="b" onclick="sfSaveJobTime(\''+id+'\')">Save labour entry</button></div>'+
+    '<div class="p"><b>Issue parts and consumables</b><div class="note">Stock is deducted from this site only. The issue is recorded against the job card, with the quantity and cost retained in the audit record.</div>'+
+    '<label class="el">Stock item<select id="sfIssueItem">'+itemOptions+'</select></label><label class="el">Quantity<input id="sfIssueQty" type="number" min="0.001" step="0.001" value="1"></label>'+
+    '<label class="el">Issue note<input id="sfIssueNotes" placeholder="e.g. Black toner cartridge"></label><button class="b" onclick="sfIssueJobStock(\''+id+'\')">Issue stock to job</button></div></div>'+
+    '<div class="dg"><div class="p"><b>Labour history</b><div class="g"><div class="k"><b>'+timeTotal.toFixed(2)+'</b><span>Total hours</span></div><div class="k"><b>'+R(labourCost)+'</b><span>Labour value</span></div></div>'+timeHtml+'</div>'+
+    '<div class="p"><b>Parts issued to this job</b>'+matHtml+'</div></div>';
+}
+async function sfSaveJobTime(id){
+  const hours=Number($('sfTimeHours').value),rate=Number($('sfTimeRate').value)||0,tech=$('sfTimeTech').value;
+  if(!tech||!Number.isFinite(hours)||hours<=0||hours>24||rate<0)return alert('Enter a valid technician, hours (up to 24) and non-negative hourly rate.');
+  const {error}=await sb.from('work_order_time_entries').insert({company_id:me.company_id,site_id:site,work_order_id:id,technician_id:tech,work_date:$('sfTimeDate').value||today,hours,hourly_rate:rate,notes:$('sfTimeNotes').value.trim()||null,created_by:me.id});
+  if(error)return alert('Could not save labour entry: '+error.message);
+  draw();
+}
+async function sfIssueJobStock(id){
+  const item=$('sfIssueItem').value,qty=Number($('sfIssueQty').value);
+  if(!item||!Number.isFinite(qty)||qty<=0)return alert('Choose a stock item and enter a quantity greater than zero.');
+  const {data,error}=await sb.rpc('issue_work_order_stock',{p_work_order_id:id,p_stock_item_id:item,p_quantity:qty,p_notes:$('sfIssueNotes').value.trim()||null});
+  if(error)return alert('Stock was not issued: '+error.message);
+  alert('Stock issued successfully. Remaining site quantity: '+(data?.remaining_quantity??'updated'));
+  draw();
+}
+
+// ---------- Logistics parcel, waybill and proof-of-delivery workspace ----------
+let SF_LOGISTICS_SHIPMENTS=[];
+const SF_SHIPMENT_STATUSES=['booked','collected','in_transit','at_depot','out_for_delivery','delivered','exception','returned'];
+async function sfLogisticsWorkspace(){
+  const [sr,ev]=await Promise.all([
+    sb.from('logistics_shipments').select('*').eq('company_id',me.company_id).eq('site_id',site).order('created_at',{ascending:false}),
+    sb.from('logistics_tracking_events').select('*').eq('company_id',me.company_id).eq('site_id',site).order('event_at',{ascending:false}).limit(500)
+  ]);
+  if(sr.error)throw sr.error;if(ev.error)throw ev.error;
+  SF_LOGISTICS_SHIPMENTS=sr.data||[];const events=ev.data||[];
+  const count=s=>SF_LOGISTICS_SHIPMENTS.filter(x=>x.status===s).length;
+  const cards=SF_LOGISTICS_SHIPMENTS.map(x=>{
+    const history=events.filter(e=>e.shipment_id===x.id).slice(0,8);
+    const opts=SF_SHIPMENT_STATUSES.map(s=>'<option value="'+s+'" '+(s===x.status?'selected':'')+'>'+esc(cap(s))+'</option>').join('');
+    return '<div class="card"><div class="ct"><div>'+esc(x.waybill_no)+' · '+esc(x.recipient_name)+'</div><div class="chips">'+chip(x.status,cap(x.status))+'</div></div>'+
+      '<div class="kv"><span>Tracking number</span><b>'+esc(x.tracking_no||x.waybill_no)+'</b><span>From</span><b>'+esc(x.origin_address)+'</b><span>To</span><b>'+esc(x.destination_address)+'</b><span>Parcel</span><b>'+esc(x.package_count)+' package(s) · '+esc(x.parcel_description||'-')+'</b><span>Expected delivery</span><b>'+esc(x.expected_delivery||'-')+'</b></div>'+
+      (x.status==='delivered'?'<div class="p"><b>Proof of delivery</b><div class="kv"><span>Received by</span><b>'+esc(x.pod_recipient_name||'-')+'</b><span>Delivered at</span><b>'+esc(x.delivered_at?new Date(x.delivered_at).toLocaleString('en-ZA'):'-')+'</b><span>Reference</span><b>'+esc(x.pod_reference||'-')+'</b><span>Notes</span><b>'+esc(x.pod_notes||'-')+'</b></div></div>':'')+
+      '<div class="ca noprint"><button onclick="sfPrintWaybill(\''+x.id+'\')">Print waybill</button><button onclick="sfAddShipmentScan(\''+x.id+'\')">Add tracking scan</button><button onclick="sfCapturePOD(\''+x.id+'\')">Proof of delivery</button>'+ (isMgr()?'<button class="x2" onclick="sfDeleteShipment(\''+x.id+'\')">Delete</button>':'')+'</div>'+
+      '<label class="el noprint">Update shipment status<select onchange="sfUpdateShipmentStatus(\''+x.id+'\',this.value)">'+opts+'</select></label>'+
+      '<div class="rl"><b>Tracking history</b></div>'+ (history.map(e=>'<div class="rl">'+esc(new Date(e.event_at).toLocaleString('en-ZA'))+' · <b>'+esc(cap(e.status||e.event_type))+'</b>'+(e.location?' · '+esc(e.location):'')+(e.notes?'<div class="note">'+esc(e.notes)+'</div>':'')+'</div>').join('')||'<div class="note">No scans recorded yet.</div>')+
+      '</div>';
+  }).join('')||'<div class="p">No consignments yet. Create your first waybill below.</div>';
+  return '<div class="bar2 noprint"><button onclick="goTab(\'industry_workspace\')">← Logistics workspace</button><button onclick="goTab(\'fleet\')">Fleet & GPS</button><button onclick="goTab(\'rep\')">Reports</button></div>'+
+    '<h2>Parcel operations & waybills</h2><div class="note">Create consignments, print waybills, track each depot hand-off and capture the receiving person and proof-of-delivery reference. All records are restricted to this company and site.</div>'+
+    '<div class="g"><div class="k"><b>'+SF_LOGISTICS_SHIPMENTS.length+'</b><span>Total consignments</span></div><div class="k"><b>'+count('in_transit')+'</b><span>In transit</span></div><div class="k"><b>'+count('out_for_delivery')+'</b><span>Out for delivery</span></div><div class="k"><b>'+count('delivered')+'</b><span>Delivered</span></div><div class="k"><b>'+count('exception')+'</b><span>Exceptions</span></div></div>'+
+    '<details class="p noprint" open><summary>＋ Create consignment / waybill</summary><div class="f" style="margin-top:10px">'+
+    '<label class="el">Waybill number<input id="sfWaybill" placeholder="e.g. SF-2026-0001"></label><label class="el">Tracking number<input id="sfTracking" placeholder="Optional; defaults to waybill"></label>'+
+    '<label class="el">Sender / account<input id="sfSender" placeholder="Sender name"></label><label class="el">Recipient name<input id="sfRecipient" placeholder="Receiving person or company"></label><label class="el">Recipient phone<input id="sfRecipientPhone" placeholder="Phone number"></label>'+
+    '<label class="el">Origin / collection address<textarea id="sfOrigin"></textarea></label><label class="el">Destination / delivery address<textarea id="sfDestination"></textarea></label>'+
+    '<label class="el">Parcel contents<input id="sfParcel" placeholder="Description of goods"></label><label class="el">Package count<input id="sfPackageCount" type="number" min="1" step="1" value="1"></label><label class="el">Weight (kg)<input id="sfWeight" type="number" min="0" step="0.01"></label>'+
+    '<label class="el">Service level<select id="sfServiceLevel"><option value="standard">Standard</option><option value="express">Express</option><option value="overnight">Overnight</option><option value="same_day">Same day</option></select></label><label class="el">Expected delivery<input id="sfExpected" type="date"></label></div>'+
+    '<button class="b" onclick="sfCreateShipment()">Create waybill</button></details>'+cards;
+}
+async function sfCreateShipment(){
+  const waybill=$('sfWaybill').value.trim(),recipient=$('sfRecipient').value.trim(),origin=$('sfOrigin').value.trim(),destination=$('sfDestination').value.trim();
+  if(!waybill||!recipient||!origin||!destination)return alert('Waybill number, recipient, origin and destination are required.');
+  const row={company_id:me.company_id,site_id:site,waybill_no:waybill,tracking_no:$('sfTracking').value.trim()||waybill,sender_name:$('sfSender').value.trim()||null,recipient_name:recipient,recipient_phone:$('sfRecipientPhone').value.trim()||null,origin_address:origin,destination_address:destination,parcel_description:$('sfParcel').value.trim()||null,package_count:Math.max(1,parseInt($('sfPackageCount').value,10)||1),weight_kg:$('sfWeight').value===''?null:Number($('sfWeight').value),service_level:$('sfServiceLevel').value,expected_delivery:$('sfExpected').value||null,status:'booked',created_by:me.id};
+  const {error}=await sb.from('logistics_shipments').insert(row);if(error)return alert('Could not create waybill: '+error.message);draw();
+}
+async function sfUpdateShipmentStatus(id,status){
+  if(!SF_SHIPMENT_STATUSES.includes(status))return;
+  if(status==='delivered'){sfCapturePOD(id);return;}
+  const {error}=await sb.from('logistics_shipments').update({status,delivered_at:status==='delivered'?new Date().toISOString():null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
+  if(error)alert('Could not update shipment: '+error.message);else draw();
+}
+async function sfAddShipmentScan(id){
+  const location=prompt('Depot, town or scan location:');if(location===null)return;
+  const notes=prompt('Scan notes (optional):')||null;
+  const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
+  const {error}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'scan',status:shipment.status,location:location.trim()||null,notes,created_by:me.id});
+  if(error)alert('Could not save tracking scan: '+error.message);else draw();
+}
+async function sfCapturePOD(id){
+  const recipient=prompt('Name of the person who received the parcel:');if(!recipient||!recipient.trim())return;
+  const reference=prompt('Proof-of-delivery reference (signed slip, photo reference or delivery code):')||null;
+  const notes=prompt('Delivery notes (optional):')||null;
+  const {error}=await sb.from('logistics_shipments').update({status:'delivered',delivered_at:new Date().toISOString(),pod_recipient_name:recipient.trim(),pod_reference:reference&&reference.trim()||null,pod_notes:notes&&notes.trim()||null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
+  if(error)alert('Could not save proof of delivery: '+error.message);else draw();
+}
+async function sfDeleteShipment(id){
+  if(!isMgr()||!confirm('Delete this consignment and its tracking history?'))return;
+  const {error}=await sb.from('logistics_shipments').delete().eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
+  if(error)alert(error.message);else draw();
+}
+function sfPrintWaybill(id){
+  const x=SF_LOGISTICS_SHIPMENTS.find(s=>s.id===id);if(!x)return;
+  const row=(l,v)=>'<tr><th style="width:32%">'+l+'</th><td>'+esc(v==null||v===''?'-':String(v))+'</td></tr>';
+  sheetPrint(ph('Transport waybill')+'<br><table class="pt">'+row('Waybill number',x.waybill_no)+row('Tracking number',x.tracking_no)+row('Service level',cap(x.service_level))+row('Status',cap(x.status))+row('Sender',x.sender_name)+row('Recipient',x.recipient_name)+row('Recipient phone',x.recipient_phone)+row('Origin',x.origin_address)+row('Destination',x.destination_address)+row('Contents',x.parcel_description)+row('Packages',x.package_count)+row('Weight (kg)',x.weight_kg)+row('Expected delivery',x.expected_delivery)+'</table><p><b>Driver / collection signature</b> ___________________________</p><p><b>Receiver signature / name</b> ___________________________ Date: __________</p>');
+}
+
+// Extend the existing navigation without creating a second app or changing shared base records.
+
 const SF_BASE_DRAW=draw;
 draw=async function(){
   if(LOCK&&!['sub','sup','set','inbox','act'].includes(cur)){cur='sub';return SF_BASE_DRAW()}
   if(cur==='industry_hub'){V.innerHTML='Loading…';try{V.innerHTML=await sfIndustryHub()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
   if(cur==='industry_workspace'){V.innerHTML='Loading…';try{V.innerHTML=await sfIndustryWorkspace()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
   if(cur==='service_contracts'){V.innerHTML='Loading…';try{V.innerHTML=await sfServiceContracts()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
+  if(cur==='job_operations'){V.innerHTML='Loading…';try{V.innerHTML=await sfJobOperations()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
+  if(cur==='logistics_ops'){V.innerHTML='Loading…';try{V.innerHTML=await sfLogisticsWorkspace()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
   return SF_BASE_DRAW();
 };
 
@@ -171,6 +303,6 @@ mod=async function(id){
   sfApplyAutomationModules();
   const automation=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug==='automation';
   let html=await SF_BASE_MOD(id);
-  if(automation&&id==='work_orders')html=html.replace(/(<button class="eb" onclick="tg\('([^']+)'\)">Edit<\/button>)/g,(m,edit,rid)=>edit+'<button onclick="sfPrintServiceJobCard(\''+rid+'\')">Print job card</button>');
+  if(automation&&id==='work_orders')html=html.replace(/(<button class="eb" onclick="tg\('([^']+)'\)">Edit<\/button>)/g,(m,edit,rid)=>edit+'<button onclick="sfPrintServiceJobCard(\''+rid+'\')">Print job card</button><button onclick="sfOpenJobOperations(\''+rid+'\')">Labour & parts</button>');
   return html;
 };

@@ -230,7 +230,13 @@ for marker in [
     "sfPrintServiceJobCard",
     "sfServiceContracts",
     "service_contract",
-    "parcel tracking",
+    "Parcel operations",
+    "sfLogisticsWorkspace",
+    "sfPrintWaybill",
+    "sfCapturePOD",
+    "sfOpenJobOperations",
+    "sfSaveJobTime",
+    "issue_work_order_stock",
 ]:
     if marker not in workspace_code:
         raise SystemExit(f"Missing industry workspace capability: {marker}")
@@ -252,4 +258,35 @@ for marker in [
     if marker.lower() not in automation_sql:
         raise SystemExit(f"Missing Automation service schema safeguard: {marker}")
 
-print("CMMS syntax, notifications, industry profiles and tenant safeguards: PASS")
+
+# Integrated industry operations: labour ledger, transactional stock issue, logistics waybills and POD.
+operations_migration = next((root / "supabase" / "migrations").glob("*_industry_operations_logistics.sql"))
+operations_sql = operations_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "create table if not exists public.work_order_time_entries",
+    "create table if not exists public.work_order_material_issues",
+    "create or replace function public.issue_work_order_stock",
+    "for update",
+    "insufficient stock",
+    "auth_site_ok",
+    "create table if not exists public.logistics_shipments",
+    "create table if not exists public.logistics_tracking_events",
+    "logistics_shipments_company_waybill_uidx",
+    "proof of delivery must include the receiver name",
+    "logistics_record_status_event",
+]:
+    if marker.lower() not in operations_sql:
+        raise SystemExit(f"Missing integrated operations database safeguard: {marker}")
+for marker in [
+    "work_order_time_entries",
+    "work_order_material_issues",
+    "sfJobOperations",
+    "sfLogisticsWorkspace",
+    "sfCapturePOD",
+    "sfAddShipmentScan",
+    "sfPrintWaybill",
+]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Missing industry operations UI capability: {marker}")
+
+print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")

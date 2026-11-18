@@ -307,6 +307,8 @@ async function saveIndustryProfile(){
 }
 async function industryProfile(){
  if(!isMgr())return '<h2>Industry profile</h2><div class="p">Only company owners and managers can change this profile.</div>';
+ const{data:history}=await sb.from('company_industry_profile_revisions').select('config_version,change_note,created_at').eq('company_id',me.company_id).order('config_version',{ascending:false}).limit(6);
+ const historyHtml=(history||[]).map(x=>'<div class="rl"><b>Version '+esc(x.config_version)+'</b> · '+esc(x.change_note)+'<div class="note">'+esc(new Date(x.created_at).toLocaleString('en-ZA'))+'</div></div>').join('')||'<div class="note">No saved profile history yet.</div>';
  const p=INDUSTRY_PROFILE||{},primary=INDUSTRIES.find(x=>x.slug===p.primary_industry_slug);
  const selected=new Set(p.secondary_industry_slugs||[]);
  const primaryOptions=INDUSTRIES.map(x=>'<option value="'+esc(x.slug)+'" '+(x.slug===p.primary_industry_slug?'selected':'')+'>'+esc(x.name)+'</option>').join('');
@@ -323,7 +325,8 @@ async function industryProfile(){
   '<div class="p"><b>'+(primary?esc(primary.name):'Industry template')+'</b><div class="note">'+esc(primary?.description||'')+'</div>'+
   (examples.length?'<div class="note"><b>Typical operations:</b> '+examples.map(esc).join(' · ')+'</div>':'')+
   (focus.length?'<div class="note"><b>Operational focus areas:</b> '+focus.map(esc).join(' · ')+'</div>':'')+
-  '<div class="note">Configuration version '+esc(p.config_version||1)+' · Changes are recorded in the company profile history.</div></div>';
+  '<div class="note">Configuration version '+esc(p.config_version||1)+' · Changes are recorded in the company profile history.</div></div>'+
+  '<div class="p"><b>Recent profile history</b>'+historyHtml+'</div>';
 }
 
 const yr=new Date().getFullYear(), today=new Date().toISOString().slice(0,10);

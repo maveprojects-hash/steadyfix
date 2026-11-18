@@ -189,6 +189,8 @@ async function communicationCentre() {
     '<button class="' + (COMM_STATE.tab === 'chats' ? 'on' : '') + '" onclick="setCommunicationTab(\'chats\')">Chats</button>' +
     '<button class="' + (COMM_STATE.tab === 'announcements' ? 'on' : '') + '" onclick="setCommunicationTab(\'announcements\')">Announcements</button>' +
     '<button class="' + (activity ? 'on' : '') + '" onclick="setCommunicationTab(\'activity\')">Activity & alerts</button></div>';
+  const preferences = '<section class="comm-notification-preferences"><div><b>Notification preferences</b><small>Choose how this device alerts you about new messages and CMMS activity.</small></div><div id="notificationEffectSettings" class="notif-effect-settings"></div><button type="button" onclick="enableDesktopNotifications()">Enable browser notifications</button></section>';
+
 
   if (activity) {
     const rows = (NOTIFICATIONS || []).map(n =>
@@ -196,16 +198,17 @@ async function communicationCentre() {
       '<b>' + esc(n.title || 'STEADYFIX notification') + '</b><span>' + esc(n.message || '') + '</span><small>' + esc(communicationTime(n.created_at)) + '</small></button>'
     ).join('');
     return '<div class="comm-page"><div class="comm-page-heading"><div><h2>Company Communication Centre</h2><p>Messages, announcements and live CMMS alerts for your team.</p></div></div>' +
-      tabs + '<div class="comm-activity-toolbar"><b>Recent alerts</b><button type="button" onclick="markAllNotificationsRead()">Mark all read</button></div>' + '<div class="comm-activity-list">' + (rows || '<div class="comm-empty">You are all caught up. No activity yet.</div>') + '</div></div>';
+      tabs + preferences + '<div class="comm-activity-toolbar"><b>Recent alerts</b><button type="button" onclick="markAllNotificationsRead()">Mark all read</button></div>' + '<div class="comm-activity-list">' + (rows || '<div class="comm-empty">You are all caught up. No activity yet.</div>') + '</div></div>';
   }
 
   const list = communicationListMarkup();
+  renderNotificationSettings();
   const actions = '<div class="comm-list-actions">' +
     (COMM_STATE.tab === 'chats' ? '<button class="b" type="button" onclick="COMM_STATE.showNew=!COMM_STATE.showNew;draw()">＋ New chat</button>' : '') +
     (COMM_STATE.tab === 'announcements' && ['owner','manager'].includes(me.role) ? '<button class="b" type="button" onclick="createCompanyAnnouncement()">＋ New announcement</button>' : '') +
     '</div>';
   return '<div class="comm-page"><div class="comm-page-heading"><div><h2>Company Communication Centre</h2><p>Messages, announcements and live CMMS alerts for your team.</p></div></div>' +
-    tabs + (COMM_STATE.showNew ? communicationNewMarkup() : '') +
+    tabs + preferences + (COMM_STATE.showNew ? communicationNewMarkup() : '') +
     '<div class="comm-layout ' + (active ? 'has-active' : '') + '">' +
     '<aside class="comm-list-panel"><div class="comm-list-heading"><b>' + (COMM_STATE.tab === 'announcements' ? 'Company announcements' : 'Your conversations') + '</b>' + actions + '</div>' +
     '<div class="comm-conversation-list">' + list + '</div></aside>' +

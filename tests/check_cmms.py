@@ -370,6 +370,7 @@ if unresolved_routes:
 
 
 # Logistics proof of delivery must include a receiver signature and consent.
+# The app and RPC both cap signature stroke and point counts.
 pod_migration = next((root / "supabase" / "migrations").glob("*_logistics_pod_signoffs.sql"))
 pod_sql = pod_migration.read_text(encoding="utf-8").lower()
 for marker in [

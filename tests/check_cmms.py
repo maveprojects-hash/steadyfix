@@ -178,7 +178,7 @@ for marker in [
     "async function saveIndustryProfile()",
     "async function industryProfile()",
     "cur=='industry'?await industryProfile()",
-    "cur[0]=='industry'",
+    "t[0]=='industry'?isMgr()&&!LOCK",
     "company_industry_profiles",
 ]:
     if marker not in html:

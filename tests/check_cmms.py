@@ -125,4 +125,24 @@ for marker in [
     if marker.lower() not in comm_sql:
         raise SystemExit(f"Missing communication database safeguard: {marker}")
 
+# Layout regression guards: assistant access stays centred and company home remains responsive.
+for marker in [
+    "left:50%;right:auto",
+    "bottom:calc(16px + env(safe-area-inset-bottom,0px))",
+    "transform:translateX(-50%)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing fixed assistant positioning: {marker}")
+
+login_html = (root / "maintdesk_login.html").read_text(encoding="utf-8")
+for marker in [
+    "min-height:100svh",
+    "align-items:flex-start",
+    "app.classList.add('company-home')",
+    "app.classList.remove('company-home')",
+    ".box.company-home{max-width:820px;width:100%",
+]:
+    if marker not in login_html:
+        raise SystemExit(f"Missing responsive company-screen layout: {marker}")
+
 print("CMMS inline JavaScript syntax and notification safeguards: PASS")

@@ -20,6 +20,13 @@ required_ui = [
     "postgres_changes",
     "markAllNotificationsRead()",
     "enableDesktopNotifications()",
+    "UNREAD_NOTIFICATION_COUNT",
+    "count:'exact',head:true",
+    "navigator.vibrate",
+    "AudioContext",
+    "toggleNotificationPreference",
+    "notificationEffectSettings",
+    "steadyfix.cmms.notification-preferences",
     "row.created_by=me.id",
 ]
 for marker in required_ui:

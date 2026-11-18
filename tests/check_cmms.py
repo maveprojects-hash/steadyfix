@@ -330,4 +330,29 @@ for marker in [
     if marker not in assistant_customization:
         raise SystemExit(f"Missing iAssistant industry customization safeguard: {marker}")
 
+
+# Signed customer approval on Automation service job cards.
+signoff_migration = next((root / "supabase" / "migrations").glob("*_work_order_customer_signoffs.sql"))
+signoff_sql = signoff_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "create table if not exists public.work_order_customer_signoffs",
+    "enable row level security",
+    "record_work_order_customer_signoff_impl",
+    "security invoker",
+    "customer consent is required",
+    "technicians may only capture approval on their assigned job cards",
+    "customer_approval_status='approved'",
+]:
+    if marker.lower() not in signoff_sql:
+        raise SystemExit(f"Missing customer sign-off security safeguard: {marker}")
+for marker in [
+    "sfSaveCustomerSignoff",
+    "sfInitSignaturePad",
+    "sfSignatureSvg",
+    "record_work_order_customer_signoff",
+    "work_order_customer_signoffs",
+]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Missing customer sign-off workflow: {marker}")
+
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")

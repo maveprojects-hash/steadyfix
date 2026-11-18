@@ -159,20 +159,54 @@ main>*{animation:rise .28s ease both}
 @media(min-width:900px){main{padding-top:28px}header{padding:20px 28px 18px}nav{padding:8px 24px}.card{padding:20px}h2{font-size:30px}}
 }
 
+
+[hidden]{display:none!important}
+.notif-wrap{position:relative;flex:0 0 auto}
+.notif-btn{position:relative;display:flex;align-items:center;justify-content:center;width:42px;height:38px;padding:7px;background:#2c3b45;color:#fff;border:1px solid #52616b;border-radius:5px;cursor:pointer}
+.notif-btn svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#notifCount{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 4px;border-radius:12px;background:#c23b2a;color:#fff;font-size:11px;line-height:18px;text-align:center;font-weight:700}
+.notif-panel{position:absolute;right:0;top:46px;width:min(360px,calc(100vw - 28px));max-height:70vh;overflow:auto;background:#fff;color:var(--ink);border:1px solid var(--ln);border-radius:8px;box-shadow:0 8px 28px #0003;z-index:30}
+.notif-head,.notif-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--ln)}
+.notif-head button,.notif-foot button{width:auto;margin:0;padding:5px 8px;background:none;color:var(--ac);border:0;font-size:12px}
+.notif-foot{border-top:1px solid var(--ln);border-bottom:0;justify-content:flex-end}
+.notif-list{padding:4px 0}
+.notif-item{display:block;width:100%;margin:0;padding:10px 12px;text-align:left;background:#fff;color:var(--ink);border:0;border-bottom:1px solid #e8ecef;border-radius:0;cursor:pointer}
+.notif-item.unread{background:#eef5fa;border-left:3px solid var(--ac)}
+.notif-item b{display:block;font-size:13px}
+.notif-item span{display:block;margin-top:3px;font-size:12px;white-space:normal;color:var(--mut)}
+.notif-item small{display:block;margin-top:5px;color:var(--mut);font-size:10px}
+.notif-empty{padding:18px 12px;text-align:center;color:var(--mut);font-size:13px}
+#notificationToast{position:fixed;right:16px;bottom:16px;z-index:1000;max-width:min(380px,calc(100vw - 32px));background:#1b2831;color:#fff;padding:12px 15px;border-left:4px solid var(--am);border-radius:6px;box-shadow:0 6px 24px #0004;cursor:pointer;opacity:0;transform:translateY(8px);pointer-events:none;transition:.18s}
+#notificationToast.show{opacity:1;transform:translateY(0);pointer-events:auto}
+#notificationToast b{display:block;margin-bottom:3px}
+#notificationToast span{font-size:13px;color:#e1e8ed}
 </style><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1b2831"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"></head><body>
-<header><h1>STEADYFIX CMMS<span class="sl">Maintain excellence.</span></h1><select id="site"></select><a href="maintdesk_login.html">Team &amp; sites</a></header>
+<header><h1>STEADYFIX CMMS<span class="sl">Maintain excellence.</span></h1><div class="notif-wrap"><button id="notifBtn" class="notif-btn" type="button" onclick="toggleNotifications()" aria-label="Notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span id="notifCount" hidden>0</span></button><div id="notifPanel" class="notif-panel" hidden><div class="notif-head"><b>Notifications</b><button type="button" onclick="markAllNotificationsRead()">Mark all read</button></div><div id="notifList" class="notif-list">Loading…</div><div class="notif-foot"><button type="button" onclick="enableDesktopNotifications()">Enable desktop alerts</button></div></div></div><select id="site"></select><a href="maintdesk_login.html">Team &amp; sites</a></header>
 <nav id="nav"></nav><main id="v">Loading…</main>
 <script>
 const SUPABASE_URL='https://wqggnimaglsikdusbvuh.supabase.co', SUPABASE_ANON_KEY='sb_publishable_NhiAgVZ451DMdfwzWTSGvQ_zQlbwW8l';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 const $=id=>document.getElementById(id), V=$('v');
+let notificationChannel=null, NOTIFICATIONS=[], notificationToastTimer=null;
 let me,site,cur='dash',cf='daily';
+
+function notificationTime(v){try{return new Date(v).toLocaleString('en-ZA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}catch(e){return''}}
+async function loadNotifications(){if(!me)return;const{data,error}=await sb.from('notifications').select('id,title,message,work_order_id,read_at,created_at').eq('user_id',me.id).eq('company_id',me.company_id).order('created_at',{ascending:false}).limit(30);if(error){console.warn('CMMS notifications unavailable:',error.message);return}NOTIFICATIONS=data||[];renderNotifications()}
+function renderNotifications(){const list=$('notifList'),count=$('notifCount');if(!list||!count)return;const unread=NOTIFICATIONS.filter(n=>!n.read_at).length;count.textContent=unread>99?'99+':String(unread);count.hidden=unread===0;list.innerHTML=NOTIFICATIONS.length?NOTIFICATIONS.map(n=>'<button type="button" class="notif-item '+(!n.read_at?'unread':'')+'" onclick="openNotification(\''+esc(n.id)+'\',\''+esc(n.work_order_id||'')+'\')"><b>'+esc(n.title||'STEADYFIX notification')+'</b><span>'+esc(n.message||'')+'</span><small>'+esc(notificationTime(n.created_at))+'</small></button>').join(''):'<div class="notif-empty">You’re all caught up. No notifications yet.</div>'}
+function showNotificationToast(n){let t=$('notificationToast');if(!t){t=document.createElement('div');t.id='notificationToast';document.body.appendChild(t)}t.innerHTML='<b>'+esc(n.title||'New work order')+'</b><span>'+esc(n.message||'You have a new assignment.')+'</span>';t.onclick=()=>openNotification(n.id,n.work_order_id||'');t.classList.add('show');clearTimeout(notificationToastTimer);notificationToastTimer=setTimeout(()=>t.classList.remove('show'),8000)}
+function notifyIncoming(n){showNotificationToast(n);if(document.hidden&&'Notification' in window&&Notification.permission==='granted'){try{const pop=new Notification(n.title||'STEADYFIX CMMS',{body:n.message||'You have a new work order.'});pop.onclick=()=>{window.focus();openNotification(n.id,n.work_order_id||'');pop.close()}}catch(e){console.warn('Desktop notification failed:',e)}}}
+async function toggleNotifications(){const p=$('notifPanel');if(!p)return;p.hidden=!p.hidden;if(!p.hidden)await loadNotifications()}
+async function openNotification(id,workOrderId){if(id){const{error}=await sb.from('notifications').update({read_at:new Date().toISOString()}).eq('id',id).eq('user_id',me.id);if(error)console.warn('Could not mark notification read:',error.message)}$('notifPanel').hidden=true;await loadNotifications();if(workOrderId){cur='work_orders';draw()}}
+async function markAllNotificationsRead(){const{error}=await sb.from('notifications').update({read_at:new Date().toISOString()}).eq('user_id',me.id).is('read_at',null);if(error){alert('Could not mark notifications as read: '+error.message);return}await loadNotifications()}
+async function enableDesktopNotifications(){if(!('Notification' in window)){alert('This browser does not support desktop notifications. You will still receive alerts inside STEADYFIX while it is open.');return}try{const p=await Notification.requestPermission();alert(p==='granted'?'Desktop alerts are enabled for this browser.':'Desktop alerts were not enabled. You can still see notifications inside STEADYFIX.')}catch(e){alert('Desktop alerts could not be enabled in this browser.')}}
+function startNotifications(){loadNotifications();if(notificationChannel)sb.removeChannel(notificationChannel);notificationChannel=sb.channel('cmms-notifications-'+me.id).on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',filter:'user_id=eq.'+me.id},payload=>{const n=payload.new;if(!n||n.company_id!==me.company_id||n.user_id!==me.id)return;notifyIncoming(n);loadNotifications()}).subscribe((status,err)=>{if(status!=='SUBSCRIBED')console.warn('CMMS notification connection:',status,err||'')});document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadNotifications()})}
+
 const F=(k,l,t,o,v)=>({k,l,t,o,v});
 const st=['open','in_progress','on_hold','done','cancelled'], PR=['low','medium','high','urgent'];
-const STAFF=k=>F(k,'Assigned to','r',['profiles','full_name']);
+const STAFF=k=>F(k,'Staff account (notifications)','r',['profiles','full_name']);
 const NAME=F('assigned_name','Assigned to','t');
 const MOD={
- work_orders:{l:'Work tasks',s:1,df:'due_date',f:[F('title','Task','t'),NAME,F('priority','Priority','s',PR),F('due_date','Due','d'),F('status','Status','s',st),F('lines','Parts and materials used','li',{tot:'parts_cost'})]},
+ work_orders:{l:'Work tasks',s:1,df:'due_date',f:[F('title','Task','t'),NAME,STAFF('assigned_to'),F('priority','Priority','s',PR),F('due_date','Due','d'),F('status','Status','s',st),F('lines','Parts and materials used','li',{tot:'parts_cost'})]},
  pm_schedules:{l:'PM schedules',s:1,df:'next_due',f:[F('title','PM task','t'),NAME,F('frequency_days','Every (days)','n'),F('next_due','Next due','d')]},
  stock_items:{l:'Stock',f:[F('name','Item','t'),F('on_hand','Quantity in stock','n',0,1),F('min_level','Reorder when below','n'),F('unit_cost','Unit cost','n'),F('sku','Item code (optional)','t')]},
  purchase_orders:{l:'Orders',s:1,df:'expected_at',note:'Add every item you are ordering with its quantity and price. The total adds up for you. Tap Print or Share PDF on an order to send it to the supplier.',f:[F('po_number','PO number','t'),F('supplier_id','Supplier','r',['suppliers','name']),F('lines','Items ordered','li',{tot:'total_cost'}),F('total_cost','Total cost (adds up from the items)','n'),F('expected_at','Expected','d'),F('status','Status','s',['draft','ordered','delivered','cancelled'])]},
@@ -213,7 +247,7 @@ async function boot(){
  try{CS=(await sb.from('company_settings').select('*').eq('company_id',me.company_id).maybeSingle()).data||{};CURS=CS.currency||'R'}catch(e){}
  $('nav').onclick=e=>{const b=e.target.closest('button');if(b&&b.dataset.t){cur=b.dataset.t;draw()}};
  try{CO=(await sb.from('companies').select('name').eq('id',me.company_id).single()).data.name}catch(e){}
- draw()}
+ startNotifications();draw()}
 
 let LOCK=null,TRIAL=null,LOCKDESK=false;
 async function lockCheck(){
@@ -377,7 +411,7 @@ async function adjStock(rid,d){const nv=Math.max(0,(+(LAST.oh[rid]||0))+d),{erro
 
 async function mod(id){
  const m=MOD[id], refs={};
- for(const f of m.f)if(f.t=='r'&&!refs[f.o[0]]){let q=sb.from(f.o[0]).select('id,'+f.o[1]).order(f.o[1]);refs[f.o[0]]=(await q).data||[]}
+ for(const f of m.f)if(f.t=='r'&&!refs[f.o[0]]){if(id=='work_orders'&&f.o[0]=='profiles'){const{data:ps,error:pe}=await sb.from('profiles').select('id,full_name,role').eq('active',true).order('full_name');if(pe)throw pe;const{data:us,error:ue}=await sb.from('user_sites').select('user_id').eq('site_id',site);if(ue)throw ue;const allowed=new Set((us||[]).map(x=>x.user_id));refs[f.o[0]]=(ps||[]).filter(p=>['owner','manager'].includes(p.role)||allowed.has(p.id));}else{let q=sb.from(f.o[0]).select('id,'+f.o[1]).order(f.o[1]);refs[f.o[0]]=(await q).data||[]}}
  let q=sb.from(id).select('*').order(m.o||m.f[0].k,{ascending:!m.d});if(m.s)q=q.eq('site_id',site);
  const pr=PER[id]||{p:'all',d:''};let plabel='';
  if(m.df&&pr.p!='all'){const R=rng(pr.p,pr.d||today);q=m.dt?q.gte(m.df,R.a+'T00:00:00').lte(m.df,R.b+'T23:59:59'):q.gte(m.df,R.a).lte(m.df,R.b);plabel=pr.p=='daily'?dd(R.a):dd(R.a)+' to '+dd(R.b)}
@@ -843,9 +877,10 @@ async function exportCust(){const D=(await sb.from('customers').select('*').orde
 async function exportExp(){const D=(await sb.from('expenses').select('*').gte('spent_on',AX.from).lte('spent_on',AX.to).order('spent_on')).data||[];if(!D.length)return alert('Nothing to export for these dates.');csvDownload('Expenses_'+AX.from+'_to_'+AX.to+'.csv',[['Date','Category','Supplier','Description','Reference','Amount'],...D.map(e=>[e.spent_on,e.category,e.supplier||'',e.description||'',e.reference||'',e.amount])])}
 
 const val=(t,v)=>v===''?null:t=='n'?+v:t=='dt'?new Date(v).toISOString():v;
-async function upd(tb,rid,k,t,v,virt){const r=virt?await sb.from('stock_levels').upsert({item_id:rid,site_id:site,company_id:me.company_id,on_hand:+v}):await sb.from(tb).update({[k]:val(t,v)}).eq('id',rid);if(r.error)alert(r.error.message);else if(tb=='stock_items')draw()}
+async function upd(tb,rid,k,t,v,virt){let patch={[k]:val(t,v)};if(tb=='work_orders'&&k=='assigned_to'){if(v){const{data:p,error:pe}=await sb.from('profiles').select('full_name').eq('id',v).eq('company_id',me.company_id).eq('active',true).maybeSingle();if(pe||!p)return alert('That staff account is no longer available. Refresh and choose an active team member.');patch.assigned_name=p.full_name}else patch.assigned_name=null}const r=virt?await sb.from('stock_levels').upsert({item_id:rid,site_id:site,company_id:me.company_id,on_hand:+v}):await sb.from(tb).update(patch).eq('id',rid);if(r.error)alert(r.error.message);else if(tb=='stock_items')draw()}
 async function ins(id){const m=MOD[id],row={company_id:me.company_id};if(m.s)row.site_id=site;let oh=0;
  m.f.forEach((f,i)=>{if(f.t=='li'){const L=liRead('nl'+i);if(L.length){row[f.k]=L;if(f.o&&f.o.tot)row[f.o.tot]=liSum(L)}return}const v=val(f.t,$('n'+i).value);if(f.v)oh=v||0;else if(v!==null)row[f.k]=v});
+ if(id=='work_orders'&&row.assigned_to){const{data:p,error:pe}=await sb.from('profiles').select('full_name').eq('id',row.assigned_to).eq('company_id',me.company_id).eq('active',true).maybeSingle();if(pe||!p)return alert('That staff account is no longer available. Refresh and choose an active team member.');row.assigned_name=p.full_name}
  const{data,error}=await sb.from(id).insert(row).select('id').single();if(error)return alert(/column|schema/i.test(error.message)?'This needs one more database step. Run the new SQL I sent, then reload this page.':error.message);
  if(id=='stock_items')await sb.from('stock_levels').upsert({item_id:data.id,site_id:site,company_id:me.company_id,on_hand:oh});draw()}
 async function del(tb,rid){if(!confirm('Delete this row?'))return;const{error}=await sb.from(tb).delete().eq('id',rid);error?alert(error.message):draw()}

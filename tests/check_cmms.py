@@ -53,4 +53,25 @@ for marker in [
     if marker not in index_sql:
         raise SystemExit(f"Missing supporting index: {marker}")
 
+
+required_sorting = [
+    ".order('created_at',{ascending:false}).order(m.o||m.f[0].k",
+    ".order('created_at',{ascending:false}).order('issue_date'",
+    ".order('completed_at',{ascending:false,nullsFirst:false})",
+    ".order('created_at',{ascending:false}).order('name')",
+]
+for marker in required_sorting:
+    if marker not in html:
+        raise SystemExit(f"Missing newest-first sorting behavior: {marker}")
+
+sorting_migration = next((root / "supabase" / "migrations").glob("*_cmms_newest_records_first.sql"))
+sorting_sql = sorting_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "add column if not exists created_at timestamptz not null default now()",
+    "idx_checklist_runs_completed_at_desc",
+    "idx_' || tbl || '_created_at_desc",
+]:
+    if marker not in sorting_sql:
+        raise SystemExit(f"Missing newest-first timestamp/index migration: {marker}")
+
 print("CMMS inline JavaScript syntax and notification safeguards: PASS")

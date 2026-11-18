@@ -202,13 +202,15 @@ async function sfJobOperations(){
     '<label class="el">Customer comments<textarea id="sfSignerNotes" placeholder="Optional customer comments or conditions"></textarea></label>'+
     '<button class="b" onclick="sfSaveCustomerSignoff(\''+id+'\')">Save signed customer approval</button></div>';
 }
-function sfInitSignaturePad(){
-  const canvas=$('sfSignaturePad');if(!canvas)return;const ctx=canvas.getContext('2d');if(!ctx)return;
+function sfInitSignaturePadFor(canvasId){
+  const canvas=$(canvasId);if(!canvas)return;SF_SIGNATURE_STROKES=[];const ctx=canvas.getContext('2d');if(!ctx)return;
   const redraw=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='#15232d';ctx.lineWidth=5;ctx.lineCap='round';ctx.lineJoin='round';SF_SIGNATURE_STROKES.forEach(st=>{if(!st.length)return;ctx.beginPath();ctx.moveTo(st[0].x*canvas.width,st[0].y*canvas.height);st.slice(1).forEach(p=>ctx.lineTo(p.x*canvas.width,p.y*canvas.height));ctx.stroke()})};
   canvas.onpointerdown=e=>{e.preventDefault();canvas.setPointerCapture(e.pointerId);const r=canvas.getBoundingClientRect(),p={x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))};SF_SIGNATURE_STROKES.push([p]);redraw()};
   canvas.onpointermove=e=>{if(!e.buttons)return;const r=canvas.getBoundingClientRect(),st=SF_SIGNATURE_STROKES[SF_SIGNATURE_STROKES.length-1];if(!st)return;st.push({x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))});redraw()};
   canvas.onpointerup=()=>{};canvas.onpointercancel=()=>{};redraw();
 }
+function sfInitSignaturePad(){sfInitSignaturePadFor('sfSignaturePad')}
+function sfInitPODSignaturePad(){sfInitSignaturePadFor('sfPODSignaturePad')}
 function sfClearSignature(){SF_SIGNATURE_STROKES=[];const c=$('sfSignaturePad');if(c){const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height)}}
 async function sfSaveCustomerSignoff(id){
   const name=$('sfSignerName').value.trim(),consent=$('sfSignerConsent').checked,strokes=SF_SIGNATURE_STROKES.filter(s=>s.length>1);
@@ -294,12 +296,24 @@ async function sfAddShipmentScan(id){
   const {error}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'scan',status:shipment.status,location:location.trim()||null,notes,created_by:me.id});
   if(error)alert('Could not save tracking scan: '+error.message);else draw();
 }
-async function sfCapturePOD(id){
-  const recipient=prompt('Name of the person who received the parcel:');if(!recipient||!recipient.trim())return;
-  const reference=prompt('Proof-of-delivery reference (signed slip, photo reference or delivery code):')||null;
-  const notes=prompt('Delivery notes (optional):')||null;
-  const {error}=await sb.from('logistics_shipments').update({status:'delivered',delivered_at:new Date().toISOString(),pod_recipient_name:recipient.trim(),pod_reference:reference&&reference.trim()||null,pod_notes:notes&&notes.trim()||null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
-  if(error)alert('Could not save proof of delivery: '+error.message);else draw();
+function sfCapturePOD(id){SF_POD_SHIPMENT_ID=id;cur='logistics_pod';draw()}
+let SF_POD_SHIPMENT_ID=null;
+async function sfLogisticsPODPage(){
+  const id=SF_POD_SHIPMENT_ID;if(!id)return '<h2>Proof of delivery</h2><div class="p">Choose a consignment first.</div>';
+  const [sr,pr]=await Promise.all([
+    sb.from('logistics_shipments').select('*').eq('id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle(),
+    sb.from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('site_id',site).maybeSingle()
+  ]);
+  if(sr.error)throw sr.error;if(pr.error)throw pr.error;if(!sr.data)return '<h2>Proof of delivery</h2><div class="p">This consignment is not available at this site.</div>';
+  const x=sr.data,p=pr.data;
+  if(x.status==='delivered')return '<div class="bar2 noprint"><button onclick="goTab(\'logistics_ops\')">← Back to consignments</button><button onclick="sfPrintWaybill(\''+id+'\')">Print waybill</button></div><h2>Proof of delivery · '+esc(x.waybill_no)+'</h2><div class="p"><b>Delivered to '+esc(x.pod_recipient_name||'Receiver')+'</b><div class="kv"><span>Delivered at</span><b>'+esc(x.delivered_at?new Date(x.delivered_at).toLocaleString('en-ZA'):'-')+'</b><span>Reference</span><b>'+esc(x.pod_reference||'-')+'</b><span>Notes</span><b>'+esc(x.pod_notes||'-')+'</b></div>'+(p?'<div class="rl"><b>Electronic signature captured</b> · '+esc(p.receiver_name)+' · '+esc(new Date(p.signed_at).toLocaleString('en-ZA'))+'</div>'+sfSignatureSvg(p.signature_points):'<div class="note">This consignment was marked delivered before electronic signature capture was enabled.</div>')+'</div>';
+  return '<div class="bar2 noprint"><button onclick="goTab(\'logistics_ops\')">← Back to consignments</button><button onclick="sfPrintWaybill(\''+id+'\')">Print waybill</button></div><h2>Proof of delivery · '+esc(x.waybill_no)+'</h2><div class="p"><b>'+esc(x.recipient_name)+'</b><div class="note">'+esc(x.destination_address)+'</div><label class="el">Name of person receiving parcel<input id="sfPODReceiver" maxlength="160" value="'+esc(x.recipient_name||'')+'"></label><label class="el">Delivery reference (optional)<input id="sfPODReference" maxlength="200" placeholder="Delivery code or signed slip reference"></label><canvas id="sfPODSignaturePad" width="900" height="260" aria-label="Receiver signature pad" style="display:block;width:100%;height:150px;background:#fff;border:1px solid #9aa7b2;border-radius:8px;touch-action:none"></canvas><div class="ca noprint"><button onclick="sfClearSignature()">Clear signature</button></div><label class="el"><span><input id="sfPODConsent" type="checkbox"> I confirm I have received this consignment.</span></label><label class="el">Delivery notes<textarea id="sfPODNotes" placeholder="Optional delivery notes"></textarea></label><button class="b" onclick="sfSaveLogisticsPOD(\''+id+'\')">Confirm delivery and save signature</button></div>';
+}
+async function sfSaveLogisticsPOD(id){
+  const name=$('sfPODReceiver').value.trim(),consent=$('sfPODConsent').checked,strokes=SF_SIGNATURE_STROKES.filter(s=>s.length>1),points=strokes.reduce((a,s)=>a+s.length,0);
+  if(!name)return alert('Enter the receiver name.');if(!consent)return alert('The receiver must confirm receipt.');if(!strokes.length||points<3)return alert('Capture the receiver signature first.');if(strokes.length>12||points>1000)return alert('Signature is too detailed. Clear it and sign again.');
+  const {error}=await sb.rpc('record_logistics_pod_signoff',{p_shipment_id:id,p_receiver_name:name,p_signature_points:strokes,p_reference:$('sfPODReference').value.trim()||null,p_notes:$('sfPODNotes').value.trim()||null,p_receiver_consent:true});
+  if(error)return alert('Could not save proof of delivery: '+error.message);alert('Proof of delivery saved.');cur='logistics_ops';draw();
 }
 async function sfDeleteShipment(id){
   if(!isMgr()||!confirm('Delete this consignment and its tracking history?'))return;
@@ -309,7 +323,7 @@ async function sfDeleteShipment(id){
 function sfPrintWaybill(id){
   const x=SF_LOGISTICS_SHIPMENTS.find(s=>s.id===id);if(!x)return;
   const row=(l,v)=>'<tr><th style="width:32%">'+l+'</th><td>'+esc(v==null||v===''?'-':String(v))+'</td></tr>';
-  sheetPrint(ph('Transport waybill')+'<br><table class="pt">'+row('Waybill number',x.waybill_no)+row('Tracking number',x.tracking_no)+row('Service level',cap(x.service_level))+row('Status',cap(x.status))+row('Sender',x.sender_name)+row('Recipient',x.recipient_name)+row('Recipient phone',x.recipient_phone)+row('Origin',x.origin_address)+row('Destination',x.destination_address)+row('Contents',x.parcel_description)+row('Packages',x.package_count)+row('Weight (kg)',x.weight_kg)+row('Expected delivery',x.expected_delivery)+'</table><p><b>Driver / collection signature</b> ___________________________</p><p><b>Receiver signature / name</b> ___________________________ Date: __________</p>');
+  sheetPrint(ph('Transport waybill')+'<br><table class="pt">'+row('Waybill number',x.waybill_no)+row('Tracking number',x.tracking_no)+row('Service level',cap(x.service_level))+row('Status',cap(x.status))+row('Sender',x.sender_name)+row('Recipient',x.recipient_name)+row('Recipient phone',x.recipient_phone)+row('Origin',x.origin_address)+row('Destination',x.destination_address)+row('Contents',x.parcel_description)+row('Packages',x.package_count)+row('Weight (kg)',x.weight_kg)+row('Expected delivery',x.expected_delivery)+'</table>'+(signed?'<h3>Electronic proof of delivery</h3><p>Received by: '+esc(signed.receiver_name)+' · '+esc(new Date(signed.signed_at).toLocaleString('en-ZA'))+'</p>'+sfSignatureSvg(signed.signature_points)+'<p>'+esc(signed.notes||'')+'</p>':'')+'<p><b>Driver / collection signature</b> ___________________________</p><p><b>Receiver signature / name</b> ___________________________ Date: __________</p>');
 }
 
 // Extend the existing navigation without creating a second app or changing shared base records.
@@ -322,6 +336,7 @@ draw=async function(){
   if(cur==='service_contracts'){V.innerHTML='Loading…';try{V.innerHTML=await sfServiceContracts()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
   if(cur==='job_operations'){V.innerHTML='Loading…';try{V.innerHTML=await sfJobOperations();sfInitSignaturePad()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
   if(cur==='logistics_ops'){V.innerHTML='Loading…';try{V.innerHTML=await sfLogisticsWorkspace()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
+  if(cur==='logistics_pod'){V.innerHTML='Loading…';try{V.innerHTML=await sfLogisticsPODPage();sfInitPODSignaturePad()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
   return SF_BASE_DRAW();
 };
 

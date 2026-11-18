@@ -1,0 +1,32 @@
+name: CMMS quality checks
+
+on:
+  pull_request:
+    paths:
+      - "maintdesk_app.html"
+      - "supabase/migrations/**"
+      - "tests/**"
+      - ".github/workflows/cmms-quality.yml"
+  push:
+    branches: [main]
+    paths:
+      - "maintdesk_app.html"
+      - "supabase/migrations/**"
+      - "tests/**"
+      - ".github/workflows/cmms-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  syntax-and-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check CMMS JavaScript and notification safeguards
+        run: python3 tests/check_cmms.py

@@ -10,6 +10,7 @@ const env = (k) => (Deno.env.get(k) ?? "").trim();
 const MODEL = env("ASSISTANT_MODEL") || "claude-haiku-5-5";
 const DAILY_LIMIT = Number(env("ASSISTANT_DAILY_LIMIT")) || 60;
 const MAX_STEPS = 6;
+const CONFIGURABLE_MODULES = ["work_orders","assets","service_contracts","stock_items","purchase_orders","customers","inv","suppliers","pm_schedules","chk","fleet","rep","ohs","damage_reports","shutdowns","logistics_ops"];
 const ALLOWED = [
   "work_orders", "pm_schedules", "purchase_orders", "shutdowns", "damage_reports", "expenses", "customers",
   "suppliers", "vehicles", "ohs_inspections", "ohs_hazards", "ohs_incidents", "ohs_ppe", "ohs_training",
@@ -25,6 +26,8 @@ const TOOLS = [
     input_schema: { type: "object", properties: { table: { type: "string" }, fields: { type: "object" }, summary: { type: "string", description: "One short line describing the action for the approval card" } }, required: ["table", "fields", "summary"] } },
   { name: "propose_update", description: "Queue a change to an existing record (by id) for the user to approve. Does not save anything by itself.",
     input_schema: { type: "object", properties: { table: { type: "string" }, id: { type: "string" }, changes: { type: "object" }, summary: { type: "string" } }, required: ["table", "id", "changes", "summary"] } },
+  { name: "propose_industry_customization", description: "For an owner or manager, propose approved changes to the company industry workspace: hide shortcuts the company does not use and/or rename shortcuts to match its terminology. This only changes the company workspace presentation, not permissions or underlying data. It queues a proposal and never saves without approval.",
+    input_schema: { type: "object", properties: { disabled_modules: { type: "array", items: { type: "string" }, description: "Complete list of workspace module ids to hide; use an empty array to restore all shortcuts." }, module_labels: { type: "object", additionalProperties: { type: "string" }, description: "Custom labels keyed by supported module id; use an empty string to remove a custom label." }, summary: { type: "string" } }, required: ["summary"] } },
   { name: "remember", description: "Save one short lasting fact or preference about this business so you can use it in future chats.",
     input_schema: { type: "object", properties: { note: { type: "string" } }, required: ["note"] } },
   { name: "forget_memory", description: "Remove a saved note by its id when the user asks you to forget it.",
@@ -44,7 +47,8 @@ Use this profile to tailor examples, terminology and priorities to the company. 
 How you work:
 - Be brief and clear, written for a phone screen. Short lists are fine. No long essays.
 - Use search_records to look things up before answering questions about their data. Never invent records, people, dates or numbers.
-- To create or change anything call propose_create or propose_update. These do NOT change any data: the user taps Approve first. Say what you queued and ask them to approve it. Never say something was created or changed before they approve it.
+- To create or change records call propose_create or propose_update. To tailor a company workspace, call propose_industry_customization only when the authenticated user is an owner or manager. These tools only queue proposals: the user taps Approve first. Say what you queued and ask them to approve it. Never say anything was created or changed before approval.
+- Workspace customization may only hide supported shortcut modules or rename them. Never claim it changes access permissions, creates new software modules, or alters another company's setup.
 - Never delete anything. If asked to delete, explain they can delete it themselves in the app.
 - Use only the tables and fields in the schema. Dates are yyyy-mm-dd. Select fields must use one of the listed options exactly. For reference fields, find the id with search_records first.
 - Ask at most one short question when something essential is missing. Otherwise make a sensible assumption and say what you assumed.
@@ -128,6 +132,29 @@ async function runTool(name, input, st) {
     st.proposals.push(p);
     return "Queued for the user's approval. Tell them to tap Approve.";
   }
+  if (name === "propose_industry_customization") {
+    if (!["owner", "manager"].includes(ctx.role)) return "Error: only a company owner or manager may customize the company workspace.";
+    const changes = {};
+    if (input.disabled_modules !== undefined) {
+      if (!Array.isArray(input.disabled_modules) || input.disabled_modules.length > CONFIGURABLE_MODULES.length) return "Error: disabled_modules must be a list of supported module ids.";
+      const invalid = input.disabled_modules.filter((x) => typeof x !== "string" || !CONFIGURABLE_MODULES.includes(x));
+      if (invalid.length) return "Error: unsupported module id(s): " + invalid.join(", ");
+      changes.disabled_modules = [...new Set(input.disabled_modules)];
+    }
+    if (input.module_labels !== undefined) {
+      if (!input.module_labels || typeof input.module_labels !== "object" || Array.isArray(input.module_labels)) return "Error: module_labels must be an object.";
+      const labels = {};
+      for (const [k, v] of Object.entries(input.module_labels)) {
+        if (!CONFIGURABLE_MODULES.includes(k) || typeof v !== "string" || v.length > 60) return "Error: invalid custom label for " + k + ". Labels must be 60 characters or fewer and use supported module ids.";
+        labels[k] = v.trim();
+      }
+      changes.module_labels = labels;
+    }
+    if (!Object.keys(changes).length) return "Error: provide disabled_modules and/or module_labels.";
+    const p = { id: "p" + (st.proposals.length + 1), kind: "industry_config", label: "Company industry workspace", changes, summary: String(input.summary || "Customize the company industry workspace").slice(0, 200) };
+    st.proposals.push(p);
+    return "Workspace customization queued for owner/manager approval. Nothing has changed yet.";
+  }
   if (name === "remember") {
     const note = String(input.note || "").trim().slice(0, 300);
     if (!note) return "Error: empty note";
@@ -191,7 +218,7 @@ Deno.serve(async (req) => {
     const schema = {};
     for (const t of ALLOWED) if (body.schema && body.schema[t]) schema[t] = body.schema[t];
 
-    const prof = await sb.from("profiles").select("company_id").eq("id", user.id).single();
+    const prof = await sb.from("profiles").select("company_id,role,full_name").eq("id", user.id).single();
     const company_id = prof.data && prof.data.company_id;
     if (!company_id) return json({ error: "No company found for this login." }, 400);
 
@@ -216,7 +243,7 @@ Deno.serve(async (req) => {
       configuration_overrides: industryProfileRow.configuration_overrides || {},
       config_version: industryProfileRow.config_version,
     } : null;
-    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(body.user_name || "").slice(0, 80), role: String(body.role || "").slice(0, 20), site_id: body.site_id || null, site_name: String(body.site_name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
+    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: body.site_id || null, site_name: String(body.site_name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
     const st = { sb, schema, ctx, memory: mem.data || [], proposals: [], remembered: [] };
 
     const convo = messages.map((m) => ({ role: m.role, content: m.content }));

@@ -7,7 +7,7 @@ create schema if not exists private;
 revoke all on schema private from public, anon;
 grant usage on schema private to authenticated;
 
-create table public.company_conversations (
+create table if not exists public.company_conversations (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
   kind text not null check (kind in ('direct','group','announcement')),
@@ -27,7 +27,7 @@ create index company_conversations_company_last_idx
 create index company_conversations_created_by_idx
   on public.company_conversations(created_by);
 
-create table public.conversation_members (
+create table if not exists public.conversation_members (
   conversation_id uuid not null,
   company_id uuid not null references public.companies(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -45,7 +45,7 @@ create index conversation_members_conversation_company_idx
 create index conversation_members_user_fk_idx
   on public.conversation_members(user_id);
 
-create table public.messages (
+create table if not exists public.messages (
   id uuid primary key default gen_random_uuid(),
   conversation_id uuid not null,
   company_id uuid not null references public.companies(id) on delete cascade,
@@ -68,7 +68,7 @@ alter table public.company_conversations enable row level security;
 alter table public.conversation_members enable row level security;
 alter table public.messages enable row level security;
 
-create function private.is_conversation_member(p_conversation_id uuid)
+create or replace function private.is_conversation_member(p_conversation_id uuid)
 returns boolean language sql stable security definer
 set search_path = pg_catalog, public
 as $$
@@ -80,7 +80,7 @@ as $$
   );
 $$;
 
-create function private.can_post_to_conversation(p_conversation_id uuid)
+create or replace function private.can_post_to_conversation(p_conversation_id uuid)
 returns boolean language sql stable security definer
 set search_path = pg_catalog, public
 as $$
@@ -102,21 +102,26 @@ revoke all on function private.can_post_to_conversation(uuid) from public, anon;
 grant execute on function private.is_conversation_member(uuid) to authenticated;
 grant execute on function private.can_post_to_conversation(uuid) to authenticated;
 
+drop policy if exists company_conversations_member_read on public.company_conversations;
 create policy company_conversations_member_read
   on public.company_conversations for select to authenticated
   using (company_id = (select public.auth_company()) and private.is_conversation_member(id));
+drop policy if exists conversation_members_member_read on public.conversation_members;
 create policy conversation_members_member_read
   on public.conversation_members for select to authenticated
   using (company_id = (select public.auth_company()) and private.is_conversation_member(conversation_id));
+drop policy if exists conversation_members_update_own on public.conversation_members;
 create policy conversation_members_update_own
   on public.conversation_members for update to authenticated
   using (user_id = (select auth.uid()) and company_id = (select public.auth_company())
          and private.is_conversation_member(conversation_id))
   with check (user_id = (select auth.uid()) and company_id = (select public.auth_company())
               and private.is_conversation_member(conversation_id));
+drop policy if exists messages_member_read on public.messages;
 create policy messages_member_read
   on public.messages for select to authenticated
   using (company_id = (select public.auth_company()) and private.is_conversation_member(conversation_id));
+drop policy if exists messages_member_insert on public.messages;
 create policy messages_member_insert
   on public.messages for insert to authenticated
   with check (
@@ -131,7 +136,7 @@ grant select on public.company_conversations, public.conversation_members, publi
 grant update (last_read_at, is_muted) on public.conversation_members to authenticated;
 grant insert on public.messages to authenticated;
 
-create function private.create_company_conversation_impl(
+create or replace function private.create_company_conversation_impl(
   p_kind text, p_title text default null, p_member_ids uuid[] default '{}'::uuid[]
 )
 returns uuid language plpgsql security definer
@@ -207,7 +212,7 @@ $$;
 revoke all on function private.create_company_conversation_impl(text,text,uuid[]) from public, anon;
 grant execute on function private.create_company_conversation_impl(text,text,uuid[]) to authenticated;
 
-create function public.create_company_conversation(
+create or replace function public.create_company_conversation(
   p_kind text, p_title text default null, p_member_ids uuid[] default '{}'::uuid[]
 )
 returns uuid language sql security invoker
@@ -216,7 +221,7 @@ as $$ select private.create_company_conversation_impl(p_kind,p_title,p_member_id
 revoke all on function public.create_company_conversation(text,text,uuid[]) from public, anon;
 grant execute on function public.create_company_conversation(text,text,uuid[]) to authenticated;
 
-create function private.on_company_message_insert()
+create or replace function private.on_company_message_insert()
 returns trigger language plpgsql security definer
 set search_path = pg_catalog, public
 as $$
@@ -244,6 +249,7 @@ begin
 end;
 $$;
 revoke all on function private.on_company_message_insert() from public, anon;
+drop trigger if exists company_message_after_insert on public.messages;
 create trigger company_message_after_insert after insert on public.messages
 for each row execute function private.on_company_message_insert();
 

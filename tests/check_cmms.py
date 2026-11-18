@@ -20,6 +20,7 @@ required_ui = [
     "postgres_changes",
     "markAllNotificationsRead()",
     "enableDesktopNotifications()",
+    "row.created_by=me.id",
 ]
 for marker in required_ui:
     if marker not in html:

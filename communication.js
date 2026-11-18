@@ -137,12 +137,19 @@ function communicationThreadMarkup(conversation) {
       '<div class="comm-message"><small>' + esc(senderName(message.sender_id)) + ' · ' + esc(communicationTime(message.created_at)) + '</small>' +
       '<div>' + esc(message.body) + '</div></div></div>';
   }).join('');
+  const last = COMM_STATE.messages.length ? COMM_STATE.messages[COMM_STATE.messages.length - 1] : null;
+  const otherMembers = COMM_STATE.members.filter(m => m.conversation_id === conversation.id && m.user_id !== me.id);
+  let readStatus = '';
+  if (last && last.sender_id === me.id && otherMembers.length) {
+    const readCount = otherMembers.filter(m => m.last_read_at && new Date(m.last_read_at) >= new Date(last.created_at)).length;
+    readStatus = '<div class="comm-read-status">' + (readCount === otherMembers.length ? 'Seen by everyone' : readCount ? 'Seen by ' + readCount + ' of ' + otherMembers.length : 'Sent') + '</div>';
+  }
   const canPost = conversation.kind !== 'announcement' || ['owner','manager'].includes(me.role);
   return '<div class="comm-thread-head"><button class="comm-back" type="button" onclick="selectCommunication(null)">← Back</button>' +
     '<div><b>' + esc(communicationLabel(conversation)) + '</b><small>' +
     (conversation.kind === 'announcement' ? 'Company announcement' : conversation.kind === 'group' ? 'Team group conversation' : 'Private one-to-one chat') +
     '</small></div></div>' +
-    '<div class="comm-message-list" id="commMessageList">' + (items || '<div class="comm-empty">This conversation is ready. Send the first message.</div>') + '</div>' +
+    '<div class="comm-message-list" id="commMessageList">' + (items || '<div class="comm-empty">This conversation is ready. Send the first message.</div>') + readStatus + '</div>' +
     (canPost ? '<form class="comm-compose" onsubmit="sendCommunicationMessage(event)"><textarea id="commMessageInput" maxlength="5000" rows="2" placeholder="Write a message…" required></textarea><button class="b" type="submit">Send</button></form>' :
       '<div class="comm-readonly-note">Only company owners and managers can post in announcements.</div>');
 }
@@ -185,7 +192,7 @@ async function communicationCentre() {
       '<b>' + esc(n.title || 'STEADYFIX notification') + '</b><span>' + esc(n.message || '') + '</span><small>' + esc(communicationTime(n.created_at)) + '</small></button>'
     ).join('');
     return '<div class="comm-page"><div class="comm-page-heading"><div><h2>Company Communication Centre</h2><p>Messages, announcements and live CMMS alerts for your team.</p></div></div>' +
-      tabs + '<div class="comm-activity-list">' + (rows || '<div class="comm-empty">You are all caught up. No activity yet.</div>') + '</div></div>';
+      tabs + '<div class="comm-activity-toolbar"><b>Recent alerts</b><button type="button" onclick="markAllNotificationsRead()">Mark all read</button></div>' + '<div class="comm-activity-list">' + (rows || '<div class="comm-empty">You are all caught up. No activity yet.</div>') + '</div></div>';
   }
 
   const list = communicationListMarkup();

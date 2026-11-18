@@ -172,10 +172,14 @@ async function communicationCentre() {
   const active = COMM_STATE.conversations.find(c => c.id === COMM_STATE.activeId) || null;
   if (active && COMM_STATE.tab !== 'activity') {
     await loadCommunicationMessages(active.id);
-    await sb.from('conversation_members').update({ last_read_at:new Date().toISOString() })
-      .eq('conversation_id', active.id).eq('user_id', me.id);
     const membership = COMM_STATE.members.find(m => m.conversation_id === active.id && m.user_id === me.id);
-    if (membership) membership.last_read_at = new Date().toISOString();
+    if (!membership || !membership.last_read_at || new Date(active.last_message_at) > new Date(membership.last_read_at)) {
+      const readAt = new Date().toISOString();
+      const { error } = await sb.from('conversation_members').update({ last_read_at:readAt })
+        .eq('conversation_id', active.id).eq('user_id', me.id);
+      if (error) console.warn('Could not update conversation read status:', error.message);
+      if (membership) membership.last_read_at = readAt;
+    }
   }
 
   const activity = COMM_STATE.tab === 'activity';

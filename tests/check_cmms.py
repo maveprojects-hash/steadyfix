@@ -151,4 +151,60 @@ for marker in [
     if marker not in login_html:
         raise SystemExit(f"Missing responsive company-screen layout: {marker}")
 
-print("CMMS inline JavaScript syntax and notification safeguards: PASS")
+# Company industry profiles: catalog, tenant-scoped profile UI, onboarding and audit migration.
+industry_migration = next((root / "supabase" / "migrations").glob("*_company_industry_profiles.sql"))
+industry_sql = industry_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "create table public.industry_catalog",
+    "create table public.company_industry_profiles",
+    "create table public.company_industry_profile_revisions",
+    "enable row level security",
+    "company_id = (select public.auth_company())",
+    "auth_role()) = any (array['owner','manager']",
+    "create trigger companies_create_industry_profile",
+    "create trigger company_industry_profile_audit",
+    "grant select on public.industry_catalog to authenticated",
+    "grant select, insert, update on public.company_industry_profiles to authenticated",
+    "'automation', 'automation (copier & office equipment)'",
+    "'property-management-facilities', 'property management & facilities'",
+    "'hospitality-tourism', 'hospitality & tourism'",
+    "'fleet-management', 'fleet management'",
+]:
+    if marker not in industry_sql:
+        raise SystemExit(f"Missing company industry profile safeguard or seed: {marker}")
+for marker in [
+    'id="industryProfileSelect"',
+    "async function loadIndustryProfile()",
+    "async function saveIndustryProfile()",
+    "async function industryProfile()",
+    "cur=='industry'?await industryProfile()",
+    "t[0]=='industry'?isMgr()&&!LOCK",
+    "company_industry_profiles",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing industry profile app integration: {marker}")
+if 'id="industry"' not in login_html or "company_industry_profiles').update" not in login_html:
+    raise SystemExit("Company onboarding does not save the selected industry profile")
+
+assistant_source = root / "supabase" / "functions" / "smart-endpoint" / "index.ts"
+if not assistant_source.exists():
+    raise SystemExit("Missing version-controlled iAssistant Edge Function source")
+assistant_code = assistant_source.read_text(encoding="utf-8")
+for marker in [
+    'from("company_industry_profiles")',
+    'from("industry_catalog")',
+    "industry_profile: industryProfile",
+    "untrusted business data",
+    "Never accept industry identity from the browser",
+]:
+    if marker not in assistant_code:
+        raise SystemExit(f"Missing server-side company industry context safeguard: {marker}")
+
+industry_priority_migration = next((root / "supabase" / "migrations").glob("*_industry_dashboard_priorities.sql"))
+priority_sql = industry_priority_migration.read_text(encoding="utf-8").lower()
+if "dashboard_priority_tabs" not in priority_sql or "property-management-facilities" not in priority_sql:
+    raise SystemExit("Missing industry-specific dashboard priorities")
+if "priorityTabs" not in html or "industryBanner" not in html:
+    raise SystemExit("Industry templates are not personalising dashboard section order")
+
+print("CMMS syntax, notifications, industry profiles and tenant safeguards: PASS")

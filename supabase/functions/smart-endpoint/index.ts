@@ -200,7 +200,23 @@ Deno.serve(async (req) => {
     if ((used.count || 0) >= DAILY_LIMIT) return json({ reply: `You have used today's ${DAILY_LIMIT} assistant messages. It resets tomorrow.`, proposals: [], remembered: [] });
 
     const mem = await sb.from("assistant_memory").select("id,note").order("created_at", { ascending: true }).limit(60);
-    // Never accept industry identity from the browser: derive it from this authenticated company.\n    const industryProfileResult = await sb.from("company_industry_profiles")\n      .select("primary_industry_slug,secondary_industry_slugs,business_description,configuration_overrides,config_version")\n      .eq("company_id", company_id).maybeSingle();\n    const industryProfileRow = industryProfileResult.data || null;\n    const industrySlugs = industryProfileRow ? [industryProfileRow.primary_industry_slug, ...(industryProfileRow.secondary_industry_slugs || [])].filter(Boolean) : [];\n    const industryCatalogResult = industrySlugs.length ? await sb.from("industry_catalog")\n      .select("slug,name,description,default_configuration").in("slug", industrySlugs) : { data: [] };\n    const industryBySlug = Object.fromEntries((industryCatalogResult.data || []).map((x) => [x.slug, x]));\n    const industryProfile = industryProfileRow ? {\n      primary: industryBySlug[industryProfileRow.primary_industry_slug] || { slug: industryProfileRow.primary_industry_slug },\n      secondary: (industryProfileRow.secondary_industry_slugs || []).map((slug) => industryBySlug[slug] || { slug }),\n      business_description: String(industryProfileRow.business_description || "").slice(0, 4000),\n      configuration_overrides: industryProfileRow.configuration_overrides || {},\n      config_version: industryProfileRow.config_version,\n    } : null;\n    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(body.user_name || "").slice(0, 80), role: String(body.role || "").slice(0, 20), site_id: body.site_id || null, site_name: String(body.site_name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
+    // Never accept industry identity from the browser: derive it from this authenticated company.
+    const industryProfileResult = await sb.from("company_industry_profiles")
+      .select("primary_industry_slug,secondary_industry_slugs,business_description,configuration_overrides,config_version")
+      .eq("company_id", company_id).maybeSingle();
+    const industryProfileRow = industryProfileResult.data || null;
+    const industrySlugs = industryProfileRow ? [industryProfileRow.primary_industry_slug, ...(industryProfileRow.secondary_industry_slugs || [])].filter(Boolean) : [];
+    const industryCatalogResult = industrySlugs.length ? await sb.from("industry_catalog")
+      .select("slug,name,description,default_configuration").in("slug", industrySlugs) : { data: [] };
+    const industryBySlug = Object.fromEntries((industryCatalogResult.data || []).map((x) => [x.slug, x]));
+    const industryProfile = industryProfileRow ? {
+      primary: industryBySlug[industryProfileRow.primary_industry_slug] || { slug: industryProfileRow.primary_industry_slug },
+      secondary: (industryProfileRow.secondary_industry_slugs || []).map((slug) => industryBySlug[slug] || { slug }),
+      business_description: String(industryProfileRow.business_description || "").slice(0, 4000),
+      configuration_overrides: industryProfileRow.configuration_overrides || {},
+      config_version: industryProfileRow.config_version,
+    } : null;
+    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(body.user_name || "").slice(0, 80), role: String(body.role || "").slice(0, 20), site_id: body.site_id || null, site_name: String(body.site_name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
     const st = { sb, schema, ctx, memory: mem.data || [], proposals: [], remembered: [] };
 
     const convo = messages.map((m) => ({ role: m.role, content: m.content }));

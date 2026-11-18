@@ -152,24 +152,25 @@ draw=async function(){
 };
 
 const SF_BASE_MOD=mod;
+const SF_ORIGINAL_WORK_ORDERS=MOD.work_orders, SF_ORIGINAL_ASSETS=MOD.assets;
+function sfApplyAutomationModules(){
+  const automation=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug==='automation';
+  if(!automation){MOD.work_orders=SF_ORIGINAL_WORK_ORDERS;MOD.assets=SF_ORIGINAL_ASSETS;return}
+  MOD.work_orders={...SF_ORIGINAL_WORK_ORDERS,l:'Automation service job cards',note:'Create one service job card for every copier or office-equipment call. Link the customer and device, assign a technician, record the reported fault, diagnosis, work performed, page meter, labour hours, approval and parts used.',f:[
+    F('job_number','Job card number','t'),F('title','Service call / job title','t'),F('customer_id','Customer','r',['customers','name']),F('asset_id','Copier / office device','r',['assets','name']),
+    F('service_type','Service type','s',['callout','onsite','workshop','installation','preventive']),F('reported_problem','Problem reported','x'),F('diagnosis','Diagnosis','x'),F('work_performed','Work performed','x'),
+    F('assigned_to','Assigned technician','r',['profiles','full_name']),F('priority','Priority','s',PR),F('status','Progress','s',['open','in_progress','waiting_parts','awaiting_customer','quality_check','done','cancelled']),
+    F('due_date','Due date','d'),F('meter_reading','Meter reading (pages)','n'),F('labour_hours','Labour hours','n'),F('customer_approval_status','Customer approval','s',['pending','approved','declined','not_required']),F('lines','Parts and consumables used','li',{tot:'parts_cost'})
+  ]};
+  MOD.assets={...SF_ORIGINAL_ASSETS,l:'Customer equipment',note:'Register each copier, multifunction printer or office device. Link it to a customer and record make, model, serial number and page meter.',f:[
+    F('name','Equipment name','t'),F('category','Equipment type','t'),F('customer_id','Customer','r',['customers','name']),F('manufacturer','Manufacturer','t'),F('model','Model','t'),F('serial_no','Serial number','t'),
+    F('meter_reading','Current meter reading','n'),F('meter_unit','Meter unit','s',['pages','prints','copies']),F('installed_on','Installed on','d'),F('status','Status','s',['running','faulty','stopped','retired'])
+  ]};
+}
 mod=async function(id){
-  const original=MOD[id],automation=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug==='automation';
-  if(automation&&id==='work_orders'){
-    MOD[id]={...original,l:'Automation service job cards',note:'Create one service job card for every copier or office-equipment call. Link the customer and device, assign a technician, record the reported fault, diagnosis, work performed, page meter, labour hours, approval and parts used.',f:[
-      F('job_number','Job card number','t'),F('title','Service call / job title','t'),F('customer_id','Customer','r',['customers','name']),F('asset_id','Copier / office device','r',['assets','name']),
-      F('service_type','Service type','s',['callout','onsite','workshop','installation','preventive']),F('reported_problem','Problem reported','x'),F('diagnosis','Diagnosis','x'),F('work_performed','Work performed','x'),
-      F('assigned_to','Assigned technician','r',['profiles','full_name']),F('priority','Priority','s',PR),F('status','Progress','s',['open','in_progress','waiting_parts','awaiting_customer','quality_check','done','cancelled']),
-      F('due_date','Due date','d'),F('meter_reading','Meter reading (pages)','n'),F('labour_hours','Labour hours','n'),F('customer_approval_status','Customer approval','s',['pending','approved','declined','not_required']),F('lines','Parts and consumables used','li',{tot:'parts_cost'})
-    ]};
-  }else if(automation&&id==='assets'){
-    MOD[id]={...original,l:'Customer equipment',note:'Register each copier, multifunction printer or office device. Link it to a customer and record make, model, serial number and page meter.',f:[
-      F('name','Equipment name','t'),F('category','Equipment type','t'),F('customer_id','Customer','r',['customers','name']),F('manufacturer','Manufacturer','t'),F('model','Model','t'),F('serial_no','Serial number','t'),
-      F('meter_reading','Current meter reading','n'),F('meter_unit','Meter unit','s',['pages','prints','copies']),F('installed_on','Installed on','d'),F('status','Status','s',['running','faulty','stopped','retired'])
-    ]};
-  }
-  try{
-    let html=await SF_BASE_MOD(id);
-    if(automation&&id==='work_orders')html=html.replace(/(<button class="eb" onclick="tg\('([^']+)'\)">Edit<\/button>)/g,(m,edit,rid)=>edit+'<button onclick="sfPrintServiceJobCard(\''+rid+'\')">Print job card</button>');
-    return html;
-  }finally{if(original)MOD[id]=original}
+  sfApplyAutomationModules();
+  const automation=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug==='automation';
+  let html=await SF_BASE_MOD(id);
+  if(automation&&id==='work_orders')html=html.replace(/(<button class="eb" onclick="tg\('([^']+)'\)">Edit<\/button>)/g,(m,edit,rid)=>edit+'<button onclick="sfPrintServiceJobCard(\''+rid+'\')">Print job card</button>');
+  return html;
 };

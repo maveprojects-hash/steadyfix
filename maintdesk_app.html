@@ -299,7 +299,7 @@ const ftabs=()=>`<div class="tabs noprint">${FLTABS.map(([k,l])=>`<button class=
 async function fleet(){if(FT=='ov')return fleetOverview();if(FT=='track')return fleetTrack();const h=await mod(FT);return h.replace(/<h2>[^<]*<\/h2>/,'<h2>Fleet and workshop</h2>'+ftabs())}
 const hav=(a,b)=>{const t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dg=t(b.lng-a.lng),q=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dg/2)**2;return 12742*Math.asin(Math.sqrt(q))};
 const tAgo=iso=>{if(!iso)return 'never';const m=Math.round((Date.now()-new Date(iso))/60000);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' days ago'};
-async function fleetData(){const since=new Date(Date.now()-7*864e5).toISOString(),[v,j,p]=await Promise.all([sb.from('vehicles').select('*').eq('site_id',site).order('name'),sb.from('workshop_jobs').select('status').eq('site_id',site),sb.from('vehicle_positions').select('vehicle_id,recorded_at,lat,lng,speed_kmh').gte('recorded_at',since).order('recorded_at',{ascending:true}).limit(5000)]),
+async function fleetData(){const since=new Date(Date.now()-7*864e5).toISOString(),[v,j,p]=await Promise.all([sb.from('vehicles').select('*').eq('site_id',site).order('created_at',{ascending:false}).order('name'),sb.from('workshop_jobs').select('status').eq('site_id',site),sb.from('vehicle_positions').select('vehicle_id,recorded_at,lat,lng,speed_kmh').gte('recorded_at',since).order('recorded_at',{ascending:true}).limit(5000)]),
  V=v.data||[],J=j.data||[],P=p.data||[],lim=Object.fromEntries(V.map(x=>[x.id,+x.speed_limit||100])),by={},info={},events=[],nowMs=Date.now();P.forEach(x=>{(by[x.vehicle_id]=by[x.vehicle_id]||[]).push(x)});
  V.forEach(x=>{const arr=by[x.id]||[],d=arr.filter(r=>nowMs-new Date(r.recorded_at)<864e5);let km=0;for(let i=1;i<d.length;i++){const s=hav({lat:d[i-1].lat,lng:d[i-1].lng},{lat:d[i].lat,lng:d[i].lng});if(s<30)km+=s}
   let last=null;arr.forEach(r=>{if(+r.speed_kmh>lim[x.id]){if(!last||new Date(r.recorded_at)-new Date(last.recorded_at)>120000)events.push({v:x,...r,limit:lim[x.id]});last=r}});
@@ -348,18 +348,18 @@ async function seedOhs(){if(!confirm('Add example regulations and OHS checklists
 async function dash(){
  const q=(t,c)=>sb.from(t).select(c).eq('site_id',site),ks=['daily','weekly','monthly','yearly'];
  const [wo,pm,tp,rn,it,lv,po,sd,as,vh,dr,sn,sh,pf,su,ex,bu,dc]=await Promise.all([
-  q('work_orders','title,priority,status,due_date').not('status','in','(done,cancelled)'),
-  q('pm_schedules','title,next_due').eq('active',true).order('next_due'),
-  q('checklist_templates','id,name,frequency,items'),
+  q('work_orders','title,priority,status,due_date,created_at').not('status','in','(done,cancelled)').order('created_at',{ascending:false}),
+  q('pm_schedules','title,next_due,created_at').eq('active',true).order('created_at',{ascending:false}).order('next_due'),
+  q('checklist_templates','id,name,frequency,items,created_at').order('created_at',{ascending:false}),
   q('checklist_runs','template_id,run_date,results').in('run_date',ks.map(pk)),
   sb.from('stock_items').select('id,name,min_level'),q('stock_levels','item_id,on_hand'),
-  q('purchase_orders','po_number,status,total_cost,expected_at').not('status','in','(delivered,cancelled)'),
-  q('shutdowns','title,system,starts_at,status').not('status','eq','complete').order('starts_at'),
-  q('assets','name,wear_pct'),q('vehicles','name,odometer_km,next_service_km'),
-  q('damage_reports','title,report_type,status,estimated_cost,date_noticed').order('date_noticed',{ascending:false}),
-  q('sensors','id,name,kind,unit,alert_min,alert_max'),q('roster_shifts','staff_id,shift_type').eq('shift_date',today),
-  q('staff_members','id,name'),sb.from('suppliers').select('name,kind,trade').order('name'),
-  isMgr()?q('expenses','amount,spent_on').gte('spent_on',yr+'-01-01'):Promise.resolve({data:[]}),
+  q('purchase_orders','po_number,status,total_cost,expected_at,created_at').not('status','in','(delivered,cancelled)').order('created_at',{ascending:false}),
+  q('shutdowns','title,system,starts_at,status,created_at').not('status','eq','complete').order('created_at',{ascending:false}).order('starts_at'),
+  q('assets','name,wear_pct,created_at').order('created_at',{ascending:false}),q('vehicles','name,odometer_km,next_service_km,created_at').order('created_at',{ascending:false}),
+  q('damage_reports','title,report_type,status,estimated_cost,date_noticed,created_at').order('created_at',{ascending:false}).order('date_noticed',{ascending:false}),
+  q('sensors','id,name,kind,unit,alert_min,alert_max,created_at').order('created_at',{ascending:false}),q('roster_shifts','staff_id,shift_type').eq('shift_date',today),
+  q('staff_members','id,name,created_at').order('created_at',{ascending:false}),sb.from('suppliers').select('name,kind,trade,created_at').order('created_at',{ascending:false}).order('name'),
+  isMgr()?q('expenses','amount,spent_on,created_at').gte('spent_on',yr+'-01-01').order('created_at',{ascending:false}):Promise.resolve({data:[]}),
   isMgr()?q('budgets','annual_amount,year').eq('year',yr):Promise.resolve({data:[]}),
   isMgr()?sb.from('documents').select('kind,status,total,due_date'):Promise.resolve({data:[]})]);
  const sids=(sn.data||[]).map(x=>x.id),rd=sids.length?(await sb.from('readings').select('sensor_id,value,read_at').in('sensor_id',sids).order('read_at',{ascending:false}).limit(400)).data||[]:[];
@@ -412,7 +412,7 @@ async function adjStock(rid,d){const nv=Math.max(0,(+(LAST.oh[rid]||0))+d),{erro
 async function mod(id){
  const m=MOD[id], refs={};
  for(const f of m.f)if(f.t=='r'&&!refs[f.o[0]]){if(id=='work_orders'&&f.o[0]=='profiles'){const{data:ps,error:pe}=await sb.from('profiles').select('id,full_name,role').eq('active',true).order('full_name');if(pe)throw pe;const{data:us,error:ue}=await sb.from('user_sites').select('user_id').eq('site_id',site);if(ue)throw ue;const allowed=new Set((us||[]).map(x=>x.user_id));refs[f.o[0]]=(ps||[]).filter(p=>['owner','manager'].includes(p.role)||allowed.has(p.id));}else{let q=sb.from(f.o[0]).select('id,'+f.o[1]).order(f.o[1]);refs[f.o[0]]=(await q).data||[]}}
- let q=sb.from(id).select('*').order(m.o||m.f[0].k,{ascending:!m.d});if(m.s)q=q.eq('site_id',site);
+ let q=sb.from(id).select('*').order('created_at',{ascending:false}).order(m.o||m.f[0].k,{ascending:!m.d}).order('id',{ascending:false});if(m.s)q=q.eq('site_id',site);
  const pr=PER[id]||{p:'all',d:''};let plabel='';
  if(m.df&&pr.p!='all'){const R=rng(pr.p,pr.d||today);q=m.dt?q.gte(m.df,R.a+'T00:00:00').lte(m.df,R.b+'T23:59:59'):q.gte(m.df,R.a).lte(m.df,R.b);plabel=pr.p=='daily'?dd(R.a):dd(R.a)+' to '+dd(R.b)}
  const{data:rows0,error}=await q;if(error)throw error;
@@ -488,7 +488,7 @@ let aFrom='',aTo='',aFreq='all',ARCH={runs:[],T:[]};
 async function arch(){
  const d=new Date();d.setDate(d.getDate()-30);aFrom=aFrom||d.toISOString().slice(0,10);aTo=aTo||today;
  const T=(await sb.from('checklist_templates').select('id,name,frequency,items').eq('site_id',site)).data||[];
- let runs=(await sb.from('checklist_runs').select('*').eq('site_id',site).gte('run_date',aFrom).lte('run_date',aTo).order('run_date',{ascending:false})).data||[];
+ let runs=(await sb.from('checklist_runs').select('*').eq('site_id',site).gte('run_date',aFrom).lte('run_date',aTo).order('completed_at',{ascending:false,nullsFirst:false}).order('run_date',{ascending:false})).data||[];
  runs=runs.filter(r=>{const t=T.find(x=>x.id==r.template_id);return t&&(aFreq=='all'||t.frequency==aFreq)});ARCH={runs,T};
  const info=r=>{const t=T.find(x=>x.id==r.template_id),m=r.results?._meta||{},n=Object.keys(r.results||{}).filter(k=>k!='_meta'&&r.results[k]).length;return{t,m,n,full:t.items.length>0&&n>=t.items.length}};
  const cards=runs.map(r=>{const{t,m,n,full}=info(r);return`<div class="card"><div class="ct"><div>${esc(t.name)}</div><div class="chips">${chip(t.frequency,cap(t.frequency))}${chip(full?'done':'high',full?'Complete':'Partial')}</div></div><div class="kv"><span>Date</span><b>${dd(r.run_date)}</b><span>Done</span><b>${n} of ${t.items.length}</b><span>Checked by</span><b>${esc(m.by||'-')}</b><span>Signed off by</span><b>${esc(m.mgr||'-')}${m.date?' on '+dd(m.date):''}</b></div><div class="ca noprint"><button onclick="printRun('${r.id}')">View / Print</button></div></div>`}).join('')||'<div class="p">No saved checklists in this date range.</div>';
@@ -505,7 +505,7 @@ const ago=m=>m<1?'just now':m<60?Math.round(m)+' min ago':m<1440?Math.round(m/60
 function spark(v,lo,hi){if(v.length<2)return'';const a=Math.min(...v,lo??Infinity),b=Math.max(...v,hi??-Infinity),r=(b-a)||1;return`<svg viewBox="0 0 120 30" preserveAspectRatio="none" style="width:100%;height:34px;display:block;margin-top:6px"><polyline fill="none" stroke="var(--ac)" stroke-width="1.5" points="${v.map((y,i)=>`${i*120/(v.length-1)},${28-(y-a)/r*26}`).join(' ')}"/></svg>`}
 function copyTxt(id){const t=$(id).textContent;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert('Copied')).catch(()=>prompt('Copy this:',t))}
 async function mon(){
- const ss=(await sb.from('sensors').select('*').eq('site_id',site).order('name')).data||[],ids=ss.map(x=>x.id);
+ const ss=(await sb.from('sensors').select('*').eq('site_id',site).order('created_at',{ascending:false}).order('name')).data||[],ids=ss.map(x=>x.id);
  const since=new Date(Date.now()-({day:1,week:7,month:30}[MPD])*864e5).toISOString();
  const rd=ids.length?(await sb.from('readings').select('sensor_id,value,read_at').in('sensor_id',ids).gte('read_at',since).order('read_at',{ascending:false}).limit(5000)).data||[]:[];
  const by={};rd.forEach(r=>(by[r.sensor_id]=by[r.sensor_id]||[]).push(r));
@@ -544,7 +544,7 @@ const SHT={day:['D','Day','#bfe3cd'],night:['N','Night','#b8d6ea'],standby:['S',
 function rnav(n){RD=shiftDate(RP,RD||today,n);draw()}
 async function ros(){
  const d0=RD||today,R_=rng(RP,d0),lab=RP=='daily'?dd(R_.a):dd(R_.a)+' to '+dd(R_.b);
- const st=await sb.from('staff_members').select('*').eq('site_id',site).eq('active',true).order('name');
+ const st=await sb.from('staff_members').select('*').eq('site_id',site).eq('active',true).order('created_at',{ascending:false}).order('name');
  if(st.error)return`<h2>Rosters</h2><div class="p">The roster needs one more database step. Run the roster SQL I sent, then reload this page.</div>`;
  const sh=(await sb.from('roster_shifts').select('staff_id,shift_date,shift_type').eq('site_id',site).gte('shift_date',R_.a).lte('shift_date',R_.b)).data||[];
  RS={};sh.forEach(x=>RS[x.staff_id+'|'+x.shift_date]=x.shift_type);
@@ -683,7 +683,7 @@ async function aiApply(p){const sc=aiSchema()[p.table];if(!sc)throw new Error('T
 async function aiApprove(id,quiet){const p=AI.props.find(x=>x.id==id);if(!p||p.state!='pending')return true;try{await aiApply(p);p.state='done';if(!quiet){AI.msgs.push({role:'assistant',content:'Done: '+(p.summary||'saved'),note:1});aiRender();draw()}return true}catch(e){p.state='failed';AI.msgs.push({role:'assistant',content:'Could not save "'+(p.summary||'that')+'": '+e.message,err:true});aiRender();return false}}
 async function aiApproveAll(){const ids=AI.props.filter(p=>p.state=='pending').map(p=>p.id);let n=0;for(const id of ids)if(await aiApprove(id,true))n++;AI.msgs.push({role:'assistant',content:'Done: '+n+' change'+(n==1?'':'s')+' saved.',note:1});aiRender();draw()}
 function aiSkip(id){const p=AI.props.find(x=>x.id==id);if(p)p.state='skipped';aiRender()}
-async function aiMem(){const r=await sb.from('assistant_memory').select('id,note').order('created_at');AI.mem=r.data||[];aiRender()}
+async function aiMem(){const r=await sb.from('assistant_memory').select('id,note').order('created_at',{ascending:false});AI.mem=r.data||[];aiRender()}
 async function aiForget(id){await sb.from('assistant_memory').delete().eq('id',id);AI.mem=AI.mem.filter(m=>m.id!=id);aiRender()}
 // ---------- shared item block, totals, layouts, PDF sharing ----------
 const r2=n=>Math.round((+n||0)*100)/100;
@@ -796,7 +796,7 @@ async function inv(){
 async function nextNum(kind){const{data}=await sb.from('documents').select('number').eq('kind',kind);return(kind=='invoice'?'INV-':'QUO-')+String(Math.max(0,...(data||[]).map(x=>parseInt(String(x.number).replace(/\D/g,''))||0))+1).padStart(4,'0')}
 const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return ymd(d)};
 async function docList(kind){
- const pr=PER['d_'+kind]||{p:'all',d:''};let q=sb.from('documents').select('*').eq('kind',kind).order('issue_date',{ascending:false}).order('number',{ascending:false}),pl='';
+ const pr=PER['d_'+kind]||{p:'all',d:''};let q=sb.from('documents').select('*').eq('kind',kind).order('created_at',{ascending:false}).order('issue_date',{ascending:false}).order('number',{ascending:false}),pl='';
  if(pr.p!='all'){const R_=rng(pr.p,pr.d||today);q=q.gte('issue_date',R_.a).lte('issue_date',R_.b);pl=pr.p=='daily'?dd(R_.a):dd(R_.a)+' to '+dd(R_.b)}
  const[r,cu]=await Promise.all([q,sb.from('customers').select('*').order('name')]);
  if(r.error)return`<h2>Invoicing</h2>${itabs()}<div class="p">Invoicing needs one more database step. Run the invoicing SQL I sent, then reload this page.</div>`;
@@ -889,7 +889,7 @@ const STARTER={daily:['Walk-round: leaks, noises, alarms','Pool plant pressure &
 const FRQ=['daily','weekly','monthly','yearly'];let ct=null,ced=false,MP=Promise.resolve();
 function pk(f){const d=new Date(),z=n=>String(n).padStart(2,'0');if(f=='weekly')d.setDate(d.getDate()-((d.getDay()+6)%7));if(f=='monthly')d.setDate(1);if(f=='yearly'){d.setMonth(0);d.setDate(1)}return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())}
 async function chk(){
- const all=(await sb.from('checklist_templates').select('*').eq('site_id',site).order('name')).data||[],list=all.filter(x=>x.frequency==cf),t=list.find(x=>x.id==ct)||list[0];
+ const all=(await sb.from('checklist_templates').select('*').eq('site_id',site).order('created_at',{ascending:false}).order('name')).data||[],list=all.filter(x=>x.frequency==cf),t=list.find(x=>x.id==ct)||list[0];
  const head=`<h2>Checklists</h2><div class="tabs noprint">${FRQ.map(c=>`<button class="${c==cf?'on':''}" onclick="cf='${c}';ct=null;ced=false;draw()">${cap(c)}</button>`).join('')}</div>`;
  const newf=`<details class="p noprint"><summary>＋ New ${cf} checklist</summary><div class="f" style="margin-top:10px"><input id="ncn" placeholder="Name, e.g. Kitchen opening check"><button onclick="newList()">Create</button></div></details>`;
  if(!t)return head+`<div class="p noprint">No ${cf} checklist yet. Create your own below${all.length?'.':', or add starter lists for every frequency.'}</div>${all.length?'':`<button class="b noprint" onclick="seed()">Add starter lists</button><br><br>`}${newf}`;

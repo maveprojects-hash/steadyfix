@@ -170,17 +170,17 @@ async function sfJobOperations(){
   const matHtml=materialRows.map(x=>'<div class="rl"><b>'+esc(x.item_name||items.find(i=>i.id===x.stock_item_id)?.name||'Stock item')+'</b> · '+esc(x.quantity)+' '+esc(x.unit||'units')+' · '+R(x.total_cost||0)+'<div class="note">'+esc(new Date(x.issued_at).toLocaleString('en-ZA'))+(x.notes?' · '+esc(x.notes):'')+'</div></div>').join('')||'<div class="note">No stock has been issued to this job card yet.</div>';
   const staffOptions=staff.map(p=>'<option value="'+p.id+'" '+(p.id===chosen?'selected':'')+'>'+esc(p.full_name)+' · '+esc(p.role)+'</option>').join('');
   const itemOptions=items.map(i=>'<option value="'+i.id+'">'+esc(i.name)+(i.sku?' · '+esc(i.sku):'')+' — '+levels[i.id]+' '+esc(i.unit||'units')+' available</option>').join('');
-  return '<div class="bar2 noprint"><button onclick="goTab(\\'work_orders\\')">← Back to job cards</button><button onclick="sfPrintServiceJobCard(\\''+id+'\\')">Print job card</button></div>'+
+  return '<div class="bar2 noprint"><button onclick="goTab(\'work_orders\')">← Back to job cards</button><button onclick="sfPrintServiceJobCard(\''+id+'\')">Print job card</button></div>'+
     '<h2>Job operations · '+esc(w.job_number||w.title||'Service job')+'</h2>'+
     '<div class="p"><b>'+esc(w.title||'Service job')+'</b><div class="note">'+esc(w.reported_problem||w.description||'No fault description recorded')+'</div><div class="kv"><span>Status</span><b>'+esc(cap(w.status))+'</b><span>Assigned technician</span><b>'+esc(w.assigned_name||'-')+'</b><span>Labour logged</span><b>'+timeTotal.toFixed(2)+' hours</b><span>Labour value</span><b>'+R(labourCost)+'</b><span>Parts issued</span><b>'+materialRows.length+' issue entries</b></div></div>'+
     '<div class="dg"><div class="p"><b>Record technician labour</b><div class="note">Record actual time spent against this job card. Technicians can record their own time; managers can record time for the team.</div>'+
     '<label class="el">Technician<select id="sfTimeTech" '+(!isMgr()?'disabled':'')+'>'+staffOptions+'</select></label>'+
     '<label class="el">Work date<input id="sfTimeDate" type="date" value="'+today+'"></label><label class="el">Hours worked<input id="sfTimeHours" type="number" min="0.01" max="24" step="0.25" placeholder="e.g. 1.5"></label>'+
     '<label class="el">Hourly rate (optional)<input id="sfTimeRate" type="number" min="0" step="0.01" value="0"></label><label class="el">Work notes<textarea id="sfTimeNotes" placeholder="What work was completed during this time?"></textarea></label>'+
-    '<button class="b" onclick="sfSaveJobTime(\\''+id+'\\')">Save labour entry</button></div>'+
+    '<button class="b" onclick="sfSaveJobTime(\''+id+'\')">Save labour entry</button></div>'+
     '<div class="p"><b>Issue parts and consumables</b><div class="note">Stock is deducted from this site only. The issue is recorded against the job card, with the quantity and cost retained in the audit record.</div>'+
     '<label class="el">Stock item<select id="sfIssueItem">'+itemOptions+'</select></label><label class="el">Quantity<input id="sfIssueQty" type="number" min="0.001" step="0.001" value="1"></label>'+
-    '<label class="el">Issue note<input id="sfIssueNotes" placeholder="e.g. Black toner cartridge"></label><button class="b" onclick="sfIssueJobStock(\\''+id+'\\')">Issue stock to job</button></div></div>'+
+    '<label class="el">Issue note<input id="sfIssueNotes" placeholder="e.g. Black toner cartridge"></label><button class="b" onclick="sfIssueJobStock(\''+id+'\')">Issue stock to job</button></div></div>'+
     '<div class="dg"><div class="p"><b>Labour history</b><div class="g"><div class="k"><b>'+timeTotal.toFixed(2)+'</b><span>Total hours</span></div><div class="k"><b>'+R(labourCost)+'</b><span>Labour value</span></div></div>'+timeHtml+'</div>'+
     '<div class="p"><b>Parts issued to this job</b>'+matHtml+'</div></div>';
 }
@@ -217,12 +217,12 @@ async function sfLogisticsWorkspace(){
     return '<div class="card"><div class="ct"><div>'+esc(x.waybill_no)+' · '+esc(x.recipient_name)+'</div><div class="chips">'+chip(x.status,cap(x.status))+'</div></div>'+
       '<div class="kv"><span>Tracking number</span><b>'+esc(x.tracking_no||x.waybill_no)+'</b><span>From</span><b>'+esc(x.origin_address)+'</b><span>To</span><b>'+esc(x.destination_address)+'</b><span>Parcel</span><b>'+esc(x.package_count)+' package(s) · '+esc(x.parcel_description||'-')+'</b><span>Expected delivery</span><b>'+esc(x.expected_delivery||'-')+'</b></div>'+
       (x.status==='delivered'?'<div class="p"><b>Proof of delivery</b><div class="kv"><span>Received by</span><b>'+esc(x.pod_recipient_name||'-')+'</b><span>Delivered at</span><b>'+esc(x.delivered_at?new Date(x.delivered_at).toLocaleString('en-ZA'):'-')+'</b><span>Reference</span><b>'+esc(x.pod_reference||'-')+'</b><span>Notes</span><b>'+esc(x.pod_notes||'-')+'</b></div></div>':'')+
-      '<div class="ca noprint"><button onclick="sfPrintWaybill(\\''+x.id+'\\')">Print waybill</button><button onclick="sfAddShipmentScan(\\''+x.id+'\\')">Add tracking scan</button><button onclick="sfCapturePOD(\\''+x.id+'\\')">Proof of delivery</button>'+ (isMgr()?'<button class="x2" onclick="sfDeleteShipment(\\''+x.id+'\\')">Delete</button>':'')+'</div>'+
-      '<label class="el noprint">Update shipment status<select onchange="sfUpdateShipmentStatus(\\''+x.id+'\\',this.value)">'+opts+'</select></label>'+
+      '<div class="ca noprint"><button onclick="sfPrintWaybill(\''+x.id+'\')">Print waybill</button><button onclick="sfAddShipmentScan(\''+x.id+'\')">Add tracking scan</button><button onclick="sfCapturePOD(\''+x.id+'\')">Proof of delivery</button>'+ (isMgr()?'<button class="x2" onclick="sfDeleteShipment(\''+x.id+'\')">Delete</button>':'')+'</div>'+
+      '<label class="el noprint">Update shipment status<select onchange="sfUpdateShipmentStatus(\''+x.id+'\',this.value)">'+opts+'</select></label>'+
       '<div class="rl"><b>Tracking history</b></div>'+ (history.map(e=>'<div class="rl">'+esc(new Date(e.event_at).toLocaleString('en-ZA'))+' · <b>'+esc(cap(e.status||e.event_type))+'</b>'+(e.location?' · '+esc(e.location):'')+(e.notes?'<div class="note">'+esc(e.notes)+'</div>':'')+'</div>').join('')||'<div class="note">No scans recorded yet.</div>')+
       '</div>';
   }).join('')||'<div class="p">No consignments yet. Create your first waybill below.</div>';
-  return '<div class="bar2 noprint"><button onclick="goTab(\\'industry_workspace\\')">← Logistics workspace</button><button onclick="goTab(\\'fleet\\')">Fleet & GPS</button><button onclick="goTab(\\'rep\\')">Reports</button></div>'+
+  return '<div class="bar2 noprint"><button onclick="goTab(\'industry_workspace\')">← Logistics workspace</button><button onclick="goTab(\'fleet\')">Fleet & GPS</button><button onclick="goTab(\'rep\')">Reports</button></div>'+
     '<h2>Parcel operations & waybills</h2><div class="note">Create consignments, print waybills, track each depot hand-off and capture the receiving person and proof-of-delivery reference. All records are restricted to this company and site.</div>'+
     '<div class="g"><div class="k"><b>'+SF_LOGISTICS_SHIPMENTS.length+'</b><span>Total consignments</span></div><div class="k"><b>'+count('in_transit')+'</b><span>In transit</span></div><div class="k"><b>'+count('out_for_delivery')+'</b><span>Out for delivery</span></div><div class="k"><b>'+count('delivered')+'</b><span>Delivered</span></div><div class="k"><b>'+count('exception')+'</b><span>Exceptions</span></div></div>'+
     '<details class="p noprint" open><summary>＋ Create consignment / waybill</summary><div class="f" style="margin-top:10px">'+
@@ -241,6 +241,7 @@ async function sfCreateShipment(){
 }
 async function sfUpdateShipmentStatus(id,status){
   if(!SF_SHIPMENT_STATUSES.includes(status))return;
+  if(status==='delivered'){sfCapturePOD(id);return;}
   const {error}=await sb.from('logistics_shipments').update({status,delivered_at:status==='delivered'?new Date().toISOString():null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
   if(error)alert('Could not update shipment: '+error.message);else draw();
 }

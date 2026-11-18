@@ -176,7 +176,7 @@ begin
     new.config_version := 1;
   end if;
   new.updated_at := now();
-  new.updated_by := auth.uid();
+  new.updated_by := case when exists (select 1 from public.profiles where id = auth.uid()) then auth.uid() else null end;
   return new;
 end;
 $$;
@@ -200,7 +200,7 @@ begin
       'configuration_overrides', new.configuration_overrides,
       'config_version', new.config_version
     ),
-    auth.uid(),
+    case when exists (select 1 from public.profiles where id = auth.uid()) then auth.uid() else null end,
     case when tg_op = 'INSERT' then 'Initial company industry profile' else 'Company industry profile updated' end
   );
   return new;

@@ -22,8 +22,8 @@ code{background:var(--bg);padding:2px 6px}
 @media print{#intro{display:none!important}}
 @media screen{
 :root{--ink:#14212b;--ac:#1d6fa5;--ac2:#2b9bd6;--am:#f2a900;--am2:#ffc53d;--ln:#dbe3ec;--bg:#e9eef4;--bad:#dc2626}
-body{font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;min-height:100vh;align-items:center;-webkit-font-smoothing:antialiased;background:radial-gradient(800px 420px at 92% -5%,rgba(43,155,214,.38),transparent 60%),radial-gradient(700px 380px at -10% 102%,rgba(242,169,0,.22),transparent 58%),linear-gradient(150deg,#08121a,#10222e 55%,#1a3b50)}
-.box{border-top:0;border-radius:26px;padding:30px 24px 26px;box-shadow:0 34px 80px rgba(0,0,0,.5);position:relative;overflow:hidden;animation:up .45s ease both}
+body{font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;min-height:100vh;min-height:100svh;align-items:flex-start;-webkit-font-smoothing:antialiased;background:radial-gradient(800px 420px at 92% -5%,rgba(43,155,214,.38),transparent 60%),radial-gradient(700px 380px at -10% 102%,rgba(242,169,0,.22),transparent 58%),linear-gradient(150deg,#08121a,#10222e 55%,#1a3b50)}
+.box{border-top:0;border-radius:26px;padding:30px 24px 26px;box-shadow:0 34px 80px rgba(0,0,0,.5);position:relative;overflow:hidden;animation:up .45s ease both} .box.company-home{max-width:820px;width:100%;margin:auto 0}
 .box::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:linear-gradient(90deg,var(--am),var(--am2),var(--ac2))}
 @keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .box h1{font-size:27px;font-weight:800;letter-spacing:.03em;margin:0 0 4px}
@@ -50,6 +50,7 @@ const err=m=>{$('e').textContent=m||''};
 let mode='login';
 
 function auth(){
+ app.classList.remove('company-home');
  app.innerHTML=head(mode=='login'?'Log in':'Create your account','The ultimate manager’s application.')+
  `<input id="em" type="email" placeholder="Email" autocomplete="email"><input id="pw" type="password" placeholder="Password (8+ characters)" autocomplete="${mode=='login'?'current-password':'new-password'}">
  <div class="err" id="e"></div><button id="go">${mode=='login'?'Log in':'Sign up'}</button>
@@ -62,6 +63,7 @@ function auth(){
   route()}}
 
 function setup(){
+ app.classList.remove('company-home');
  app.innerHTML=head('Set up your account','Create a new company, or join one with an invite code.')+
  `<input id="nm" placeholder="Your full name"><div class="err" id="e"></div>
  <input id="co" placeholder="Company name"><input id="st" placeholder="First site name (e.g. Head office)"><button id="mk">Create company</button>
@@ -72,6 +74,7 @@ function setup(){
   const{error}=await sb.rpc('accept_invite',{p_token:$('tk').value.trim(),p_name:$('nm').value});error?err(error.message):route()}}
 
 async function home(me){
+ app.classList.add('company-home');
  const{data:sites}=await sb.from('sites').select('id,name').order('name');
  const mgr=['owner','manager'].includes(me.role);
  app.innerHTML=head(me.companies.name,`Signed in as ${me.full_name} (${me.role})`)+'<p><a href="maintdesk_app.html"><b>Open the app →</b></a></p>'+

@@ -20,7 +20,7 @@ create table if not exists public.company_conversations (
   unique (id, company_id),
   check ((kind = 'direct' and direct_key is not null) or (kind <> 'direct' and direct_key is null))
 );
-create unique index company_conversations_direct_pair_uq
+create unique index if not exists company_conversations_direct_pair_uq
   on public.company_conversations(company_id, direct_key) where kind = 'direct';
 create index company_conversations_company_last_idx
   on public.company_conversations(company_id, last_message_at desc);

@@ -137,8 +137,9 @@ function sfPrintServiceContract(id){
   sh.innerHTML='<h2>'+esc(CS.label||CO)+' · Service contract</h2><p><b>Contract '+esc(c.number||'')+'</b></p><table class="pt">'+row('Customer',c.customer_name)+row('Type',c.contract_type)+row('Status',c.status)+row('Start date',c.start_date||c.issue_date)+row('End date',c.end_date||c.due_date)+row('Billing cycle',c.billing_cycle)+row('Fee',R(c.monthly_fee||0))+row('Response target',(c.response_hours||0)+' hours')+row('Included pages / month',c.included_pages)+row('Overage rate',R(c.overage_rate||0)+' per page')+'</table><p><b>Covered devices</b></p><div class="box">'+esc((c.covered_devices||[]).join('\n')||'Not specified')+'</div><p><b>Scope and terms</b></p><div class="box">'+esc(c.notes||'')+'</div><p style="margin-top:36px">Customer signature: _____________________ Date: __________</p><p>Service provider: ________________________ Date: __________</p>';
   document.body.classList.add('one');setTimeout(()=>window.print(),120);
 }
-function sfPrintServiceJobCard(id){
+async function sfPrintServiceJobCard(id){
   const r=(LAST&&LAST.rows||[]).find(x=>x.id===id);if(!r)return;
+  const signed=await sb.from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('site_id',site).order('signed_at',{ascending:false}).limit(1);SF_JOB_SIGNOFFS=signed.data||[];const latestSignoff=SF_JOB_SIGNOFFS[0];
   const find=(t,k)=>((LAST&&LAST.refs&&LAST.refs[t])||[]).find(x=>x.id===k);
   const customer=find('customers',r.customer_id),asset=find('assets',r.asset_id),tech=find('profiles',r.assigned_to);
   let sh=$('sheet');if(!sh){sh=document.createElement('div');sh.id='sheet';document.body.appendChild(sh)}
@@ -155,30 +156,34 @@ async function sfOpenJobOperations(id){
   SF_JOB_OPERATIONS_ID=id;cur='job_operations';draw();
 }
 let SF_JOB_OPERATIONS_ID=null;
+let SF_JOB_SIGNOFFS=[];
+let SF_SIGNATURE_STROKES=[];
 async function sfJobOperations(){
   const id=SF_JOB_OPERATIONS_ID;if(!id)return '<h2>Job operations</h2><div class="p">Choose a service job card first.</div>';
-  const [wr,tm,mi,st,lv,ps]=await Promise.all([
+  const [wr,tm,mi,st,lv,ps,sg]=await Promise.all([
     sb.from('work_orders').select('*').eq('id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle(),
     sb.from('work_order_time_entries').select('*').eq('work_order_id',id).eq('site_id',site).order('work_date',{ascending:false}).order('created_at',{ascending:false}),
     sb.from('work_order_material_issues').select('*').eq('work_order_id',id).eq('site_id',site).order('issued_at',{ascending:false}),
     sb.from('stock_items').select('id,name,sku,unit,unit_cost').eq('company_id',me.company_id).order('name'),
     sb.from('stock_levels').select('item_id,on_hand').eq('company_id',me.company_id).eq('site_id',site),
-    sb.from('profiles').select('id,full_name,role').eq('company_id',me.company_id).eq('active',true).order('full_name')
+    sb.from('profiles').select('id,full_name,role').eq('company_id',me.company_id).eq('active',true).order('full_name'),
+    sb.from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('site_id',site).order('signed_at',{ascending:false})
   ]);
   if(wr.error)throw wr.error;if(!wr.data)return '<h2>Job operations</h2><div class="p">This job card is not available at the selected site.</div>';
-  for(const x of [tm,mi,st,lv,ps])if(x.error)throw x.error;
+  for(const x of [tm,mi,st,lv,ps,sg])if(x.error)throw x.error;
   const w=wr.data,items=st.data||[],levels=Object.fromEntries((lv.data||[]).map(x=>[x.item_id,+x.on_hand||0]));
   const staff=(ps.data||[]).filter(p=>isMgr()||p.id===me.id);
   const chosen=staff.some(p=>p.id===w.assigned_to)?w.assigned_to:me.id;
-  const timeRows=tm.data||[],materialRows=mi.data||[];
+  const timeRows=tm.data||[],materialRows=mi.data||[];SF_JOB_SIGNOFFS=sg.data||[];SF_SIGNATURE_STROKES=[];
   const timeTotal=timeRows.reduce((a,x)=>a+(+x.hours||0),0),labourCost=timeRows.reduce((a,x)=>a+(+x.hours||0)*(+x.hourly_rate||0),0);
   const timeHtml=timeRows.map(x=>'<div class="rl"><b>'+esc((ps.data||[]).find(p=>p.id===x.technician_id)?.full_name||'Technician')+'</b> · '+esc(x.work_date)+' · '+esc(x.hours)+' h'+(x.hourly_rate?' · '+R((+x.hours||0)*(+x.hourly_rate||0)):'')+(x.notes?'<div class="note">'+esc(x.notes)+'</div>':'')+'</div>').join('')||'<div class="note">No labour entries recorded yet.</div>';
   const matHtml=materialRows.map(x=>'<div class="rl"><b>'+esc(x.item_name||items.find(i=>i.id===x.stock_item_id)?.name||'Stock item')+'</b> · '+esc(x.quantity)+' '+esc(x.unit||'units')+' · '+R(x.total_cost||0)+'<div class="note">'+esc(new Date(x.issued_at).toLocaleString('en-ZA'))+(x.notes?' · '+esc(x.notes):'')+'</div></div>').join('')||'<div class="note">No stock has been issued to this job card yet.</div>';
+  const signHtml=SF_JOB_SIGNOFFS.map(x=>'<div class="rl"><b>'+esc(x.signer_name)+'</b> · '+esc(new Date(x.signed_at).toLocaleString('en-ZA'))+(x.notes?'<div class="note">'+esc(x.notes)+'</div>':'')+'</div>').join('')||'<div class="note">No customer sign-off has been captured yet.</div>';
   const staffOptions=staff.map(p=>'<option value="'+p.id+'" '+(p.id===chosen?'selected':'')+'>'+esc(p.full_name)+' · '+esc(p.role)+'</option>').join('');
   const itemOptions=items.map(i=>'<option value="'+i.id+'">'+esc(i.name)+(i.sku?' · '+esc(i.sku):'')+' — '+levels[i.id]+' '+esc(i.unit||'units')+' available</option>').join('');
   return '<div class="bar2 noprint"><button onclick="goTab(\'work_orders\')">← Back to job cards</button><button onclick="sfPrintServiceJobCard(\''+id+'\')">Print job card</button></div>'+
     '<h2>Job operations · '+esc(w.job_number||w.title||'Service job')+'</h2>'+
-    '<div class="p"><b>'+esc(w.title||'Service job')+'</b><div class="note">'+esc(w.reported_problem||w.description||'No fault description recorded')+'</div><div class="kv"><span>Status</span><b>'+esc(cap(w.status))+'</b><span>Assigned technician</span><b>'+esc(w.assigned_name||'-')+'</b><span>Labour logged</span><b>'+timeTotal.toFixed(2)+' hours</b><span>Labour value</span><b>'+R(labourCost)+'</b><span>Parts issued</span><b>'+materialRows.length+' issue entries</b></div></div>'+
+    '<div class="p"><b>'+esc(w.title||'Service job')+'</b><div class="note">'+esc(w.reported_problem||w.description||'No fault description recorded')+'</div><div class="kv"><span>Status</span><b>'+esc(cap(w.status))+'</b><span>Assigned technician</span><b>'+esc(w.assigned_name||'-')+'</b><span>Customer approval</span><b>'+esc(cap(w.customer_approval_status||'pending'))+'</b><span>Labour logged</span><b>'+timeTotal.toFixed(2)+' hours</b><span>Labour value</span><b>'+R(labourCost)+'</b><span>Parts issued</span><b>'+materialRows.length+' issue entries</b></div></div>'+
     '<div class="dg"><div class="p"><b>Record technician labour</b><div class="note">Record actual time spent against this job card. Technicians can record their own time; managers can record time for the team.</div>'+
     '<label class="el">Technician<select id="sfTimeTech" '+(!isMgr()?'disabled':'')+'>'+staffOptions+'</select></label>'+
     '<label class="el">Work date<input id="sfTimeDate" type="date" value="'+today+'"></label><label class="el">Hours worked<input id="sfTimeHours" type="number" min="0.01" max="24" step="0.25" placeholder="e.g. 1.5"></label>'+
@@ -188,7 +193,38 @@ async function sfJobOperations(){
     '<label class="el">Stock item<select id="sfIssueItem">'+itemOptions+'</select></label><label class="el">Quantity<input id="sfIssueQty" type="number" min="0.001" step="0.001" value="1"></label>'+
     '<label class="el">Issue note<input id="sfIssueNotes" placeholder="e.g. Black toner cartridge"></label><button class="b" onclick="sfIssueJobStock(\''+id+'\')">Issue stock to job</button></div></div>'+
     '<div class="dg"><div class="p"><b>Labour history</b><div class="g"><div class="k"><b>'+timeTotal.toFixed(2)+'</b><span>Total hours</span></div><div class="k"><b>'+R(labourCost)+'</b><span>Labour value</span></div></div>'+timeHtml+'</div>'+
-    '<div class="p"><b>Parts issued to this job</b>'+matHtml+'</div></div>';
+    '<div class="p"><b>Parts issued to this job</b>'+matHtml+'</div></div>'+
+    '<div class="p"><b>Customer sign-off</b><div class="note">Let the customer sign on this phone or tablet with a finger, stylus or mouse. The signed record is stored against this job card and marks customer approval as approved.</div>'+signHtml+
+    '<label class="el">Customer / authorised receiver name<input id="sfSignerName" maxlength="160" placeholder="Full name"></label>'+
+    '<canvas id="sfSignaturePad" width="900" height="260" aria-label="Customer signature pad" style="display:block;width:100%;height:150px;background:#fff;border:1px solid #9aa7b2;border-radius:8px;touch-action:none"></canvas>'+
+    '<div class="ca noprint"><button onclick="sfClearSignature()">Clear signature</button></div>'+
+    '<label class="el"><span><input id="sfSignerConsent" type="checkbox"> I confirm that the customer has approved the work recorded on this job card.</span></label>'+
+    '<label class="el">Customer comments<textarea id="sfSignerNotes" placeholder="Optional customer comments or conditions"></textarea></label>'+
+    '<button class="b" onclick="sfSaveCustomerSignoff(\''+id+'\')">Save signed customer approval</button></div>';
+}
+function sfInitSignaturePad(){
+  const canvas=$('sfSignaturePad');if(!canvas)return;const ctx=canvas.getContext('2d');if(!ctx)return;
+  const redraw=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.strokeStyle='#15232d';ctx.lineWidth=5;ctx.lineCap='round';ctx.lineJoin='round';SF_SIGNATURE_STROKES.forEach(st=>{if(!st.length)return;ctx.beginPath();ctx.moveTo(st[0].x*canvas.width,st[0].y*canvas.height);st.slice(1).forEach(p=>ctx.lineTo(p.x*canvas.width,p.y*canvas.height));ctx.stroke()})};
+  canvas.onpointerdown=e=>{e.preventDefault();canvas.setPointerCapture(e.pointerId);const r=canvas.getBoundingClientRect(),p={x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))};SF_SIGNATURE_STROKES.push([p]);redraw()};
+  canvas.onpointermove=e=>{if(!e.buttons)return;const r=canvas.getBoundingClientRect(),st=SF_SIGNATURE_STROKES[SF_SIGNATURE_STROKES.length-1];if(!st)return;st.push({x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))});redraw()};
+  canvas.onpointerup=()=>{};canvas.onpointercancel=()=>{};redraw();
+}
+function sfClearSignature(){SF_SIGNATURE_STROKES=[];const c=$('sfSignaturePad');if(c){const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height)}}
+async function sfSaveCustomerSignoff(id){
+  const name=$('sfSignerName').value.trim(),consent=$('sfSignerConsent').checked,strokes=SF_SIGNATURE_STROKES.filter(s=>s.length>1);
+  const points=strokes.reduce((a,s)=>a+s.length,0);
+  if(!name)return alert('Enter the customer’s full name.');
+  if(!consent)return alert('The customer must confirm approval before signing.');
+  if(!strokes.length||points<3)return alert('Capture the customer’s signature in the box first.');
+  if(strokes.length>12||points>1000)return alert('The signature is too detailed. Clear it and sign again.');
+  const {data,error}=await sb.rpc('record_work_order_customer_signoff',{p_work_order_id:id,p_signer_name:name,p_signature_points:strokes,p_notes:$('sfSignerNotes').value.trim()||null,p_customer_consent:true});
+  if(error)return alert('Could not save customer sign-off: '+error.message);
+  alert('Customer approval saved to the job card.');draw();
+}
+function sfSignatureSvg(strokes){
+  if(!Array.isArray(strokes)||!strokes.length)return '';
+  const paths=strokes.map(st=>{if(!Array.isArray(st)||st.length<2)return '';const pts=st.map(p=>{const x=Math.max(0,Math.min(1,Number(p.x)||0))*400,y=Math.max(0,Math.min(1,Number(p.y)||0))*110;return x.toFixed(1)+','+y.toFixed(1)}).join(' ');return '<polyline points="'+pts+'" fill="none" stroke="#15232d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'}).join('');
+  return '<svg viewBox="0 0 400 110" style="width:100%;max-width:400px;height:110px;border:1px solid #aaa">'+paths+'</svg>';
 }
 async function sfSaveJobTime(id){
   const hours=Number($('sfTimeHours').value),rate=Number($('sfTimeRate').value)||0,tech=$('sfTimeTech').value;
@@ -284,7 +320,7 @@ draw=async function(){
   if(cur==='industry_hub'){V.innerHTML='Loading…';try{V.innerHTML=await sfIndustryHub()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
   if(cur==='industry_workspace'){V.innerHTML='Loading…';try{V.innerHTML=await sfIndustryWorkspace()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
   if(cur==='service_contracts'){V.innerHTML='Loading…';try{V.innerHTML=await sfServiceContracts()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
-  if(cur==='job_operations'){V.innerHTML='Loading…';try{V.innerHTML=await sfJobOperations()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
+  if(cur==='job_operations'){V.innerHTML='Loading…';try{V.innerHTML=await sfJobOperations();sfInitSignaturePad()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
   if(cur==='logistics_ops'){V.innerHTML='Loading…';try{V.innerHTML=await sfLogisticsWorkspace()}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}return}
   return SF_BASE_DRAW();
 };

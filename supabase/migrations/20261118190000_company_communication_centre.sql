@@ -22,9 +22,9 @@ create table if not exists public.company_conversations (
 );
 create unique index if not exists company_conversations_direct_pair_uq
   on public.company_conversations(company_id, direct_key) where kind = 'direct';
-create index company_conversations_company_last_idx
+create index if not exists company_conversations_company_last_idx
   on public.company_conversations(company_id, last_message_at desc);
-create index company_conversations_created_by_idx
+create index if not exists company_conversations_created_by_idx
   on public.company_conversations(created_by);
 
 create table if not exists public.conversation_members (
@@ -38,11 +38,11 @@ create table if not exists public.conversation_members (
   foreign key (conversation_id, company_id)
     references public.company_conversations(id, company_id) on delete cascade
 );
-create index conversation_members_user_idx
+create index if not exists conversation_members_user_idx
   on public.conversation_members(company_id, user_id, conversation_id);
-create index conversation_members_conversation_company_idx
+create index if not exists conversation_members_conversation_company_idx
   on public.conversation_members(conversation_id, company_id);
-create index conversation_members_user_fk_idx
+create index if not exists conversation_members_user_fk_idx
   on public.conversation_members(user_id);
 
 create table if not exists public.messages (
@@ -55,13 +55,13 @@ create table if not exists public.messages (
   foreign key (conversation_id, company_id)
     references public.company_conversations(id, company_id) on delete cascade
 );
-create index messages_conversation_created_idx
+create index if not exists messages_conversation_created_idx
   on public.messages(conversation_id, created_at desc);
-create index messages_company_created_idx
+create index if not exists messages_company_created_idx
   on public.messages(company_id, created_at desc);
-create index messages_conversation_company_fk_idx
+create index if not exists messages_conversation_company_fk_idx
   on public.messages(conversation_id, company_id);
-create index messages_sender_fk_idx
+create index if not exists messages_sender_fk_idx
   on public.messages(sender_id);
 
 alter table public.company_conversations enable row level security;

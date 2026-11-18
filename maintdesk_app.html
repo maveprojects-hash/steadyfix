@@ -326,7 +326,7 @@ async function industryProfile(){
   (examples.length?'<div class="note"><b>Typical operations:</b> '+examples.map(esc).join(' · ')+'</div>':'')+
   (focus.length?'<div class="note"><b>Operational focus areas:</b> '+focus.map(esc).join(' · ')+'</div>':'')+
   '<div class="note">Configuration version '+esc(p.config_version||1)+' · Changes are recorded in the company profile history.</div></div>'+
-  '<div class="p"><b>Recent profile history</b>'+historyHtml+'</div>';
+  '<div class="p"><b>Workspace customizations</b><div class="note">Approved iAssistant changes can hide shortcuts your company does not use or rename them to match your own terminology. The underlying shared CMMS records and permissions remain unchanged.</div><div class="rl"><b>Hidden shortcuts:</b> '+esc((p.configuration_overrides?.disabled_modules||[]).join(', ')||'None')+'</div><div class="rl"><b>Custom labels:</b> '+esc(Object.entries(p.configuration_overrides?.module_labels||{}).map(([k,v])=>k+' → '+v).join(' · ')||'None')+'</div><button class="b" onclick="sfResetIndustryCustomizations()">Restore default workspace</button></div>'+\n  '<div class="p"><b>Recent profile history</b>'+historyHtml+'</div>';
 }
 
 const yr=new Date().getFullYear(), today=new Date().toISOString().slice(0,10);

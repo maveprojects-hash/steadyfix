@@ -21,6 +21,10 @@ create index notifications_unread_user_idx
   on public.notifications (user_id, created_at desc)
   where read_at is null;
 
+-- Support the app's site-scoped work-order list and assignee lookups.
+create index work_orders_site_due_idx on public.work_orders (site_id, due_date);
+create index work_orders_assigned_to_idx on public.work_orders (assigned_to) where assigned_to is not null;
+
 alter table public.notifications enable row level security;
 revoke all on table public.notifications from anon, public;
 grant select on table public.notifications to authenticated;

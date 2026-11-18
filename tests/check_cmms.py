@@ -96,7 +96,6 @@ for marker in [
     "company_conversations",
     "conversation_members",
     "startCommsRealtime",
-    "message_received",
     "Seen by everyone",
 ]:
     if marker not in comm_js:
@@ -113,6 +112,7 @@ for marker in [
     "private.create_company_conversation_impl",
     "security invoker",
     "company_announcement",
+    "message_received",
     "supabase_realtime",
 ]:
     if marker.lower() not in comm_sql:

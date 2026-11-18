@@ -12,6 +12,8 @@ on:
   push:
     paths:
       - "maintdesk_app.html"
+      - "communication.js"
+      - "communication.css"
       - "supabase/migrations/**"
       - "tests/**"
       - ".github/workflows/cmms-quality.yml"

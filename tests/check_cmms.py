@@ -368,4 +368,29 @@ unresolved_routes = sorted(industry_routes - base_modules - custom_views)
 if unresolved_routes:
     raise SystemExit(f"Industry workspace shortcuts have no registered destination: {unresolved_routes}")
 
+
+# Logistics proof of delivery must include a receiver signature and consent.
+# The app and RPC both cap signature stroke and point counts.
+pod_migration = next((root / "supabase" / "migrations").glob("*_logistics_pod_signoffs.sql"))
+pod_sql = pod_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "create table if not exists public.logistics_pod_signoffs",
+    "record_logistics_pod_signoff_impl",
+    "security invoker",
+    "receiver confirmation is required",
+    "a receiver signature is required",
+    "status='delivered'",
+]:
+    if marker.lower() not in pod_sql:
+        raise SystemExit(f"Missing signed logistics POD safeguard: {marker}")
+for marker in [
+    "sfLogisticsPODPage",
+    "sfInitPODSignaturePad",
+    "sfSaveLogisticsPOD",
+    "record_logistics_pod_signoff",
+    "logistics_pod_signoffs",
+]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Missing signed logistics POD UI: {marker}")
+
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")

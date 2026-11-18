@@ -33,6 +33,8 @@ async function sfIndustryHub(){
   return html+'</div>';
 }
 
+const SF_CONFIGURABLE_MODULES=new Set(['work_orders','assets','service_contracts','stock_items','purchase_orders','customers','inv','suppliers','pm_schedules','chk','fleet','rep','ohs','damage_reports','shutdowns','logistics_ops']);
+function sfIndustryModuleOverrides(){const o=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.configuration_overrides||{};return{disabled:new Set(Array.isArray(o.disabled_modules)?o.disabled_modules:[]),labels:o.module_labels&&typeof o.module_labels==='object'?o.module_labels:{}}}
 function sfIndustryModules(slug){
   const all={
     automation:[['🧰','Service job cards','Create service calls, assign technicians, record labour, progress, faults and parts used','work_orders'],['🖨️','Customer equipment','Register copiers and devices, serial numbers and page meter readings','assets'],['📑','Service contracts','Manage covered devices, service levels, meter allowances and contract dates','service_contracts'],['📦','Stock & consumables','Track toner, drums, staples, spares and reorder levels','stock_items'],['🛒','Parts purchasing','Create supplier purchase orders','purchase_orders'],['👥','Customers','Manage customer accounts and service contacts','customers'],['💳','Quotes & invoicing','Prepare quotes, invoices and customer billing','inv'],['🤝','Suppliers','Manage parts suppliers and service partners','suppliers'],['🔁','Preventive maintenance','Schedule recurring device servicing','pm_schedules'],['☑️','Service checklists','Use repeatable callout, installation and service checklists','chk']],
@@ -57,7 +59,9 @@ async function sfIndustryWorkspace(){
   const focus=(ind.default_configuration&&ind.default_configuration.focus_areas)||[];
   if(focus.length)html+='<div class="rl"><b>Industry focus:</b> '+esc(focus.join(' · '))+'</div>';
   html+='</div><div class="dg">';
-  sfIndustryModules(slug).forEach(m=>{html+='<div class="card"><div class="ct"><div>'+m[0]+' '+esc(m[1])+'</div></div><div class="note">'+esc(m[2])+'</div><div class="ca"><button class="b" onclick="goTab(\''+m[3]+'\')">Open</button></div></div>'});
+  const overrides=sfIndustryModuleOverrides();
+  sfIndustryModules(slug).filter(m=>!overrides.disabled.has(m[3])).forEach(m=>{const label=overrides.labels[m[3]]||m[1];html+='<div class="card"><div class="ct"><div>'+m[0]+' '+esc(label)+'</div></div><div class="note">'+esc(m[2])+'</div><div class="ca"><button class="b" onclick="goTab(\''+m[3]+'\')">Open</button></div></div>'});
+  if(!sfIndustryModules(slug).some(m=>!overrides.disabled.has(m[3])))html+='<div class="p">All workspace shortcuts are currently hidden. A company manager can restore them in Industry profile.</div>';
   html+='</div>';
   if(slug==='logistics-transport')html+='<div class="p"><b>Connected logistics workflow</b><div class="note">Create a consignment, issue its waybill, record tracking scans as it moves through depots, and capture the receiving person and proof-of-delivery reference at delivery. Fleet GPS and vehicle maintenance remain available alongside parcel operations.</div></div>';
   return html;
@@ -96,6 +100,8 @@ async function sfServiceContracts(){
   html+='</div><div class="ca"><button class="b" onclick="sfSaveServiceContract()">Save contract</button><button onclick="sfResetServiceContract()">Cancel</button></div></details>'+cards;
   return html;
 }
+
+async function sfResetIndustryCustomizations(){if(!isMgr()||!confirm('Restore the default industry workspace shortcuts and labels?'))return;const{error}=await sb.from('company_industry_profiles').update({configuration_overrides:{}}).eq('company_id',me.company_id);if(error)return alert('Could not reset customizations: '+error.message);await loadIndustryProfile();await draw()}
 
 async function sfSaveServiceContract(){
   const customerId=$('sfContractCustomer').value,customer=SF_SERVICE_CUSTOMERS.find(c=>c.id===customerId);

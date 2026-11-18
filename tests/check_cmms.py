@@ -285,6 +285,9 @@ for marker in [
     "sfCapturePOD",
     "sfAddShipmentScan",
     "sfPrintWaybill",
+    "SF_CONFIGURABLE_MODULES",
+    "sfIndustryModuleOverrides",
+    "sfResetIndustryCustomizations",
 ]:
     if marker not in workspace_code:
         raise SystemExit(f"Missing industry operations UI capability: {marker}")
@@ -306,5 +309,25 @@ for marker in [
 ]:
     if marker not in private_stock_sql:
         raise SystemExit(f"Missing private stock RPC security boundary: {marker}")
+
+
+for marker in [
+    "industry_config",
+    "sfResetIndustryCustomizations",
+    "SF_CONFIGURABLE_MODULES",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing approved industry customization UI: {marker}")
+
+assistant_customization = assistant_source.read_text(encoding="utf-8")
+for marker in [
+    "propose_industry_customization",
+    "CONFIGURABLE_MODULES",
+    "prof.data.role",
+    "only a company owner or manager",
+    "Workspace customization queued for owner/manager approval",
+]:
+    if marker not in assistant_customization:
+        raise SystemExit(f"Missing iAssistant industry customization safeguard: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")

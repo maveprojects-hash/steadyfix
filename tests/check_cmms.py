@@ -289,4 +289,22 @@ for marker in [
     if marker not in workspace_code:
         raise SystemExit(f"Missing industry operations UI capability: {marker}")
 
+
+time_guard_migration = next((root / "supabase" / "migrations").glob("*_restrict_technician_job_time_entries.sql"))
+time_guard_sql = time_guard_migration.read_text(encoding="utf-8").lower()
+if "technicians may only record labour against job cards assigned to them" not in time_guard_sql:
+    raise SystemExit("Missing technician-to-assigned-job labour restriction")
+
+private_stock_migration = next((root / "supabase" / "migrations").glob("*_private_stock_issue_implementation.sql"))
+private_stock_sql = private_stock_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "create or replace function private.issue_work_order_stock_impl",
+    "security definer",
+    "create or replace function public.issue_work_order_stock",
+    "security invoker",
+    "grant execute on function private.issue_work_order_stock_impl",
+]:
+    if marker not in private_stock_sql:
+        raise SystemExit(f"Missing private stock RPC security boundary: {marker}")
+
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")

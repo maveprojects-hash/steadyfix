@@ -200,4 +200,11 @@ for marker in [
     if marker not in assistant_code:
         raise SystemExit(f"Missing server-side company industry context safeguard: {marker}")
 
+industry_priority_migration = next((root / "supabase" / "migrations").glob("*_industry_dashboard_priorities.sql"))
+priority_sql = industry_priority_migration.read_text(encoding="utf-8").lower()
+if "dashboard_priority_tabs" not in priority_sql or "property-management-facilities" not in priority_sql:
+    raise SystemExit("Missing industry-specific dashboard priorities")
+if "priorityTabs" not in html or "industryBanner" not in html:
+    raise SystemExit("Industry templates are not personalising dashboard section order")
+
 print("CMMS syntax, notifications, industry profiles and tenant safeguards: PASS")

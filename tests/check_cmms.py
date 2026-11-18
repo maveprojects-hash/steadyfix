@@ -5,12 +5,12 @@ import tempfile
 
 root = Path(__file__).resolve().parents[1]
 html = (root / "maintdesk_app.html").read_text(encoding="utf-8")
-scripts = re.findall(r"<script(?![^>]*\\bsrc=)[^>]*>(.*?)</script>", html, re.I | re.S)
+scripts = re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.I | re.S)
 if not scripts:
     raise SystemExit("No inline CMMS application script found")
 
 with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8") as f:
-    f.write("\\n".join(scripts))
+    f.write("\n".join(scripts))
     f.flush()
     subprocess.run(["node", "--check", f.name], check=True)
 

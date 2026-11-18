@@ -207,4 +207,49 @@ if "dashboard_priority_tabs" not in priority_sql or "property-management-facilit
 if "priorityTabs" not in html or "industryBanner" not in html:
     raise SystemExit("Industry templates are not personalising dashboard section order")
 
+
+# Industry workspace entry point and Automation service operations.
+industry_workspaces = root / "industry_workspaces.js"
+if not industry_workspaces.exists():
+    raise SystemExit("Missing industry workspace client module")
+subprocess.run(["node", "--check", str(industry_workspaces)], check=True)
+for marker in [
+    'onclick="openIndustryHub()"',
+    'industry_workspaces.js',
+    'hidden aria-hidden="true"',
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing industry workspace entry point: {marker}")
+workspace_code = industry_workspaces.read_text(encoding="utf-8")
+for marker in [
+    "industry_hub",
+    "industry_workspace",
+    "chooseIndustryWorkspace",
+    "Automation service job cards",
+    "customer_approval_status",
+    "sfPrintServiceJobCard",
+    "sfServiceContracts",
+    "service_contract",
+    "parcel tracking",
+]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Missing industry workspace capability: {marker}")
+
+automation_migration = next((root / "supabase" / "migrations").glob("*_automation_service_operations.sql"))
+automation_sql = automation_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "add column if not exists job_number",
+    "add column if not exists customer_id",
+    "add column if not exists labour_hours",
+    "add column if not exists meter_reading",
+    "add column if not exists customer_approval_status",
+    "add column if not exists covered_devices",
+    "customers_service_team_read",
+    "validate_automation_service_links",
+    "work_orders_company_job_number_uidx",
+    "service_contract",
+]:
+    if marker.lower() not in automation_sql:
+        raise SystemExit(f"Missing Automation service schema safeguard: {marker}")
+
 print("CMMS syntax, notifications, industry profiles and tenant safeguards: PASS")

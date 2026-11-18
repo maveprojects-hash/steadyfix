@@ -221,6 +221,8 @@ begin
 end;
 $$;
 
+revoke all on function public.validate_company_industry_profile() from public, anon, authenticated;
+revoke all on function public.version_company_industry_profile() from public, anon, authenticated;
 revoke all on function public.audit_company_industry_profile() from public, anon, authenticated;
 revoke all on function public.create_company_industry_profile() from public, anon, authenticated;
 

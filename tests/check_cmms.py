@@ -130,6 +130,12 @@ for marker in [
     "left:50%;right:auto",
     "bottom:calc(16px + env(safe-area-inset-bottom,0px))",
     "transform:translateX(-50%)",
+    "body>#aib.sf-ai-floating",
+    "z-index:2147483000!important",
+    "position:fixed!important",
+    "bottom:calc(16px + env(safe-area-inset-bottom,0px))!important",
+    "b.className='sf-ai-floating'",
+    "document.body.appendChild(b)",
 ]:
     if marker not in html:
         raise SystemExit(f"Missing fixed assistant positioning: {marker}")

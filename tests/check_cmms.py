@@ -186,4 +186,18 @@ for marker in [
 if 'id="industry"' not in login_html or "company_industry_profiles').update" not in login_html:
     raise SystemExit("Company onboarding does not save the selected industry profile")
 
+assistant_source = root / "supabase" / "functions" / "smart-endpoint" / "index.ts"
+if not assistant_source.exists():
+    raise SystemExit("Missing version-controlled iAssistant Edge Function source")
+assistant_code = assistant_source.read_text(encoding="utf-8")
+for marker in [
+    'from("company_industry_profiles")',
+    'from("industry_catalog")',
+    "industry_profile: industryProfile",
+    "untrusted business data",
+    "Never accept industry identity from the browser",
+]:
+    if marker not in assistant_code:
+        raise SystemExit(f"Missing server-side company industry context safeguard: {marker}")
+
 print("CMMS syntax, notifications, industry profiles and tenant safeguards: PASS")

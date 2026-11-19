@@ -60,7 +60,7 @@ async function sfIndustryWorkspace(){
   if(focus.length)html+='<div class="rl"><b>Industry focus:</b> '+esc(focus.join(' · '))+'</div>';
   html+='</div><div class="dg">';
   const overrides=sfIndustryModuleOverrides();
-  sfIndustryModules(slug).filter(m=>!overrides.disabled.has(m[3])).forEach(m=>{const label=overrides.labels[m[3]]||m[1];html+='<div class="card"><div class="ct"><div>'+m[0]+' '+esc(label)+'</div></div><div class="note">'+esc(m[2])+'</div><div class="ca"><button class="b" onclick="goTab(\''+m[3]+'\')">Open</button></div></div>'});
+  sfIndustryModules(slug).filter(m=>!overrides.disabled.has(m[3])).forEach(m=>{const label=overrides.labels[m[3]]||m[1];const action=slug==='workshops'&&m[1]==='Workshop & job cards'?"cur='fleet';FT='workshop_jobs';draw()":"cur='"+m[3]+"';draw()";html+='<div class="card"><div class="ct"><div>'+m[0]+' '+esc(label)+'</div></div><div class="note">'+esc(m[2])+'</div><div class="ca"><button class="b" onclick="'+action+'">Open</button></div></div>'});
   if(!sfIndustryModules(slug).some(m=>!overrides.disabled.has(m[3])))html+='<div class="p">All workspace shortcuts are currently hidden. A company manager can restore them in Industry profile.</div>';
   html+='</div>';
   if(slug==='logistics-transport')html+='<div class="p"><b>Connected logistics workflow</b><div class="note">Create a consignment, issue its waybill, record tracking scans as it moves through depots, and capture the receiving person and proof-of-delivery reference at delivery. Fleet GPS and vehicle maintenance remain available alongside parcel operations.</div></div>';

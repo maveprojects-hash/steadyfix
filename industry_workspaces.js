@@ -139,7 +139,7 @@ function sfPrintServiceContract(id){
 }
 async function sfPrintServiceJobCard(id){
   const r=(LAST&&LAST.rows||[]).find(x=>x.id===id);if(!r)return;
-  const signed=await sb.from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('site_id',site).order('signed_at',{ascending:false}).limit(1);SF_JOB_SIGNOFFS=signed.data||[];const latestSignoff=SF_JOB_SIGNOFFS[0];
+  const signed=await sb.from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site).order('signed_at',{ascending:false}).limit(1);SF_JOB_SIGNOFFS=signed.data||[];const latestSignoff=SF_JOB_SIGNOFFS[0];
   const find=(t,k)=>((LAST&&LAST.refs&&LAST.refs[t])||[]).find(x=>x.id===k);
   const customer=find('customers',r.customer_id),asset=find('assets',r.asset_id),tech=find('profiles',r.assigned_to);
   let sh=$('sheet');if(!sh){sh=document.createElement('div');sh.id='sheet';document.body.appendChild(sh)}
@@ -162,8 +162,8 @@ async function sfJobOperations(){
   const id=SF_JOB_OPERATIONS_ID;if(!id)return '<h2>Job operations</h2><div class="p">Choose a service job card first.</div>';
   const [wr,tm,mi,st,lv,ps,sg]=await Promise.all([
     sb.from('work_orders').select('*').eq('id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle(),
-    sb.from('work_order_time_entries').select('*').eq('work_order_id',id).eq('site_id',site).order('work_date',{ascending:false}).order('created_at',{ascending:false}),
-    sb.from('work_order_material_issues').select('*').eq('work_order_id',id).eq('site_id',site).order('issued_at',{ascending:false}),
+    sb.from('work_order_time_entries').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site).order('work_date',{ascending:false}).order('created_at',{ascending:false}),
+    sb.from('work_order_material_issues').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site).order('issued_at',{ascending:false}),
     sb.from('stock_items').select('id,name,sku,unit,unit_cost').eq('company_id',me.company_id).order('name'),
     sb.from('stock_levels').select('item_id,on_hand').eq('company_id',me.company_id).eq('site_id',site),
     sb.from('profiles').select('id,full_name,role').eq('company_id',me.company_id).eq('active',true).order('full_name'),

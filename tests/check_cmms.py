@@ -209,6 +209,7 @@ if "priorityTabs" not in html or "industryBanner" not in html:
 
 
 # Job labour/material/signoff history must be explicitly company/site scoped in client queries.
+industry_code = (root / "industry_workspaces.js").read_text(encoding="utf-8")
 for marker in [
     ".from('work_order_time_entries').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site)",
     ".from('work_order_material_issues').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site)",
@@ -218,7 +219,6 @@ for marker in [
         raise SystemExit(f"Missing company/site filter on industry job-history query: {marker}")
 
 # Industry service-contract edits and deletes must be scoped to company and active site.
-industry_code = (root / "industry_workspaces.js").read_text(encoding="utf-8")
 for marker in [
     ".update(row).eq('id',SF_EDITING_CONTRACT_ID).eq('kind','service_contract').eq('company_id',me.company_id).eq('site_id',site)",
     ".delete().eq('id',id).eq('kind','service_contract').eq('company_id',me.company_id).eq('site_id',site)",

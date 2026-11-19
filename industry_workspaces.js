@@ -302,7 +302,7 @@ async function sfLogisticsPODPage(){
   const id=SF_POD_SHIPMENT_ID;if(!id)return '<h2>Proof of delivery</h2><div class="p">Choose a consignment first.</div>';
   const [sr,pr]=await Promise.all([
     sb.from('logistics_shipments').select('*').eq('id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle(),
-    sb.from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('site_id',site).maybeSingle()
+    sb.from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle()
   ]);
   if(sr.error)throw sr.error;if(pr.error)throw pr.error;if(!sr.data)return '<h2>Proof of delivery</h2><div class="p">This consignment is not available at this site.</div>';
   const x=sr.data,p=pr.data;

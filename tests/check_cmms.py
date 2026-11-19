@@ -388,6 +388,13 @@ if unresolved_routes:
 
 
 # Logistics proof of delivery must include a receiver signature and consent.
+# Signed POD reads must be explicitly company/site scoped in the client.
+for marker in [
+    ".eq('shipment_id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle()",
+]:
+    if marker not in industry_code:
+        raise SystemExit(f"Unscoped logistics POD read detected: {marker}")
+
 # The app and RPC both cap signature stroke and point counts.
 pod_migration = next((root / "supabase" / "migrations").glob("*_logistics_pod_signoffs.sql"))
 pod_sql = pod_migration.read_text(encoding="utf-8").lower()

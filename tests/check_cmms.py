@@ -338,6 +338,16 @@ for marker in [
         raise SystemExit(f"Missing approved industry customization UI: {marker}")
 
 assistant_customization = assistant_source.read_text(encoding="utf-8")
+# iAssistant data access must be explicitly tenant-scoped; site-bound records also
+# carry the active-site filter. Company memory reads and deletes are tenant-scoped.
+for marker in [
+    '.select("*").limit(200).eq("company_id", ctx.company_id)',
+    'if (sch.site && ctx.site_id) q = q.eq("site_id", ctx.site_id);',
+    '.delete().eq("id", String(input.id)).eq("company_id", ctx.company_id)',
+    '.select("id,note").eq("company_id", company_id).order("created_at"',
+]:
+    if marker not in assistant_customization:
+        raise SystemExit(f"Missing iAssistant company-scope safeguard: {marker}")
 # Approved iAssistant updates carry explicit tenant/site filters in the client query.
 for marker in [
     ".eq('id',p.rowId).eq('company_id',me.company_id)",

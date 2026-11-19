@@ -200,6 +200,21 @@ for marker in [
     if marker not in assistant_code:
         raise SystemExit(f"Missing server-side company industry context safeguard: {marker}")
 
+# iAssistant tenant scope: server search/memory and browser memory operations stay in the current company.
+for marker in [
+    'select("*").eq("company_id", ctx.company_id).limit(200)',
+    'select("id,note").eq("company_id", company_id).order("created_at", { ascending: true })',
+    'delete().eq("id", String(input.id)).eq("company_id", ctx.company_id)',
+]:
+    if marker not in assistant_code:
+        raise SystemExit(f"Missing assistant company-scope safeguard: {marker}")
+for marker in [
+    "select('id,note').eq('company_id',me.company_id)",
+    "delete().eq('id',id).eq('company_id',me.company_id)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing assistant UI company-scope safeguard: {marker}")
+
 industry_priority_migration = next((root / "supabase" / "migrations").glob("*_industry_dashboard_priorities.sql"))
 priority_sql = industry_priority_migration.read_text(encoding="utf-8").lower()
 if "dashboard_priority_tabs" not in priority_sql or "property-management-facilities" not in priority_sql:

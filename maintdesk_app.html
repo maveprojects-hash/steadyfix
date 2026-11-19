@@ -516,7 +516,7 @@ async function adjStock(rid,d){const nv=Math.max(0,(+(LAST.oh[rid]||0))+d),{erro
 
 async function mod(id){
  const m=MOD[id], refs={};
- for(const f of m.f)if(f.t=='r'&&!refs[f.o[0]]){if(id=='work_orders'&&f.o[0]=='profiles'){const{data:ps,error:pe}=await sb.from('profiles').select('id,full_name,role').eq('active',true).order('full_name');if(pe)throw pe;const{data:us,error:ue}=await sb.from('user_sites').select('user_id').eq('site_id',site);if(ue)throw ue;const allowed=new Set((us||[]).map(x=>x.user_id));refs[f.o[0]]=(ps||[]).filter(p=>['owner','manager'].includes(p.role)||allowed.has(p.id));}else{let q=sb.from(f.o[0]).select('id,'+f.o[1]).order(f.o[1]);refs[f.o[0]]=(await q).data||[]}}
+ for(const f of m.f)if(f.t=='r'&&!refs[f.o[0]]){if(id=='work_orders'&&f.o[0]=='profiles'){const{data:ps,error:pe}=await sb.from('profiles').select('id,full_name,role').eq('company_id',me.company_id).eq('active',true).order('full_name');if(pe)throw pe;const{data:us,error:ue}=await sb.from('user_sites').select('user_id').eq('site_id',site);if(ue)throw ue;const allowed=new Set((us||[]).map(x=>x.user_id));refs[f.o[0]]=(ps||[]).filter(p=>['owner','manager'].includes(p.role)||allowed.has(p.id));}else{let q=sb.from(f.o[0]).select('id,'+f.o[1]).order(f.o[1]);refs[f.o[0]]=(await q).data||[]}}
  let q=sb.from(id).select('*').order('created_at',{ascending:false}).order(m.o||m.f[0].k,{ascending:!m.d}).order('id',{ascending:false});if(m.s)q=q.eq('site_id',site);
  const pr=PER[id]||{p:'all',d:''};let plabel='';
  if(m.df&&pr.p!='all'){const R=rng(pr.p,pr.d||today);q=m.dt?q.gte(m.df,R.a+'T00:00:00').lte(m.df,R.b+'T23:59:59'):q.gte(m.df,R.a).lte(m.df,R.b);plabel=pr.p=='daily'?dd(R.a):dd(R.a)+' to '+dd(R.b)}

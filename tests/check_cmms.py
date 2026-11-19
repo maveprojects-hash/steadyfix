@@ -455,3 +455,43 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+
+# Quote/invoice document pipeline regression guards. These are source-level checks,
+# not a substitute for a real browser/PDF text-render test; they ensure the
+# generation path keeps its fail-safe checks and that all layouts render into
+# the same printable root.
+app_doc = html
+for marker in [
+    "function docHtml(d,c,o)",
+    "const L_classic=",
+    "const L_modern=",
+    "const L_minimal=",
+    "const L_bold=",
+    "async function shareHtml(html,fname,subject,text,to)",
+    "await loadPdfLib()",
+    "typeof window.html2pdf!=='function'",
+    "el.querySelector('.dx')",
+    "docNode.textContent",
+    "getBoundingClientRect()",
+    "outputPdf('blob')",
+    "blob.size<1500",
+    "sheetPrint(html)",
+    "function docSheet(d)",
+    "async function mailDoc(id)",
+    "function printDoc(id)",
+]:
+    if marker not in app_doc:
+        raise SystemExit(f"Missing quote/invoice PDF pipeline safeguard: {marker}")
+
+# All four document layout templates must expose a .dx printable root and remain
+# registered with docHtml; print/share paths must both consume docSheet().
+doc_layout_start = app_doc.index("const L_classic=")
+doc_layout_end = app_doc.index("// ---------- preview, PDF and sharing", doc_layout_start)
+doc_layout_source = app_doc[doc_layout_start:doc_layout_end]
+if doc_layout_source.count('class="dx"') < 3:
+    raise SystemExit("Expected printable .dx roots in the classic, minimal and bold layouts")
+if "class=\"dx\" style=\"padding:0\"" not in doc_layout_source:
+    raise SystemExit("Modern layout is missing its printable .dx root")
+if "function docSheet(d){const c=CUST.find(x=>x.id==d.customer_id)||{};return docHtml(d,c)}" not in app_doc:
+    raise SystemExit("Quote/invoice print and share document builder changed unexpectedly")

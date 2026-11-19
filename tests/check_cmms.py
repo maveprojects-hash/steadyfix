@@ -28,6 +28,7 @@ required_ui = [
     "notificationEffectSettings",
     "steadyfix.cmms.notification-preferences",
     "row.created_by=me.id",
+    "sb.from('profiles').select('id,full_name,role').eq('company_id',me.company_id).eq('active',true).order('full_name')",
 ]
 for marker in required_ui:
     if marker not in html:

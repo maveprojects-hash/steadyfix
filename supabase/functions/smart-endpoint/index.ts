@@ -222,6 +222,21 @@ Deno.serve(async (req) => {
     const company_id = prof.data && prof.data.company_id;
     if (!company_id) return json({ error: "No company found for this login." }, 400);
 
+    // Treat the active site sent by the browser as untrusted: confirm it belongs
+    // to this company and that non-manager users are explicitly assigned to it.
+    const requestedSiteId = typeof body.site_id === "string" ? body.site_id : null;
+    let verifiedSite = null;
+    if (requestedSiteId) {
+      const siteResult = await sb.from("sites").select("id,name").eq("id", requestedSiteId).eq("company_id", company_id).maybeSingle();
+      if (siteResult.error) return json({ error: "Unable to validate active site access." }, 403);
+      if (!siteResult.data) return json({ error: "Selected site is not part of your company." }, 403);
+      verifiedSite = siteResult.data;
+      if (!["owner", "manager"].includes(String(prof.data.role || "").toLowerCase())) {
+        const membership = await sb.from("user_sites").select("user_id").eq("site_id", verifiedSite.id).eq("user_id", user.id).maybeSingle();
+        if (membership.error || !membership.data) return json({ error: "You do not have access to this site." }, 403);
+      }
+    }
+
     const start = new Date(); start.setUTCHours(0, 0, 0, 0);
     const used = await sb.from("assistant_usage").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", start.toISOString());
     if ((used.count || 0) >= DAILY_LIMIT) return json({ reply: `You have used today's ${DAILY_LIMIT} assistant messages. It resets tomorrow.`, proposals: [], remembered: [] });
@@ -243,7 +258,7 @@ Deno.serve(async (req) => {
       configuration_overrides: industryProfileRow.configuration_overrides || {},
       config_version: industryProfileRow.config_version,
     } : null;
-    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: body.site_id || null, site_name: String(body.site_name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
+    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: verifiedSite?.id || null, site_name: String(verifiedSite?.name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
     const st = { sb, schema, ctx, memory: mem.data || [], proposals: [], remembered: [] };
 
     const convo = messages.map((m) => ({ role: m.role, content: m.content }));

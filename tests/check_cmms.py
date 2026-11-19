@@ -454,6 +454,31 @@ for marker in [
     if marker not in workspace_code:
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
+# Communication centre regression checks: company conversations and message access are
+# membership-scoped, and the activity tab must render a real empty-state when no alerts exist.
+communication_source = (root / "communication.js").read_text(encoding="utf-8")
+for marker in [
+    '.eq(\'company_id\', me.company_id)',
+    '.in(\'conversation_id\', ids)',
+    "sb.rpc('create_company_conversation'",
+    "company_id:me.company_id",
+    "rows.length ? rows.join('')",
+    "You are all caught up. No activity yet.",
+]:
+    if marker not in communication_source:
+        raise SystemExit(f"Missing communication-centre workflow safeguard: {marker}")
+communication_migration = next((root / "supabase" / "migrations").glob("*_company_communication_centre.sql"))
+communication_sql = communication_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "enable row level security",
+    "messages_member_read",
+    "messages_member_insert",
+    "private.can_post_to_conversation",
+    "every participant must be an active member of your company",
+]:
+    if marker.lower() not in communication_sql:
+        raise SystemExit(f"Missing company communication RLS safeguard: {marker}")
+
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
 
 

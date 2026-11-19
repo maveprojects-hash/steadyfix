@@ -209,6 +209,7 @@ if "priorityTabs" not in html or "industryBanner" not in html:
 
 
 # Industry service-contract edits and deletes must be scoped to company and active site.
+industry_code = (root / "industry_workspaces.js").read_text(encoding="utf-8")
 for marker in [
     ".update(row).eq('id',SF_EDITING_CONTRACT_ID).eq('kind','service_contract').eq('company_id',me.company_id).eq('site_id',site)",
     ".delete().eq('id',id).eq('kind','service_contract').eq('company_id',me.company_id).eq('site_id',site)",

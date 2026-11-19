@@ -203,6 +203,7 @@ for marker in [
 # iAssistant tenant scope: server search/memory and browser memory operations stay in the current company.
 for marker in [
     'select("*").eq("company_id", ctx.company_id).limit(200)',
+    'select("*").eq("company_id", ctx.company_id).limit(500)',
     'select("id,note").eq("company_id", company_id).order("created_at", { ascending: true })',
     'delete().eq("id", String(input.id)).eq("company_id", ctx.company_id)',
 ]:

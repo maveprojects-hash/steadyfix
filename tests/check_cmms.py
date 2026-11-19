@@ -393,4 +393,8 @@ for marker in [
     if marker not in workspace_code:
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
+workshop_route_guard = "cur='fleet';FT='workshop_jobs';draw()"
+if workshop_route_guard not in workspace_code:
+    raise SystemExit("Workshop job-card shortcut must open the workshop_jobs tab")
+
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")

@@ -398,3 +398,18 @@ if workshop_route_guard not in workspace_code:
     raise SystemExit("Workshop job-card shortcut must open the workshop_jobs tab")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+# Quote/invoice PDF export must reject blank renderings before attempting to share.
+pdf_share_start = html.find("async function shareHtml")
+pdf_share_end = html.find("function docPreview", pdf_share_start)
+pdf_share_code = html[pdf_share_start:pdf_share_end] if pdf_share_start >= 0 and pdf_share_end > pdf_share_start else ""
+for marker in [
+    "The document is empty.",
+    "el.querySelector('.dx')",
+    "The quote or invoice layout did not render.",
+    "blob.size<1500",
+    "The PDF file was generated empty.",
+    "sheetPrint(html)",
+]:
+    if marker not in pdf_share_code:
+        raise SystemExit(f"Missing quote/invoice PDF blank-render protection: {marker}")

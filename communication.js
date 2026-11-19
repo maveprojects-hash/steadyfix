@@ -198,7 +198,7 @@ async function communicationCentre() {
       '<b>' + esc(n.title || 'STEADYFIX notification') + '</b><span>' + esc(n.message || '') + '</span><small>' + esc(communicationTime(n.created_at)) + '</small></button>'
     ).join('');
     return '<div class="comm-page"><div class="comm-page-heading"><div><h2>Company Communication Centre</h2><p>Messages, announcements and live CMMS alerts for your team.</p></div></div>' +
-      tabs + preferences + '<div class="comm-activity-toolbar"><b>Recent alerts</b><button type="button" onclick="markAllNotificationsRead()">Mark all read</button></div>' + '<div class="comm-activity-list">' + (rows || '<div class="comm-empty">You are all caught up. No activity yet.</div>') + '</div></div>';
+      tabs + preferences + '<div class="comm-activity-toolbar"><b>Recent alerts</b><button type="button" onclick="markAllNotificationsRead()">Mark all read</button></div>' + '<div class="comm-activity-list">' + (rows.length ? rows.join('') : '<div class="comm-empty">You are all caught up. No activity yet.</div>') + '</div></div>';
   }
 
   const list = communicationListMarkup();

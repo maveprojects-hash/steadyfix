@@ -397,7 +397,7 @@ workshop_route_guard = "cur='fleet';FT='workshop_jobs';draw()"
 if workshop_route_guard not in workspace_code:
     raise SystemExit("Workshop job-card shortcut must open the workshop_jobs tab")
 
-print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
 
 # Quote/invoice PDF export must reject blank renderings before attempting to share.
 pdf_share_start = html.find("async function shareHtml")
@@ -413,3 +413,5 @@ for marker in [
 ]:
     if marker not in pdf_share_code:
         raise SystemExit(f"Missing quote/invoice PDF blank-render protection: {marker}")
+
+print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")

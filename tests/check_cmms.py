@@ -386,6 +386,14 @@ for marker in [
 module_start = workspace_code.index("function sfIndustryModules")
 module_end = workspace_code.index("async function sfIndustryWorkspace", module_start)
 module_source = workspace_code[module_start:module_end]
+# The industry module map must explicitly cover all nine catalog workspace profiles.
+for industry_slug in [
+    "automation", "fleet-management", "workshops", "logistics-transport",
+    "hospitality-tourism", "food-beverage", "property-management-facilities",
+    "manufacturing-industrial", "general-maintenance",
+]:
+    if industry_slug not in module_source:
+        raise SystemExit(f"Missing industry workspace module profile: {industry_slug}")
 industry_routes = set(re.findall(r"\['[^']*','[^']*','[^']*','([a-z_]+)'\]", module_source))
 mod_source = html.split("const MOD={", 1)[1].split("};\nconst TABS=", 1)[0]
 base_modules = set(re.findall(r"^\s*([a-z_]+):\{", mod_source, re.MULTILINE))

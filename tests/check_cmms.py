@@ -200,6 +200,17 @@ for marker in [
     if marker not in assistant_code:
         raise SystemExit(f"Missing server-side company industry context safeguard: {marker}")
 
+# Approved iAssistant updates must remain tenant- and site-scoped at write time too.
+for marker in [
+    "update(ch).eq('id',p.rowId).eq('company_id',me.company_id)",
+    "if(sc.site&&site)q=q.eq('site_id',site)",
+    "const{error}=await q;if(error)throw new Error(error.message)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing scoped assistant write safeguard: {marker}")
+if "Could not remove that memory:" not in html:
+    raise SystemExit("Memory deletion must surface failures instead of silently updating the UI")
+
 # iAssistant tenant scope: server search/memory and browser memory operations stay in the current company.
 for marker in [
     'select("*").eq("company_id", ctx.company_id).limit(200)',

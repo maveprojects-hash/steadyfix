@@ -341,6 +341,15 @@ assistant_customization = assistant_source.read_text(encoding="utf-8")
 # iAssistant data access must be explicitly tenant-scoped; site-bound records also
 # carry the active-site filter. Company memory reads and deletes are tenant-scoped.
 for marker in [
+    'const requestedSiteId = typeof body.site_id === "string" ? body.site_id : null;',
+    '.eq("id", requestedSiteId).eq("company_id", company_id).maybeSingle()',
+    'if (!["owner", "manager"].includes(String(prof.data.role || "").toLowerCase()))',
+    '.eq("site_id", verifiedSite.id).eq("user_id", user.id).maybeSingle()',
+    'site_id: verifiedSite?.id || null, site_name: String(verifiedSite?.name || "").slice(0, 80)',
+]:
+    if marker not in assistant_customization:
+        raise SystemExit(f"Missing iAssistant server-side site access safeguard: {marker}")
+for marker in [
     '.select("*").limit(200).eq("company_id", ctx.company_id)',
     'if (sch.site && ctx.site_id) q = q.eq("site_id", ctx.site_id);',
     '.delete().eq("id", String(input.id)).eq("company_id", ctx.company_id)',

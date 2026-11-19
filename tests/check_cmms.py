@@ -208,6 +208,15 @@ if "priorityTabs" not in html or "industryBanner" not in html:
     raise SystemExit("Industry templates are not personalising dashboard section order")
 
 
+# Job labour/material/signoff history must be explicitly company/site scoped in client queries.
+for marker in [
+    ".from('work_order_time_entries').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('work_order_material_issues').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site)",
+]:
+    if marker not in industry_code:
+        raise SystemExit(f"Missing company/site filter on industry job-history query: {marker}")
+
 # Industry service-contract edits and deletes must be scoped to company and active site.
 industry_code = (root / "industry_workspaces.js").read_text(encoding="utf-8")
 for marker in [

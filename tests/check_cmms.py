@@ -338,6 +338,14 @@ for marker in [
         raise SystemExit(f"Missing approved industry customization UI: {marker}")
 
 assistant_customization = assistant_source.read_text(encoding="utf-8")
+# Approved iAssistant updates carry explicit tenant/site filters in the client query.
+for marker in [
+    ".eq('id',p.rowId).eq('company_id',me.company_id)",
+    "if(sc.site)updateQuery=updateQuery.eq('site_id',site)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing explicit iAssistant approved-update scope: {marker}")
+
 for marker in [
     "propose_industry_customization",
     "CONFIGURABLE_MODULES",

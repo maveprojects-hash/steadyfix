@@ -345,6 +345,7 @@ for marker in [
     'if (sch.site && ctx.site_id) q = q.eq("site_id", ctx.site_id);',
     '.delete().eq("id", String(input.id)).eq("company_id", ctx.company_id)',
     '.select("id,note").eq("company_id", company_id).order("created_at"',
+    '.select("*").limit(500).eq("company_id", ctx.company_id)',
 ]:
     if marker not in assistant_customization:
         raise SystemExit(f"Missing iAssistant company-scope safeguard: {marker}")

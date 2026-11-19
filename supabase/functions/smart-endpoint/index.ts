@@ -102,7 +102,7 @@ async function runTool(name, input, st) {
   const sch = needTable ? schema[table] : null;
 
   if (name === "search_records") {
-    let q = sb.from(table).select("*").limit(200);
+    let q = sb.from(table).select("*").eq("company_id", ctx.company_id).limit(200);
     if (sch.site && ctx.site_id) q = q.eq("site_id", ctx.site_id);
     const known = new Set(["id", ...(sch.fields || []).map((f) => f.k)]);
     for (const [k, v] of Object.entries(input.where || {})) if (known.has(k)) q = q.eq(k, v);
@@ -165,7 +165,7 @@ async function runTool(name, input, st) {
     return "Saved.";
   }
   if (name === "forget_memory") {
-    const { error } = await sb.from("assistant_memory").delete().eq("id", String(input.id));
+    const { error } = await sb.from("assistant_memory").delete().eq("id", String(input.id)).eq("company_id", ctx.company_id);
     if (error) return "Error: " + error.message;
     st.memory = st.memory.filter((m) => m.id !== input.id); return "Removed.";
   }
@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
     const used = await sb.from("assistant_usage").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", start.toISOString());
     if ((used.count || 0) >= DAILY_LIMIT) return json({ reply: `You have used today's ${DAILY_LIMIT} assistant messages. It resets tomorrow.`, proposals: [], remembered: [] });
 
-    const mem = await sb.from("assistant_memory").select("id,note").order("created_at", { ascending: true }).limit(60);
+    const mem = await sb.from("assistant_memory").select("id,note").eq("company_id", company_id).order("created_at", { ascending: true }).limit(60);
     // Never accept industry identity from the browser: derive it from this authenticated company.
     const industryProfileResult = await sb.from("company_industry_profiles")
       .select("primary_industry_slug,secondary_industry_slugs,business_description,configuration_overrides,config_version")

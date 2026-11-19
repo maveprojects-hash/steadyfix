@@ -208,6 +208,14 @@ if "priorityTabs" not in html or "industryBanner" not in html:
     raise SystemExit("Industry templates are not personalising dashboard section order")
 
 
+# Industry service-contract edits and deletes must be scoped to company and active site.
+for marker in [
+    ".update(row).eq('id',SF_EDITING_CONTRACT_ID).eq('kind','service_contract').eq('company_id',me.company_id).eq('site_id',site)",
+    ".delete().eq('id',id).eq('kind','service_contract').eq('company_id',me.company_id).eq('site_id',site)",
+]:
+    if marker not in industry_code:
+        raise SystemExit(f"Unscoped industry service-contract mutation detected: {marker}")
+
 # Industry workspace entry point and Automation service operations.
 industry_workspaces = root / "industry_workspaces.js"
 if not industry_workspaces.exists():

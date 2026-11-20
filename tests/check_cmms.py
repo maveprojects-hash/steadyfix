@@ -502,6 +502,13 @@ app_html = html
 quote_card_actions = app_html[app_html.index("const cards=D.map"):app_html.index("const pb=")]
 if "DOCS.some(x=>x.kind==='invoice'&&x.converted_from===d.id)" not in quote_card_actions:
     raise SystemExit("Quote list still offers invoice conversion after conversion")
+conversion_guard_migration = root / "supabase" / "migrations" / "20261120230000_document_quote_conversion_unique.sql"
+if not conversion_guard_migration.exists():
+    raise SystemExit("Missing unique quote-conversion migration")
+conversion_guard_sql = conversion_guard_migration.read_text(encoding="utf-8").lower()
+for marker in ["documents_one_invoice_per_quote_idx", "kind='invoice' and converted_from is not null", "having count(*)>1", "reconcile them before applying"]:
+    if marker not in conversion_guard_sql:
+        raise SystemExit(f"Missing duplicate quote-conversion database safeguard: {marker}")
 
 document_workflow = app_html[app_html.index("async function setDoc"):app_html.index("// ---------- accounting export")]
 for marker in [
@@ -514,6 +521,8 @@ for marker in [
     "This quote already has an invoice.",
     "Create an invoice from this quote?",
     "const{error:quoteUpdateError}",
+    "documents_one_invoice_per_quote_idx",
+    "This quote already has an invoice. Refresh the list to open it.",
     "Invoice '+r.data.number+' was created, but the quote status could not be updated",
 ]:
     if marker not in document_workflow:

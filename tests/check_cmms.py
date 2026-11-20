@@ -417,6 +417,40 @@ for marker in [
 ]:
     if marker not in logistics_workspace_ui:
         raise SystemExit(f"Missing Logistics scan pagination safeguard: {marker}")
+# Fleet vehicle assignment is site/company scoped, visible on waybills, and audited.
+fleet_logistics_ui = transition_ui[transition_ui.index("async function sfLogisticsWorkspace"):transition_ui.index("async function sfCreateShipment")]
+for marker in [
+    "const vr=await sb.from('vehicles').select('id,name,make_model,reg_no,status')",
+    ".eq('company_id',me.company_id).eq('site_id',site)",
+    "Assign Fleet vehicle",
+    "sfLogisticsVehicles.map(v=>",
+    "Assigned vehicle",
+]:
+    if marker not in fleet_logistics_ui:
+        raise SystemExit(f"Missing Fleet/Logistics vehicle integration: {marker}")
+assignment_handler = transition_ui[transition_ui.index("async function sfAssignLogisticsVehicle"):transition_ui.index("async function sfCreateShipment")]
+for marker in [
+    "delivered','returned",
+    "sfLogisticsVehicles.some(v=>v.id===vehicleId)",
+    "update({vehicle_id:vehicleId})",
+    ".eq('company_id',me.company_id).eq('site_id',site)",
+]:
+    if marker not in assignment_handler:
+        raise SystemExit(f"Missing assignment UI validation: {marker}")
+fleet_assignment_migration = next((root / "supabase" / "migrations").glob("*_logistics_fleet_vehicle_assignments.sql"))
+fleet_assignment_sql = fleet_assignment_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "add column if not exists vehicle_id uuid references public.vehicles(id)",
+    "validate_logistics_vehicle_assignment",
+    "assigned vehicle must belong to the same company and site",
+    "logistics_tracking_events_event_type_check",
+    "vehicle_assignment",
+    "logistics_record_vehicle_assignment_event",
+    "delivered or returned consignments cannot change vehicle assignment",
+]:
+    if marker not in fleet_assignment_sql:
+        raise SystemExit(f"Missing Fleet/Logistics assignment database safeguard: {marker}")
+
 # POD must only open after the UI validates the shipment's legal transition.
 status_handler = transition_ui[transition_ui.index("async function sfUpdateShipmentStatus"):transition_ui.index("async function sfAddShipmentScan")]
 if status_handler.index("sfShipmentTransitionAllowed") == -1 or status_handler.index("sfCapturePOD(id)") == -1 or status_handler.index("sfShipmentTransitionAllowed") > status_handler.index("sfCapturePOD(id)"):

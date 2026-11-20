@@ -298,7 +298,7 @@ const SF_SHIPMENT_TRANSITIONS={
   in_transit:['at_depot','out_for_delivery','exception'],
   at_depot:['in_transit','out_for_delivery','exception'],
   out_for_delivery:['exception'],
-  exception:['collected','in_transit','at_depot','out_for_delivery','returned'],
+  exception:['collected','in_transit','at_depot','out_for_delivery','delivered','returned'],
   delivered:[],
   returned:[]
 };

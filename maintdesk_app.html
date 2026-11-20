@@ -966,8 +966,13 @@ async function toInvoice(id){const q=DOCS.find(x=>x.id==id);if(!q||q.company_id!
  const r=await sb.from('documents').insert(row);if(r.error)return alert(r.error.message);const upd=await sb.from('documents').update({status:'accepted'}).eq('id',id).eq('company_id',me.company_id).eq('kind','quote');if(upd.error){alert('Invoice was created, but the quote status could not be updated. Please refresh and verify both documents before retrying. '+upd.error.message);await draw();return}IT='invoice';INVF={st:'all',q:''};draw()}
 async function delDoc(id){if(!confirm('Delete this document?'))return;const{error}=await sb.from('documents').delete().eq('id',id).eq('company_id',me.company_id);error?alert(error.message):draw()}
 function docSheet(d){const c=CUST.find(x=>x.id==d.customer_id)||{};return docHtml(d,c)}
-function printDoc(id){const d=DOCS.find(x=>x.id==id);if(d)sheetPrint(docSheet(d))}
-async function mailDoc(id){const d=DOCS.find(x=>x.id==id),c=CUST.find(x=>x.id==d.customer_id)||{},n=cap(d.kind),co=CS.label||CO,subj=`${n} ${d.number} from ${co}`,txt=`Hi${c.contact_person?' '+c.contact_person:''},\n\nPlease find ${n.toLowerCase()} ${d.number} attached.\n\nThank you.\n${co}`;await shareHtml(docSheet(d),n+'_'+d.number,subj,txt,c.email)}
+function printDoc(id){const d=DOCS.find(x=>x.id==id);if(!d||d.company_id!==me.company_id)return alert('Document unavailable or outside your company.');sheetPrint(docSheet(d))}
+async function mailDoc(id){const d=DOCS.find(x=>x.id==id);if(!d||d.company_id!==me.company_id)return alert('Document unavailable or outside your company.');const c=CUST.find(x=>x.id==d.customer_id)||{},n=cap(d.kind),co=CS.label||CO,subj=`${n} ${d.number} from ${co}`,txt=`Hi${c.contact_person?' '+c.contact_person:''},
+
+Please find ${n.toLowerCase()} ${d.number} attached.
+
+Thank you.
+${co}`;await shareHtml(docSheet(d),n+'_'+d.number,subj,txt,c.email)}
 async function poDoc(rid,mode){const r=LAST.rows.find(x=>x.id==rid);if(!r)return;const sp=r.supplier_id?((await sb.from('suppliers').select('*').eq('id',r.supplier_id).maybeSingle()).data||{}):{},L=(r.lines&&r.lines.length)?r.lines:(+r.total_cost?[{d:'Order total',q:1,p:+r.total_cost,x:0}]:[]),d={kind:'order',number:r.po_number||'DRAFT',issue_date:(r.created_at||today).slice(0,10),due_date:r.expected_at,customer_name:sp.name||'',lines:L,vat_rate:0,discount_pct:0,paid_amount:0,notes:''},html=docHtml(d,sp);
  if(mode=='share')await shareHtml(html,'Order_'+d.number,'Purchase order '+d.number+' from '+(CS.label||CO),'Please find purchase order '+d.number+' attached.\n\nThank you.\n'+(CS.label||CO),sp.email);else sheetPrint(html)}
 

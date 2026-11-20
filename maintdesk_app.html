@@ -863,10 +863,13 @@ async function shareHtml(html,fname,subject,text,to){
   const imgs=Array.from(el.querySelectorAll('img'));
   await Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;setTimeout(resolve,5000)})));
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  const brokenImages=imgs.filter(img=>!img.naturalWidth||!img.naturalHeight);
+  if(brokenImages.length)throw new Error('One or more document images or logos failed to load. Please check the print preview before sending.');
   const docNode=el.querySelector('.dx');
   if(!docNode||!docNode.textContent||!docNode.textContent.trim())throw new Error('The quote or invoice layout did not render.');
   const rect=docNode.getBoundingClientRect();
   const width=Math.max(794,Math.ceil(rect.width)),height=Math.max(1123,Math.ceil(rect.height));
+  if(docNode.scrollWidth>docNode.clientWidth+2)throw new Error('The document content exceeds its page width and may be clipped. Please use Print / Save as PDF.');
   if(!width||!height)throw new Error('The document has no printable size.');
   const blob=await html2pdf().set({
    margin:0,

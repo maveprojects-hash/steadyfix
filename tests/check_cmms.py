@@ -437,6 +437,9 @@ print("CMMS syntax, notifications, industry profiles, Automation operations, log
 app_html = html
 for marker in [
     "const validPos=r=>",
+    "r.lat!=null&&r.lat!==''",
+    "r.lng!=null&&r.lng!==''",
+    "r.speed_kmh!=null&&r.speed_kmh!==''",
     "t<=nowMs+120000",
     "Math.abs(+r.lat)<=90",
     "Math.abs(+r.lng)<=180",

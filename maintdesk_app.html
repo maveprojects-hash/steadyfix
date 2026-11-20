@@ -426,7 +426,7 @@ async function fleetData(){
  }
  const p={data:positions,error:pError},V=v.data||[],J=j.data||[],lim=Object.fromEntries(V.map(x=>[x.id,+x.speed_limit||100])),by={},info={},events=[];
  const validPos=r=>{const t=new Date(r.recorded_at).getTime();return Number.isFinite(t)&&t<=nowMs+120000&&r.lat!=null&&r.lat!==''&&Number.isFinite(+r.lat)&&Math.abs(+r.lat)<=90&&r.lng!=null&&r.lng!==''&&Number.isFinite(+r.lng)&&Math.abs(+r.lng)<=180&&r.speed_kmh!=null&&r.speed_kmh!==''&&Number.isFinite(+r.speed_kmh)&&+r.speed_kmh>=0&&+r.speed_kmh<=300};
- (p.data||[]).filter(validPos).sort((a,b)=>new Date(a.recorded_at)-new Date(b.recorded_at)).forEach(r=>{(by[r.vehicle_id]=by[r.vehicle_id]||[]).push(r)});
+ (p.data||[]).filter(validPos).sort((a,b)=>new Date(a.recorded_at)-new Date(b.recorded_at)||String(a.vehicle_id).localeCompare(String(b.vehicle_id))||String(a.id).localeCompare(String(b.id))).forEach(r=>{(by[r.vehicle_id]=by[r.vehicle_id]||[]).push(r)});
  V.forEach(x=>{
   const arr=by[x.id]||[],recent=arr.filter(r=>{const age=nowMs-new Date(r.recorded_at);return age>=0&&age<864e5});
   let km=0;for(let i=1;i<recent.length;i++){const dist=hav({lat:recent[i-1].lat,lng:recent[i-1].lng},{lat:recent[i].lat,lng:recent[i].lng});if(Number.isFinite(dist)&&dist<30)km+=dist}

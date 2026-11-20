@@ -556,4 +556,16 @@ for marker in [
     if marker not in html:
         raise SystemExit(f"Missing PDF layout overflow safeguard: {marker}")
 
+# Database-level uniqueness protects concurrent quote-to-invoice conversions.
+conversion_migration = next((root / "supabase" / "migrations").glob("*_invoice_quote_conversion_unique.sql"))
+conversion_sql = conversion_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "documents_invoice_converted_from_company_uidx",
+    "unique index",
+    "where kind = 'invoice' and converted_from is not null",
+    "duplicate quote conversions exist",
+]:
+    if marker not in conversion_sql:
+        raise SystemExit(f"Missing invoice conversion database uniqueness safeguard: {marker}")
+
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")

@@ -432,10 +432,7 @@ for marker in [
     "if(shipment.status===status)return;",
     "if(!sfShipmentTransitionAllowed(shipment.status,status)",
     "const next=SF_SHIPMENT_TRANSITIONS[x.status]||[],available=[x.status,...next]",
-    "const pageSize=1000,events=[];let offset=0",
     "while(true){const ev=await sb.from('logistics_tracking_events')",
-    ".range(offset,offset+pageSize-1)",
-    "events.push(...(ev.data||[]))",
 ]:
     if marker not in transition_ui:
         raise SystemExit(f"Missing logistics UI lifecycle safeguard: {marker}")

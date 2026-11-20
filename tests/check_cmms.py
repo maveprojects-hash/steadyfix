@@ -29,7 +29,7 @@ for fn, end_marker in [
         raise SystemExit("Document export customer lookup is missing company scoping")
 
 # Document editor validates numeric inputs before totals or database writes.
-save_start = html.index("function saveDoc(pr)")
+save_start = html.index("async function saveDoc(pr)")
 save_end = html.index("async function setDoc(", save_start)
 if save_start < 0 or save_end < 0:
     raise SystemExit("Missing document save function")
@@ -49,6 +49,20 @@ for marker in [
     if marker not in save_code:
         raise SystemExit("Missing document save validation: " + marker)
 
+
+
+# Document numbering fails closed if the company/kind lookup errors.
+number_start = html.find("async function nextNum(kind)")
+number_end = html.find("function invNew(kind)", number_start)
+if number_start < 0 or number_end < 0:
+    raise SystemExit("Missing safe document numbering function")
+number_code = html[number_start:number_end]
+for marker in ["if(error)", "return null"]:
+    if marker not in number_code:
+        raise SystemExit("Document numbering must fail closed on lookup errors")
+for marker in ["Could not safely generate a document number", "Could not safely generate an invoice number"]:
+    if marker not in html:
+        raise SystemExit("Missing safe numbering UI failure message: " + marker)
 # Document status and duplication action safeguards.
 status_start = html.find("async function setDoc(")
 status_end = html.find("async function dupDoc(", status_start)

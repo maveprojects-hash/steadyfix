@@ -321,10 +321,21 @@ async function sfUpdateShipmentStatus(id,status){
     return;
   }
   if(status==='delivered'){sfCapturePOD(id);return;}
+  let eventNotes=null;
+  if(status==='exception'||status==='returned'){
+    const promptLabel=status==='exception'?'Describe the delivery exception and next action:':'Describe the return reason and next action:';
+    const raw=prompt(promptLabel);if(raw===null)return;
+    eventNotes=raw.trim();if(!eventNotes)return alert('A reason is required to record this status.');
+    if(eventNotes.length>2000)return alert('Reason must be 2,000 characters or fewer.');
+  }
   const {error}=await sb.from('logistics_shipments').update({status,delivered_at:null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
   if(error){alert('Could not update shipment: '+error.message);return;}
-  // The database trigger logistics_record_status_event records status changes atomically.
-  // Do not insert a second client-side event (or use the unsupported "status_transition" type).
+  if(eventNotes){
+    const eventType=status==='exception'?'exception_note':'return_note';
+    const {error:eventError}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:eventType,status,notes:eventNotes,created_by:me.id});
+    if(eventError){alert('Status was saved, but its reason could not be recorded: '+eventError.message);draw();return;}
+  }
+  // Status changes are recorded by the database trigger; reason notes are supplemental events.
   draw();
 }
 async function sfAddShipmentScan(id){

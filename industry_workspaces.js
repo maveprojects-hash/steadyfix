@@ -167,7 +167,7 @@ async function sfJobOperations(){
     sb.from('stock_items').select('id,name,sku,unit,unit_cost').eq('company_id',me.company_id).order('name'),
     sb.from('stock_levels').select('item_id,on_hand').eq('company_id',me.company_id).eq('site_id',site),
     sb.from('profiles').select('id,full_name,role').eq('company_id',me.company_id).eq('active',true).order('full_name'),
-    sb.from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('site_id',site).order('signed_at',{ascending:false})
+    sb.from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site).order('signed_at',{ascending:false})
   ]);
   if(wr.error)throw wr.error;if(!wr.data)return '<h2>Job operations</h2><div class="p">This job card is not available at the selected site.</div>';
   for(const x of [tm,mi,st,lv,ps,sg])if(x.error)throw x.error;
@@ -322,7 +322,7 @@ async function sfDeleteShipment(id){
 }
 async function sfPrintWaybill(id){
   const x=SF_LOGISTICS_SHIPMENTS.find(s=>s.id===id);if(!x)return;
-  const pod=await sb.from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('site_id',site).maybeSingle();const signed=pod.data;
+  const pod=await sb.from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle();const signed=pod.data;
   const row=(l,v)=>'<tr><th style="width:32%">'+l+'</th><td>'+esc(v==null||v===''?'-':String(v))+'</td></tr>';
   sheetPrint(ph('Transport waybill')+'<br><table class="pt">'+row('Waybill number',x.waybill_no)+row('Tracking number',x.tracking_no)+row('Service level',cap(x.service_level))+row('Status',cap(x.status))+row('Sender',x.sender_name)+row('Recipient',x.recipient_name)+row('Recipient phone',x.recipient_phone)+row('Origin',x.origin_address)+row('Destination',x.destination_address)+row('Contents',x.parcel_description)+row('Packages',x.package_count)+row('Weight (kg)',x.weight_kg)+row('Expected delivery',x.expected_delivery)+'</table>'+(signed?'<h3>Electronic proof of delivery</h3><p>Received by: '+esc(signed.receiver_name)+' · '+esc(new Date(signed.signed_at).toLocaleString('en-ZA'))+'</p>'+sfSignatureSvg(signed.signature_points)+'<p>'+esc(signed.notes||'')+'</p>':'')+'<p><b>Driver / collection signature</b> ___________________________</p><p><b>Receiver signature / name</b> ___________________________ Date: __________</p>');
 }

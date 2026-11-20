@@ -490,7 +490,7 @@ for marker in ["if(scanLocation.length>200)", "if(notes&&notes.length>2000)", "n
 for marker in [
     "const SF_SHIPMENT_TRANSITIONS=",
     "booked:['collected','exception']",
-    "out_for_delivery:['exception']",
+    "out_for_delivery:['delivered','exception']",
     "if(status==='delivered'){sfCapturePOD(id);return;}",
     "exception:['collected','in_transit','at_depot','out_for_delivery','delivered','returned']",
     "async function sfUpdateShipmentStatus(id,status)",

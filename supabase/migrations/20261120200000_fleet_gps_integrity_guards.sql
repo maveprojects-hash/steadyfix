@@ -18,7 +18,7 @@ begin
   if new.speed_kmh is not null and (new.speed_kmh < 0 or new.speed_kmh > 300) then
     raise exception 'Invalid GPS speed';
   end if;
-  if new.heading is not null and (new.heading < 0 or new.heading >= 360) then
+  if new.heading is not null and (new.heading < 0 or new.heading > 360) then
     raise exception 'Invalid GPS heading';
   end if;
   if new.recorded_at is null or new.recorded_at > now() + interval '2 minutes' then

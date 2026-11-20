@@ -521,3 +521,31 @@ for marker in [
 ]:
     if marker not in industry_code:
         raise SystemExit(f"Missing company/site scope for printed industry signature records: {marker}")
+
+
+# Fleet workspace baseline: company/site scope, service/compliance dashboard and starter inspection lists.
+fleet_source = html[html.index("async function fleetData()"):html.index("async function fleetOverview()")]
+for marker in [
+    ".from('vehicles').select('*').eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('workshop_jobs').select('status').eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('vehicle_positions').select('vehicle_id,recorded_at,lat,lng,speed_kmh').eq('company_id',me.company_id).in('vehicle_id',ids)"]:
+    if marker not in fleet_source:
+        raise SystemExit(f"Fleet dashboard is missing its tenant/site data boundary: {marker}")
+fleet_overview = html[html.index("async function fleetOverview()"):html.index("async function fleetTrack()")]
+for marker in [
+    "next_service_km", "next_service_date", "license_expiry",
+    "Licences expiring in 30 days", "Services due"]:
+    if marker not in fleet_overview:
+        raise SystemExit(f"Fleet overview missing service/compliance alert: {marker}")
+fleet_checklists = html[html.index("const FLEET_LISTS="):html.index("// ---------- OHS and fire safety")]
+for marker in [
+    "Vehicle pre-trip inspection", "Vehicle weekly walk-round", "Workshop safety check",
+    "Tyres and tyre pressures", "Lights and indicators", "Licence disc valid"]:
+    if marker not in fleet_checklists:
+        raise SystemExit(f"Fleet starter checklist missing required safety item: {marker}")
+fleet_sql = (root / "steadyfix_fleet_workshop.sql").read_text(encoding="utf-8").lower()
+for marker in [
+    "create table if not exists workshop_jobs", "create table if not exists vehicle_positions",
+    "enable row level security", "company_id = auth_company()", "auth_site_ok(site_id)"]:
+    if marker not in fleet_sql:
+        raise SystemExit(f"Fleet/workshop SQL missing tenant boundary or core schema: {marker}")

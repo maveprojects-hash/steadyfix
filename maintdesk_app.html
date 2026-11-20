@@ -974,7 +974,7 @@ Please find ${n.toLowerCase()} ${d.number} attached.
 
 Thank you.
 ${co}`;await shareHtml(docSheet(d),n+'_'+d.number,subj,txt,c.email)}
-async function poDoc(rid,mode){const r=LAST.rows.find(x=>x.id==rid);if(!r)return;const sp=r.supplier_id?((await sb.from('suppliers').select('*').eq('id',r.supplier_id).maybeSingle()).data||{}):{},L=(r.lines&&r.lines.length)?r.lines:(+r.total_cost?[{d:'Order total',q:1,p:+r.total_cost,x:0}]:[]),d={kind:'order',number:r.po_number||'DRAFT',issue_date:(r.created_at||today).slice(0,10),due_date:r.expected_at,customer_name:sp.name||'',lines:L,vat_rate:0,discount_pct:0,paid_amount:0,notes:''},html=docHtml(d,sp);
+async function poDoc(rid,mode){const r=LAST.rows.find(x=>x.id==rid&&x.company_id==me.company_id);if(!r)return;let sp={};if(r.supplier_id){const sr=await sb.from('suppliers').select('*').eq('id',r.supplier_id).eq('company_id',me.company_id).maybeSingle();if(sr.error)return alert('Could not load this company supplier for the purchase order. '+sr.error.message);sp=sr.data||{}}const L=(r.lines&&r.lines.length)?r.lines:(+r.total_cost?[{d:'Order total',q:1,p:+r.total_cost,x:0}]:[]),d={kind:'order',number:r.po_number||'DRAFT',issue_date:(r.created_at||today).slice(0,10),due_date:r.expected_at,customer_name:sp.name||'',lines:L,vat_rate:0,discount_pct:0,paid_amount:0,notes:''},html=docHtml(d,sp);
  if(mode=='share')await shareHtml(html,'Order_'+d.number,'Purchase order '+d.number+' from '+(CS.label||CO),'Please find purchase order '+d.number+' attached.\n\nThank you.\n'+(CS.label||CO),sp.email);else sheetPrint(html)}
 
 // ---------- accounting export ----------

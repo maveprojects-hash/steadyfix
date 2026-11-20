@@ -499,7 +499,7 @@ print("CMMS syntax, notifications, industry profiles, Automation operations, log
 app_html = html
 
 # Quotes and invoices: validate workflow transitions and company/site-scoped mutations.
-document_workflow = app_html[app_html.index("async function setDoc"):app_html.index("function docSheet")]
+document_workflow = app_html[app_html.index("async function setDoc"):app_html.index("// ---------- accounting export")]
 for marker in [
     "const d=DOCS.find(x=>x.id===id);if(!d)return;",
     "const allowed=d.kind==='invoice'?['sent','paid','cancelled']:['sent','accepted','declined','cancelled']",

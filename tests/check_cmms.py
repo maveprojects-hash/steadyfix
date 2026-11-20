@@ -492,10 +492,8 @@ if "Never accept tracker credentials from URL query strings" not in tracker_page
 
 # Fleet sample commands must use a placeholder, never render real vehicle bearer keys.
 fleet_track_fn = app_html[app_html.index("async function fleetTrack()"):]
-if 'x.device_key' in fleet_track_fn.split('curl=', 2)[1].split(';', 1)[0] if 'curl=' in fleet_track_fn else False:
-    raise SystemExit("Fleet sample curl command exposes a real tracker key")
-if '<TRACKER_KEY>' not in fleet_track_fn:
-    raise SystemExit("Fleet sample curl command must use the redacted key placeholder")
+if '"p_key":"${x.device_key}"' in fleet_track_fn or '<TRACKER_KEY>' not in fleet_track_fn:
+    raise SystemExit("Fleet sample curl command must redact the tracker key")
 
 # Fleet tracker concurrency and stale-position regression guards.
 ordered_positions = root / "supabase" / "migrations" / "20261120213000_fleet_out_of_order_position_guard.sql"

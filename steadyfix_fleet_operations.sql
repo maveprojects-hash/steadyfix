@@ -139,3 +139,8 @@ end $$;
 select 'fleet operations foundation installed' as status,
        (select count(*) from information_schema.tables where table_schema='public' and table_name in
         ('fleet_drivers','fleet_inspections','fleet_defects','fleet_fuel_logs','fleet_tyre_records','fleet_compliance_items','fleet_downtime_events')) as tables_created;
+
+-- Explicit API privileges; RLS remains the tenant/site authorization boundary.
+grant select, insert, update, delete on fleet_drivers, fleet_inspections, fleet_defects, fleet_fuel_logs, fleet_tyre_records, fleet_compliance_items, fleet_downtime_events to authenticated;
+
+notify pgrst, 'reload schema';

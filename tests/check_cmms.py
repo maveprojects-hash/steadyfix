@@ -580,3 +580,17 @@ for marker in [
 ]:
     if marker not in waybill_print:
         raise SystemExit(f"Missing company branding on waybill: {marker}")
+# Logistics exception/return status changes must capture a required reason and action.
+status_handler = transition_ui[transition_ui.index("async function sfUpdateShipmentStatus"):transition_ui.index("async function sfAddShipmentScan")]
+for marker in [
+    "status==='exception'||status==='returned'",
+    "Describe the delivery exception and next action",
+    "Describe the return reason and next action",
+    "A reason is required to record this status",
+    "eventNotes.length>2000",
+    "eventType=status==='exception'?'exception_note':'return_note'",
+    "eventNotes",
+    "Status was saved, but its reason could not be recorded",
+]:
+    if marker not in status_handler:
+        raise SystemExit(f"Missing Logistics exception/return reason workflow: {marker}")

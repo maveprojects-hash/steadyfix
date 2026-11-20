@@ -152,6 +152,14 @@ for marker in [
 if "Your sites</b>" in login_html or "Open the app →" in login_html:
     raise SystemExit("Intermediate post-login company landing screen remains")
 
+# Startup intro/splash is deliberately removed; login/invite should route directly to setup or app.
+for marker in ["#intro", "function intro()", "introgo", "sf_intro"]:
+    if marker in login_html:
+        raise SystemExit(f"Removed login intro popup was reintroduced: {marker}")
+for marker in ["#intro", "introgo"]:
+    if marker in html:
+        raise SystemExit(f"Removed CMMS startup intro popup styles were reintroduced: {marker}")
+
 # Company industry profiles: catalog, tenant-scoped profile UI, onboarding and audit migration.
 industry_migration = next((root / "supabase" / "migrations").glob("*_company_industry_profiles.sql"))
 industry_sql = industry_migration.read_text(encoding="utf-8").lower()

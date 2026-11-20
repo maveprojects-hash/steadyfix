@@ -307,13 +307,13 @@ function sfShipmentTransitionAllowed(current,next){
 }
 async function sfUpdateShipmentStatus(id,status){
   if(!SF_SHIPMENT_STATUSES.includes(status))return;
-  if(status==='delivered'){sfCapturePOD(id);return;}
   const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
   if(shipment.status===status)return;
-  if(!sfShipmentTransitionAllowed(shipment.status,status)){
+  if(!sfShipmentTransitionAllowed(shipment.status,status){
     alert('Invalid shipment transition: '+shipment.status.replace(/_/g,' ')+' → '+status.replace(/_/g,' ')+'. Use the correct next step or record an exception.');
     return;
   }
+  if(status==='delivered'){sfCapturePOD(id);return;}
   const {error}=await sb.from('logistics_shipments').update({status,delivered_at:null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
   if(error){alert('Could not update shipment: '+error.message);return;}
   // The database trigger logistics_record_status_event records status changes atomically.

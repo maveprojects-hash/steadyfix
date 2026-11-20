@@ -28,6 +28,21 @@ for fn, end_marker in [
     if fn.startswith("async function exportDocs") and "customers').select('*').eq('company_id',me.company_id)" not in html[start:end]:
         raise SystemExit("Document export customer lookup is missing company scoping")
 
+# Document status and duplication action safeguards.
+status_start = html.find("async function setDoc(")
+status_end = html.find("async function dupDoc(", status_start)
+dup_end = html.find("async function toInvoice(", status_end)
+if status_start < 0 or status_end < 0 or dup_end < 0:
+    raise SystemExit("Missing document status or duplication functions")
+status_code = html[status_start:status_end]
+dup_code = html[status_end:dup_end]
+for marker in ["d.company_id!==me.company_id", "st==='paid'&&d.kind!=='invoice'", ".eq('kind',d.kind)"]:
+    if marker not in status_code:
+        raise SystemExit(f"Missing document status guard: {marker}")
+for marker in ["d.company_id!==me.company_id", "company_id:me.company_id", "status:'draft'"]:
+    if marker not in dup_code:
+        raise SystemExit(f"Missing document duplication guard: {marker}")
+
 # Quote-to-invoice validation and failure handling guards.
 convert_start = html.find("async function toInvoice(")
 convert_end = html.find("async function delDoc(", convert_start)

@@ -463,3 +463,23 @@ for marker in [
 ]:
     if marker not in assistant_customization:
         raise SystemExit(f"Missing company-scoped assistant diagnostic safeguard: {marker}")
+
+# Company-specific AI setup stores validated operational context and preferences, not fake automation.
+for marker in [
+    "source.services",
+    "source.operating_hours",
+    "source.workflow_preferences",
+    "source.dashboard_focus",
+    "source.automation_preferences",
+    "source.terminology",
+    "changes.company_setup = setup",
+]:
+    if marker not in assistant_customization:
+        raise SystemExit(f"Missing bounded AI company setup preference: {marker}")
+for marker in [
+    "patch.configuration_overrides={...(INDUSTRY_PROFILE?.configuration_overrides||{}),company_setup:setup}",
+    "AI operating preferences",
+    "These preferences help it tailor guidance; they do not activate automated jobs or integrations by themselves.",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing company setup preference display/safety note: {marker}")

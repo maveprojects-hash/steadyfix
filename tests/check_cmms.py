@@ -421,3 +421,24 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+# iAssistant company setup must offer approved, catalog-validated profile updates.
+for marker in [
+    'propose_company_profile',
+    'only a company owner or manager may change company setup',
+    'industry_catalog',
+    'secondary_industry_slugs',
+    'business_description',
+    'company_profile',
+    'company setup changes queued for owner/manager approval',
+]:
+    if marker not in assistant_source:
+        raise SystemExit(f"Missing iAssistant company-setup proposal safeguard: {marker}")
+for marker in [
+    "p.kind==='company_profile'",
+    "Only a company owner or manager can approve company setup changes.",
+    "company_industry_profiles').update(patch).eq('company_id',me.company_id)",
+    "function aiDetail(p){if(p.kind==='industry_config'||p.kind==='company_profile')",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing approved company-setup UI safeguard: {marker}")

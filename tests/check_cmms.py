@@ -14,7 +14,26 @@ with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8") as f:
     f.flush()
     subprocess.run(["node", "--check", f.name], check=True)
 
-# PDF document renderer regression guards.\nshare_start = html.find("async function shareHtml(")\nshare_end = html.find("function docPreview(", share_start)\nif share_start < 0 or share_end < 0:\n    raise SystemExit("Missing quote/invoice PDF sharing renderer")\nshare_code = html[share_start:share_end]\nfor marker in [\n    "window.html2pdf",\n    "html2canvas:{scale:1.5",\n    "outputPdf('blob')",\n    "blob.slice(0,5).text()",\n    "pdfHeader!=='%PDF-'",\n    "sheetPrint(html)",\n]:\n    if marker not in share_code:\n        raise SystemExit(f"Missing PDF renderer safety behavior: {marker}")\nif "contain:layout style" in share_code:\n    raise SystemExit("PDF render staging element still uses layout/style containment")\n\nrequired_ui = [
+# PDF document renderer regression guards.
+share_start = html.find("async function shareHtml(")
+share_end = html.find("function docPreview(", share_start)
+if share_start < 0 or share_end < 0:
+    raise SystemExit("Missing quote/invoice PDF sharing renderer")
+share_code = html[share_start:share_end]
+for marker in [
+    "window.html2pdf",
+    "html2canvas:{scale:1.5",
+    "outputPdf('blob')",
+    "blob.slice(0,5).text()",
+    "pdfHeader!=='%PDF-'",
+    "sheetPrint(html)",
+]:
+    if marker not in share_code:
+        raise SystemExit(f"Missing PDF renderer safety behavior: {marker}")
+if "contain:layout style" in share_code:
+    raise SystemExit("PDF render staging element still uses layout/style containment")
+
+required_ui = [
     "STAFF('assigned_to')",
     "startNotifications()",
     "postgres_changes",

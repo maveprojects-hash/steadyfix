@@ -60,6 +60,8 @@ for marker in [
     "blob.slice(0,5).text()",
     "pdfHeader!=='%PDF-'",
     "sheetPrint(html)",
+    "brokenImages=imgs.filter(img=>!img.naturalWidth||!img.naturalHeight)",
+    "docNode.scrollWidth>docNode.clientWidth+2",
 ]:
     if marker not in share_code:
         raise SystemExit(f"Missing PDF renderer safety behavior: {marker}")

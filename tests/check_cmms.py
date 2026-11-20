@@ -467,6 +467,22 @@ for marker in [
         raise SystemExit(f"Missing Fleet GPS integrity safeguard: {marker}")
 
 
+# Fleet GPS history must paginate instead of silently capping analytics at 5,000 rows.
+fleet_fn = app_html[app_html.index("async function fleetData()"):app_html.index("async function fleetOverview()", app_html.index("async function fleetData()"))]
+for marker in [
+    "const pageSize=1000,positions=[]",
+    "while(true)",
+    ".range(offset,offset+pageSize-1)",
+    "offset+=pageSize",
+    "rows.length<pageSize",
+    ".lte('recorded_at',until)",
+    ".order('vehicle_id',{ascending:true}).order('id',{ascending:true})",
+]:
+    if marker not in fleet_fn:
+        raise SystemExit(f"Missing Fleet GPS pagination safeguard: {marker}")
+if ".limit(5000)" in fleet_fn:
+    raise SystemExit("Fleet GPS history still silently caps at 5,000 records")
+
 # Fleet tracker concurrency and stale-position regression guards.
 ordered_positions = root / "supabase" / "migrations" / "20261120213000_fleet_out_of_order_position_guard.sql"
 if not ordered_positions.exists():

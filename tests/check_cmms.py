@@ -405,6 +405,15 @@ for marker in [
 
 # Logistics shipment lifecycle: UI and database guard must remain in agreement.
 transition_ui = industry_workspaces.read_text(encoding="utf-8")
+logistics_workspace_ui = transition_ui[transition_ui.index("async function sfLogisticsWorkspace"):transition_ui.index("const SF_SHIPMENT_TRANSITIONS")]
+for marker in [
+    "const pageSize=1000,events=[];let offset=0",
+    "while(true){const ev=await sb.from('logistics_tracking_events')",
+    ".range(offset,offset+pageSize-1)",
+    "events.push(...(ev.data||[]))",
+]:
+    if marker not in logistics_workspace_ui:
+        raise SystemExit(f"Missing Logistics scan pagination safeguard: {marker}")
 # POD must only open after the UI validates the shipment's legal transition.
 status_handler = transition_ui[transition_ui.index("async function sfUpdateShipmentStatus"):transition_ui.index("async function sfAddShipmentScan")]
 if status_handler.index("sfShipmentTransitionAllowed") == -1 or status_handler.index("sfCapturePOD(id)") == -1 or status_handler.index("sfShipmentTransitionAllowed") > status_handler.index("sfCapturePOD(id)"):

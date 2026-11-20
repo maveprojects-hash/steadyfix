@@ -497,6 +497,12 @@ fleet_track_fn = app_html[app_html.index("async function fleetTrack()"):]
 if '"p_key":"${x.device_key}"' in fleet_track_fn or '<TRACKER_KEY>' not in fleet_track_fn:
     raise SystemExit("Fleet sample curl command must redact the tracker key")
 
+# Smart sensor curl examples must not embed actual device keys.
+if 'p_key":"${s.device_key}' in app_html:
+    raise SystemExit("Smart sensor sample curl command exposes a real device key")
+if '<DEVICE_KEY>' not in app_html:
+    raise SystemExit("Smart sensor sample curl command must use a redacted key placeholder")
+
 # Fleet tracker concurrency and stale-position regression guards.
 ordered_positions = root / "supabase" / "migrations" / "20261120213000_fleet_out_of_order_position_guard.sql"
 if not ordered_positions.exists():

@@ -547,4 +547,12 @@ for marker in [
     if marker not in html:
         raise SystemExit(f"Missing invoice payment/status consistency guard: {marker}")
 
-print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+# Document layout rows must wrap and constrain nested blocks to avoid long-field overflow.
+for marker in [
+    ".dxrow{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}",
+    ".dxrow>div{min-width:0;max-width:100%;overflow-wrap:anywhere}",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing PDF layout overflow safeguard: {marker}")
+\nprint("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")

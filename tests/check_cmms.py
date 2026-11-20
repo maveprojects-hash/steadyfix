@@ -477,6 +477,8 @@ for marker in [
     "rows.length<pageSize",
     ".lte('recorded_at',until)",
     ".order('vehicle_id',{ascending:true}).order('id',{ascending:true})",
+    "String(a.vehicle_id).localeCompare(String(b.vehicle_id))",
+    "String(a.id).localeCompare(String(b.id))",
 ]:
     if marker not in fleet_fn:
         raise SystemExit(f"Missing Fleet GPS pagination safeguard: {marker}")

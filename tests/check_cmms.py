@@ -152,6 +152,17 @@ for marker in [
 if "Your sites</b>" in login_html or "Open the app →" in login_html:
     raise SystemExit("Intermediate post-login company landing screen remains")
 
+# Public landing page bypass: returning authenticated users go to CMMS entry.
+landing = (root / "index.html").read_text(encoding="utf-8")
+sdk_marker = 'supabase-js@2/dist/umd/supabase.min.js'
+redirect_marker = "window.location.replace('maintdesk_login.html')"
+if sdk_marker not in landing or redirect_marker not in landing:
+    raise SystemExit("Missing authenticated landing-page bypass")
+if landing.index(sdk_marker) > landing.index("Returning authenticated users bypass the public landing page."):
+    raise SystemExit("Supabase SDK must load before landing-page session check")
+if "<script>\n<script" in landing:
+    raise SystemExit("Malformed nested script tag in landing-page bypass")
+
 # Startup intro/splash is deliberately removed; login/invite should route directly to setup or app.
 for marker in ["#intro", "function intro()", "introgo", "sf_intro"]:
     if marker in login_html:

@@ -570,3 +570,13 @@ for marker in [
 ]:
     if marker not in create_handler:
         raise SystemExit(f"Missing waybill creation validation: {marker}")
+# Waybill printouts must inherit the company logo/details and saved document colour.
+waybill_print = transition_ui[transition_ui.index("async function sfPrintWaybill"):transition_ui.index("// Extend the existing navigation")]
+for marker in [
+    "async function sfPrintWaybill",
+    "ph('Transport waybill')",
+    "CS.doc_color",
+    "border-top:4px solid ",
+]:
+    if marker not in waybill_print:
+        raise SystemExit(f"Missing company branding on waybill: {marker}")

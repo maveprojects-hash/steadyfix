@@ -283,8 +283,8 @@ async function sfCreateShipment(){
   if(weight!==null&&(!Number.isFinite(weight)||weight<0))return alert('Weight must be a valid non-negative number.');
   const row={company_id:me.company_id,site_id:site,waybill_no:waybill,tracking_no:$('sfTracking').value.trim()||waybill,sender_name:$('sfSender').value.trim()||null,recipient_name:recipient,recipient_phone:$('sfRecipientPhone').value.trim()||null,origin_address:origin,destination_address:destination,parcel_description:$('sfParcel').value.trim()||null,package_count:Math.max(1,parseInt($('sfPackageCount').value,10)||1),weight_kg:weight,service_level:$('sfServiceLevel').value,expected_delivery:$('sfExpected').value||null,status:'booked',created_by:me.id};
   const {data,error}=await sb.from('logistics_shipments').insert(row).select('id').single();if(error)return alert('Could not create waybill: '+error.message);
-  const {error:scanError}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:data.id,event_type:'created',status:'booked',location:origin,notes:'Consignment created',created_by:me.id});
-  if(scanError)alert('Waybill created, but initial tracking event failed to save: '+scanError.message);
+  // The database trigger logistics_record_status_event creates the initial event.
+  // Keep this insert free of duplicate tracking rows.
   draw();
 }
 async function sfUpdateShipmentStatus(id,status){
@@ -294,8 +294,8 @@ async function sfUpdateShipmentStatus(id,status){
   if(shipment.status===status)return;
   const {error}=await sb.from('logistics_shipments').update({status,delivered_at:null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
   if(error){alert('Could not update shipment: '+error.message);return;}
-  const {error:logError}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'status_transition',status,notes:'Status changed from '+shipment.status+' to '+status,created_by:me.id});
-  if(logError)alert('Status was updated, but transition history could not be saved: '+logError.message);
+  // The database trigger logistics_record_status_event records status changes atomically.
+  // Do not insert a second client-side event (or use the unsupported "status_transition" type).
   draw();
 }
 async function sfAddShipmentScan(id){

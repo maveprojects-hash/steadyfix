@@ -507,6 +507,8 @@ for marker in [
     ".eq('id',id).eq('company_id',me.company_id).eq('site_id',site)",
     "Only managers can delete company documents.",
     "Only sent or accepted quotes can be converted.",
+    "DOCS.some(x=>x.kind==='invoice'&&x.converted_from===d.id)",
+    "This quote already has an invoice.",
     "Create an invoice from this quote?",
     "const{error:quoteUpdateError}",
     "Invoice '+r.data.number+' was created, but the quote status could not be updated",

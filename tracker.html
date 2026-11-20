@@ -25,7 +25,7 @@ function start(){if(!$('key').value.trim()){$('st').innerHTML='<span class="bad"
  run=true;$('go').textContent='Stop tracking';$('go').className='stop';$('st').textContent='Finding your location…';
  wid=navigator.geolocation.watchPosition(p=>{pos=p;const s=p.coords.speed!=null?Math.round(p.coords.speed*3.6):0;$('sp').textContent=s+' km/h';send(p)},e=>{$('st').innerHTML='<span class="bad">'+(e.code==1?'Location is switched off for this page. Allow it in your browser settings.':'Could not get your location.')+'</span>'},{enableHighAccuracy:true,maximumAge:5000,timeout:30000});
  try{if(navigator.wakeLock)navigator.wakeLock.request('screen').then(l=>lock=l).catch(()=>{})}catch(e){}}
-function stop(){run=false;if(wid!=null)navigator.geolocation.clearWatch(wid);wid=null;if(lock){lock.release();lock=null}$('go').textContent='Start tracking';$('go').className='';$('st').textContent='Stopped.'}
+function stop(){run=false;if(wid!=null)navigator.geolocation.clearWatch(wid);wid=null;if(lock){lock.release();lock=null}$('key').value='';$('go').textContent='Start tracking';$('go').className='';$('st').textContent='Stopped. Tracker key cleared; paste it again to restart.'}
 $('go').onclick=()=>run?stop():start();
 document.addEventListener('visibilitychange',()=>{if(run&&document.visibilityState=='visible'&&navigator.wakeLock)navigator.wakeLock.request('screen').then(l=>lock=l).catch(()=>{})});
 </script></body></html>

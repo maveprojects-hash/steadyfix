@@ -513,3 +513,11 @@ for marker in [
 ]:
     if marker not in html:
         raise SystemExit(f"Missing scoped fleet query: {marker}")
+
+# Printed signoff and POD history must use explicit tenant and site filters.
+for marker in [
+    ".from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle()",
+]:
+    if marker not in industry_code:
+        raise SystemExit(f"Missing company/site scope for printed industry signature records: {marker}")

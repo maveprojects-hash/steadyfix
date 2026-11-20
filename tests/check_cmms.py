@@ -483,6 +483,13 @@ for marker in [
 if ".limit(5000)" in fleet_fn:
     raise SystemExit("Fleet GPS history still silently caps at 5,000 records")
 
+# Tracker launch URLs must never contain the device bearer key.
+tracker_page = (root / "tracker.html").read_text(encoding="utf-8")
+if "$('key').value=q.get('key')" in tracker_page or "tracker.html?key=" in app_html:
+    raise SystemExit("Tracker device key is being exposed through URL query parameters")
+if "Never accept tracker credentials from URL query strings" not in tracker_page:
+    raise SystemExit("Missing tracker URL credential guard")
+
 # Fleet tracker concurrency and stale-position regression guards.
 ordered_positions = root / "supabase" / "migrations" / "20261120213000_fleet_out_of_order_position_guard.sql"
 if not ordered_positions.exists():

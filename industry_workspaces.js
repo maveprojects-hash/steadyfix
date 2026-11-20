@@ -281,11 +281,20 @@ async function sfLogisticsWorkspace(){
     '<button class="b" onclick="sfCreateShipment()">Create waybill</button></details>'+cards;
 }
 async function sfCreateShipment(){
-  const waybill=$('sfWaybill').value.trim(),recipient=$('sfRecipient').value.trim(),origin=$('sfOrigin').value.trim(),destination=$('sfDestination').value.trim(),weightRaw=$('sfWeight').value,weight=weightRaw===''?null:Number(weightRaw);
+  const waybill=$('sfWaybill').value.trim(),tracking=$('sfTracking').value.trim(),sender=$('sfSender').value.trim(),recipient=$('sfRecipient').value.trim(),phone=$('sfRecipientPhone').value.trim(),origin=$('sfOrigin').value.trim(),destination=$('sfDestination').value.trim(),parcel=$('sfParcel').value.trim(),weightRaw=$('sfWeight').value,weight=weightRaw===''?null:Number(weightRaw),packageRaw=$('sfPackageCount').value,packages=packageRaw===''?1:Number(packageRaw),service=$('sfServiceLevel').value,expected=$('sfExpected').value||null;
   if(!waybill||!recipient||!origin||!destination)return alert('Waybill number, recipient, origin and destination are required.');
-  if(weight!==null&&(!Number.isFinite(weight)||weight<0))return alert('Weight must be a valid non-negative number.');
-  const row={company_id:me.company_id,site_id:site,waybill_no:waybill,tracking_no:$('sfTracking').value.trim()||waybill,sender_name:$('sfSender').value.trim()||null,recipient_name:recipient,recipient_phone:$('sfRecipientPhone').value.trim()||null,origin_address:origin,destination_address:destination,parcel_description:$('sfParcel').value.trim()||null,package_count:Math.max(1,parseInt($('sfPackageCount').value,10)||1),weight_kg:weight,service_level:$('sfServiceLevel').value,expected_delivery:$('sfExpected').value||null,status:'booked',created_by:me.id};
-  const {data,error}=await sb.from('logistics_shipments').insert(row).select('id').single();if(error)return alert('Could not create waybill: '+error.message);
+  if(waybill.length>100||tracking.length>100)return alert('Waybill and tracking numbers must be 100 characters or fewer.');
+  if(sender.length>160||recipient.length>160||phone.length>60)return alert('Sender, recipient and phone fields exceed their allowed length.');
+  if(origin.length>1000||destination.length>1000)return alert('Address fields must be 1,000 characters or fewer.');
+  if(parcel.length>500)return alert('Parcel description must be 500 characters or fewer.');
+  if(weight!==null&&(!Number.isFinite(weight)||weight<0||weight>100000))return alert('Weight must be a valid value between 0 and 100,000 kg.');
+  if(!Number.isInteger(packages)||packages<1||packages>500)return alert('Package count must be a whole number between 1 and 500.');
+  if(!['standard','express','overnight','same_day'].includes(service))return alert('Choose a valid service level.');
+  const duplicate=await sb.from('logistics_shipments').select('id').eq('company_id',me.company_id).eq('site_id',site).eq('waybill_no',waybill).limit(1);
+  if(duplicate.error)return alert('Could not verify waybill number: '+duplicate.error.message);
+  if(duplicate.data&&duplicate.data.length)return alert('This waybill number already exists at this site. Use a unique waybill number.');
+  const row={company_id:me.company_id,site_id:site,waybill_no:waybill,tracking_no:tracking||waybill,sender_name:sender||null,recipient_name:recipient,recipient_phone:phone||null,origin_address:origin,destination_address:destination,parcel_description:parcel||null,package_count:packages,weight_kg:weight,service_level:service,expected_delivery:expected,status:'booked',created_by:me.id};
+  const {error}=await sb.from('logistics_shipments').insert(row).select('id').single();if(error)return alert('Could not create waybill: '+error.message);
   // The database trigger logistics_record_status_event creates the initial event.
   // Keep this insert free of duplicate tracking rows.
   draw();

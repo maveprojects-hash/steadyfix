@@ -522,7 +522,7 @@ for marker in [
 
 # Document numbers are checked for duplicates within company + document kind before save.
 for marker in [
-    "select('id').eq('company_id',me.company_id).eq('kind',e.kind).eq('number',row.number)",
+    "select('id,number').eq('company_id',me.company_id).eq('kind',e.kind).ilike('number',row.number)",
     "Could not verify document number uniqueness",
     "That number is already used for this document type in your company",
 ]:

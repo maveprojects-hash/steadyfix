@@ -287,11 +287,28 @@ async function sfCreateShipment(){
   // Keep this insert free of duplicate tracking rows.
   draw();
 }
+const SF_SHIPMENT_TRANSITIONS={
+  booked:['collected','exception'],
+  collected:['in_transit','exception'],
+  in_transit:['at_depot','out_for_delivery','exception'],
+  at_depot:['in_transit','out_for_delivery','exception'],
+  out_for_delivery:['exception'],
+  exception:['collected','in_transit','at_depot','out_for_delivery','returned'],
+  delivered:[],
+  returned:[]
+};
+function sfShipmentTransitionAllowed(current,next){
+  return !!SF_SHIPMENT_TRANSITIONS[current]&&SF_SHIPMENT_TRANSITIONS[current].includes(next);
+}
 async function sfUpdateShipmentStatus(id,status){
   if(!SF_SHIPMENT_STATUSES.includes(status))return;
   if(status==='delivered'){sfCapturePOD(id);return;}
   const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
   if(shipment.status===status)return;
+  if(!sfShipmentTransitionAllowed(shipment.status,status)){
+    alert('Invalid shipment transition: '+shipment.status.replace(/_/g,' ')+' → '+status.replace(/_/g,' ')+'. Use the correct next step or record an exception.');
+    return;
+  }
   const {error}=await sb.from('logistics_shipments').update({status,delivered_at:null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
   if(error){alert('Could not update shipment: '+error.message);return;}
   // The database trigger logistics_record_status_event records status changes atomically.

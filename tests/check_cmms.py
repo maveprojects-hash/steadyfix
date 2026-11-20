@@ -443,3 +443,23 @@ for marker in [
 ]:
     if marker not in html:
         raise SystemExit(f"Missing approved company-setup UI safeguard: {marker}")
+
+# iAssistant site context must be server-validated against company and membership.
+for marker in [
+    'const requestedSiteId = typeof body.site_id === "string" ? body.site_id : null;',
+    '.eq("id", requestedSiteId).eq("company_id", company_id).maybeSingle()',
+    'You do not have access to this site.',
+    'site_id: verifiedSite?.id || null',
+]:
+    if marker not in assistant_customization:
+        raise SystemExit(f"Missing server-verified iAssistant site context: {marker}")
+
+# Read-only iAssistant app health diagnostics must probe company-scoped module data access.
+for marker in [
+    'check_app_health',
+    'select("id").eq("company_id",ctx.company_id).limit(1)',
+    'Read-only data-access probes; not a full UI or integration test.',
+    'Company-scoped read succeeded',
+]:
+    if marker not in assistant_customization:
+        raise SystemExit(f"Missing company-scoped assistant diagnostic safeguard: {marker}")

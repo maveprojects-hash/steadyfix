@@ -877,6 +877,8 @@ async function shareHtml(html,fname,subject,text,to){
   }).from(docNode).outputPdf('blob');
   el.remove();el=null;
   if(!blob||blob.size<1500)throw new Error('The PDF file was generated empty. Please use Print / Save as PDF.');
+  const pdfHeader=await blob.slice(0,5).text();
+  if(pdfHeader!=='%PDF-')throw new Error('The generated file is not a valid PDF. Please use Print / Save as PDF.');
   const safeName=(fname||'STEADYFIX_document').replace(/[^\w-]+/g,'_');
   const file=new File([blob],safeName+'.pdf',{type:'application/pdf'});
   let shared=false;

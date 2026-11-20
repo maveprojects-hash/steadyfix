@@ -423,6 +423,7 @@ for marker in [
     ".range(shipmentOffset,shipmentOffset+pageSize-1)",
     "shipments.push(...(sr.data||[]))",
     ".range(eventOffset,eventOffset+pageSize-1)",
+    ".order('event_at',{ascending:false}).order('id',{ascending:true})",
     "eventOffset+=pageSize",
     "SF_LOGISTICS_SHIPMENTS=shipments",
 ]:

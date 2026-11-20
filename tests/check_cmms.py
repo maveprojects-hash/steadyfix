@@ -421,6 +421,10 @@ for marker in [
 status_handler = transition_ui[transition_ui.index("async function sfUpdateShipmentStatus"):transition_ui.index("async function sfAddShipmentScan")]
 if status_handler.index("sfShipmentTransitionAllowed") == -1 or status_handler.index("sfCapturePOD(id)") == -1 or status_handler.index("sfShipmentTransitionAllowed") > status_handler.index("sfCapturePOD(id)"):
     raise SystemExit("POD UI bypasses shipment transition validation")
+scan_handler = transition_ui[transition_ui.index("async function sfAddShipmentScan"):transition_ui.index("function sfCapturePOD")]
+for marker in ["if(scanLocation.length>200)", "if(notes&&notes.length>2000)", "notes=rawNotes.trim()||null"]:
+    if marker not in scan_handler:
+        raise SystemExit(f"Missing scan input validation: {marker}")
 
 for marker in [
     "const SF_SHIPMENT_TRANSITIONS=",

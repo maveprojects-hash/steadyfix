@@ -466,3 +466,19 @@ for marker in [
     if marker not in fleet_guard_sql:
         raise SystemExit(f"Missing Fleet GPS integrity safeguard: {marker}")
 
+
+# Fleet tracker concurrency and stale-position regression guards.
+ordered_positions = root / "supabase" / "migrations" / "20261120213000_fleet_out_of_order_position_guard.sql"
+if not ordered_positions.exists():
+    raise SystemExit("Missing Fleet out-of-order telemetry migration")
+ordered_sql = ordered_positions.read_text(encoding="utf-8").lower()
+for marker in [
+    "for update",
+    "v.last_seen is null or t > v.last_seen",
+    "only newer telemetry may update",
+    "current_updated",
+    "odometer cannot move backwards",
+    "grant execute on function public.ingest_position",
+]:
+    if marker not in ordered_sql:
+        raise SystemExit(f"Missing Fleet concurrent telemetry safeguard: {marker}")

@@ -152,6 +152,21 @@ for marker in [
 if "Your sites</b>" in login_html or "Open the app →" in login_html:
     raise SystemExit("Intermediate post-login company landing screen remains")
 
+# Quotes and invoices: validate workflow transitions and company/site-scoped mutations.
+document_workflow = app_html[app_html.index("async function setDoc"):app_html.index("function docSheet")]
+for marker in [
+    "const d=DOCS.find(x=>x.id===id);if(!d)return;",
+    "const allowed=d.kind==='invoice'?['sent','paid','cancelled']:['sent','accepted','declined','cancelled']",
+    "Only issued invoices can be marked paid.",
+    ".eq('id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    "Only managers can delete company documents.",
+    "Only sent or accepted quotes can be converted.",
+    "Create an invoice from this quote?",
+    "const{error:quoteUpdateError}",
+    "Invoice '+r.data.number+' was created, but the quote status could not be updated",
+]:
+    if marker not in document_workflow:
+        raise SystemExit(f"Missing Quotes/Invoices workflow safeguard: {marker}")
 # Startup intro/splash is deliberately removed; login/invite should route directly to setup or app.
 for marker in ["#intro", "function intro()", "introgo", "sf_intro"]:
     if marker in login_html:

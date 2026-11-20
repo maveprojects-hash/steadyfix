@@ -909,7 +909,7 @@ function logoClear(){LOGO_NEW=null;$('lg_prev').innerHTML='<div class="note">Log
 // ---------- quotes and invoices ----------
 const ITABS=[['invoice','Invoices'],['quote','Quotes'],['cust','Customers'],['acct','Accounting']];
 const itabs=()=>`<div class="tabs noprint">${ITABS.map(([k,l])=>`<button class="${k==IT?'on':''}" onclick="IT='${k}';INVF={st:'all',q:''};draw()">${l}</button>`).join('')}</div>`;
-const dstat=d=>d.kind=='invoice'&&(+d.paid_amount||0)>=+d.total&&+d.total>0?'paid':d.kind=='invoice'&&(+d.paid_amount||0)>0?'partial':d.kind=='invoice'&&d.status=='sent'&&d.due_date&&d.due_date<today?'overdue':d.status;
+const dstat=d=>{if(d.kind!='invoice')return d.status;const total=+d.total||0,paid=+d.paid_amount||0;if(total>0&&paid>=total)return'paid';if(paid>0)return'partial';const st=['paid','partial'].includes(d.status)?'sent':d.status;if(st=='sent'&&d.due_date&&d.due_date<today)return'overdue';return st};
 const dchip=s=>({draft:chip('x','Draft'),sent:chip('on_hold','Sent'),paid:chip('done','Paid'),overdue:chip('overdue','Overdue'),accepted:chip('done','Accepted'),declined:chip('cancelled','Declined'),cancelled:chip('cancelled','Cancelled')})[s]||chip('x',cap(s));
 async function inv(){
  if(ED)return invEditor();

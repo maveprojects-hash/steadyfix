@@ -62,13 +62,6 @@ details.p summary{font-weight:700;cursor:pointer;color:var(--ac)}
 .pb{page-break-after:always}
 
 .dg{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-bottom:14px}.dg .p{margin:0}
-#intro{position:fixed;inset:0;z-index:99;background:linear-gradient(160deg,#0f1a21,#1b2831 55%,#23404f);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;animation:fi .6s ease;transition:opacity .6s}
-#intro.out{opacity:0;pointer-events:none}@keyframes fi{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:none}}
-#intro h1{font-size:34px;letter-spacing:3px;margin:18px 0 4px;font-weight:800}#intro h1 small{display:block;color:#e59f0f;font-size:20px;letter-spacing:8px;margin-top:2px}
-#intro p{color:#c9d3da;margin:6px 0;max-width:420px}#intro .ic{display:flex;gap:16px;margin:22px 0 10px;flex-wrap:wrap;justify-content:center}
-#intro .ic svg{width:44px;height:44px;stroke:#e59f0f;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;padding:10px;border:1px solid #3a5565;border-radius:50%}
-#intro button{margin-top:22px;padding:12px 34px;border:0;border-radius:4px;background:#e59f0f;color:#1b2831;font:700 16px system-ui;cursor:pointer}
-@media print{#intro{display:none!important}}
 table.rost{min-width:0;width:auto;border-collapse:collapse;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .rost th,.rost td{border:1px solid var(--ln);padding:5px 7px;text-align:center;font-size:13px}.rost .nm{text-align:left;position:sticky;left:0;background:var(--pn);min-width:96px;font-weight:600}
 .rost .we{background:#eef0f2}.rc{cursor:pointer;min-width:36px;font-weight:700}.rost .tt,.rost .on{font-weight:700}
@@ -160,8 +153,6 @@ details.p summary{color:var(--ac);font-weight:700}
 .aipr button{border-radius:11px}.aipr button.b{box-shadow:none;background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff}
 .aiq button{border-radius:999px;box-shadow:0 2px 6px rgba(15,27,36,.06);font-weight:600}
 .ai-f{padding:12px;box-shadow:0 -8px 24px rgba(15,27,36,.06)}
-#intro{background:radial-gradient(700px 400px at 80% 0,rgba(242,169,0,.18),transparent 60%),linear-gradient(160deg,#08121a,#10222e 55%,#1a3b50)}
-#intro button{border-radius:14px;background:linear-gradient(135deg,var(--am),var(--am2));box-shadow:0 10px 26px rgba(242,169,0,.4)}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 main>*{animation:rise .28s ease both}
 ::-webkit-scrollbar{height:8px;width:8px}::-webkit-scrollbar-thumb{background:#c5d0db;border-radius:8px}

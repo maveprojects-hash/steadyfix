@@ -28,8 +28,8 @@ const TOOLS = [
     input_schema: { type: "object", properties: { table: { type: "string" }, id: { type: "string" }, changes: { type: "object" }, summary: { type: "string" } }, required: ["table", "id", "changes", "summary"] } },
   { name: "propose_industry_customization", description: "For an owner or manager, propose approved changes to the company industry workspace: hide shortcuts the company does not use and/or rename shortcuts to match its terminology. This only changes the company workspace presentation, not permissions or underlying data. It queues a proposal and never saves without approval.",
     input_schema: { type: "object", properties: { disabled_modules: { type: "array", items: { type: "string" }, description: "Complete list of workspace module ids to hide; use an empty array to restore all shortcuts." }, module_labels: { type: "object", additionalProperties: { type: "string" }, description: "Custom labels keyed by supported module id; use an empty string to remove a custom label." }, summary: { type: "string" } }, required: ["summary"] } },
-  { name: "propose_company_profile", description: "For a company owner or manager, propose an approved company setup change: primary industry, up to eight secondary industries, and a concise description of the company's services, assets and operating needs. Validate industry choices against the active catalog. It never saves without approval.",
-    input_schema: { type: "object", properties: { primary_industry_slug: { type: "string" }, secondary_industry_slugs: { type: "array", items: { type: "string" } }, business_description: { type: "string", description: "Describe services, asset types, operating model, and specific needs. Max 4000 characters." }, summary: { type: "string" } }, required: ["summary"] } },
+  { name: "propose_company_profile", description: "For a company owner or manager, propose approved company setup changes: primary industry, up to eight secondary industries, a business description and operational setup preferences. Validate industries against the active catalog. Nothing saves without approval.",
+    input_schema: { type: "object", properties: { primary_industry_slug: { type: "string" }, secondary_industry_slugs: { type: "array", items: { type: "string" } }, business_description: { type: "string", description: "Describe services, asset types, operating model and specific needs. Max 4000 characters." }, company_setup: { type: "object", description: "Optional company operating context/preferences: services, hours, workflow preferences, dashboard focus, automation preferences and terminology.", properties: { services: { type: "array", items: { type: "string" } }, operating_hours: { type: "string" }, workflow_preferences: { type: "string" }, dashboard_focus: { type: "array", items: { type: "string" } }, automation_preferences: { type: "array", items: { type: "string" } }, terminology: { type: "object", additionalProperties: { type: "string" } } } }, summary: { type: "string" } }, required: ["summary"] } },
   { name: "remember", description: "Save one short lasting fact or preference about this business so you can use it in future chats.",
     input_schema: { type: "object", properties: { note: { type: "string" } }, required: ["note"] } },
   { name: "forget_memory", description: "Remove a saved note by its id when the user asks you to forget it.",
@@ -163,6 +163,43 @@ async function runTool(name, input, st) {
     if (input.business_description !== undefined) {
       if (typeof input.business_description !== "string" || input.business_description.length > 4000) return "Error: business description must be text of 4000 characters or less.";
       changes.business_description = input.business_description.trim();
+    }
+    if (input.company_setup !== undefined) {
+      const source = input.company_setup;
+      if (!source || typeof source !== "object" || Array.isArray(source)) return "Error: company_setup must be an object.";
+      const setup = {};
+      if (source.services !== undefined) {
+        if (!Array.isArray(source.services) || source.services.length > 20 || source.services.some(x => typeof x !== "string" || x.trim().length > 100)) return "Error: services must be a list of up to 20 short names.";
+        setup.services = [...new Set(source.services.map(x => x.trim()).filter(Boolean))];
+      }
+      if (source.operating_hours !== undefined) {
+        if (typeof source.operating_hours !== "string" || source.operating_hours.length > 500) return "Error: operating hours must be text of 500 characters or fewer.";
+        setup.operating_hours = source.operating_hours.trim();
+      }
+      if (source.workflow_preferences !== undefined) {
+        if (typeof source.workflow_preferences !== "string" || source.workflow_preferences.length > 3000) return "Error: workflow preferences must be text of 3000 characters or fewer.";
+        setup.workflow_preferences = source.workflow_preferences.trim();
+      }
+      if (source.dashboard_focus !== undefined) {
+        if (!Array.isArray(source.dashboard_focus) || source.dashboard_focus.length > 12 || source.dashboard_focus.some(x => typeof x !== "string" || x.trim().length > 80)) return "Error: dashboard focus must be a list of up to 12 short items.";
+        setup.dashboard_focus = [...new Set(source.dashboard_focus.map(x => x.trim()).filter(Boolean))];
+      }
+      if (source.automation_preferences !== undefined) {
+        if (!Array.isArray(source.automation_preferences) || source.automation_preferences.length > 20 || source.automation_preferences.some(x => typeof x !== "string" || x.trim().length > 120)) return "Error: automation preferences must be a list of up to 20 short items.";
+        setup.automation_preferences = [...new Set(source.automation_preferences.map(x => x.trim()).filter(Boolean))];
+      }
+      if (source.terminology !== undefined) {
+        const allowedTerms = ["site","work_order","asset","technician","customer","department","inventory","job_card","service_request","supplier","inspection"];
+        if (!source.terminology || typeof source.terminology !== "object" || Array.isArray(source.terminology)) return "Error: terminology must be an object.";
+        const terminology = {};
+        for (const [key, value] of Object.entries(source.terminology)) {
+          if (!allowedTerms.includes(key) || typeof value !== "string" || value.length > 60) return "Error: terminology contains an unsupported key or label.";
+          if (value.trim()) terminology[key] = value.trim();
+        }
+        setup.terminology = terminology;
+      }
+      if (!Object.keys(setup).length) return "Error: company_setup contains no valid fields.";
+      changes.company_setup = setup;
     }
     if (!Object.keys(changes).length) return "Error: specify at least one company profile field.";
     st.proposals.push({ id: "p" + (st.proposals.length + 1), kind: "company_profile", label: "Company setup", changes, summary: String(input.summary || "Update company setup").slice(0, 200) });

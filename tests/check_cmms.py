@@ -491,6 +491,16 @@ for marker in [
     if marker not in workspace_code:
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
+# Legacy invoice status must not claim Paid/Partial without recorded payment.
+for marker in [
+    "const dstat=d=>{if(d.kind!='invoice')return d.status",
+    "if(total>0&&paid>=total)return'paid'",
+    "if(paid>0)return'partial'",
+    "['paid','partial'].includes(d.status)?'sent':d.status",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing legacy invoice status normalization: {marker}")
+
 # Print mode must be cleaned after browser printing so the live UI is not left hidden.
 for marker in [
     "document.body.classList.remove('one')",

@@ -469,6 +469,15 @@ for marker in [
     if marker not in fleet_assignment_sql:
         raise SystemExit(f"Missing Fleet/Logistics assignment database safeguard: {marker}")
 
+pod_handler = transition_ui[transition_ui.index("function sfCapturePOD"):transition_ui.index("let SF_POD_SHIPMENT_ID")]
+for marker in [
+    "SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id)",
+    "shipment.status!==\'delivered\'",
+    "sfShipmentTransitionAllowed(shipment.status,\'delivered\')",
+]:
+    if marker not in pod_handler:
+        raise SystemExit(f"Missing proof-of-delivery transition UI guard: {marker}")
+
 # POD must only open after the UI validates the shipment's legal transition.
 status_handler = transition_ui[transition_ui.index("async function sfUpdateShipmentStatus"):transition_ui.index("async function sfAddShipmentScan")]
 if status_handler.index("sfShipmentTransitionAllowed") == -1 or status_handler.index("sfCapturePOD(id)") == -1 or status_handler.index("sfShipmentTransitionAllowed") > status_handler.index("sfCapturePOD(id)"):

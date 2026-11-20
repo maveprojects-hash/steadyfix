@@ -36,6 +36,7 @@ const TOOLS = [
     input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
   { name: "attention_summary", description: "Counts of what needs attention today: overdue jobs, overdue PMs, open incidents, overdue fire equipment service, expiring training and so on.",
     input_schema: { type: "object", properties: {} } },
+  { name: "check_app_health", description: "Read-only diagnostics of company-scoped data access across core CMMS modules. Report inaccessible tables as checks needing investigation; zero records is not a failure. This does not verify frontend clicks or external integrations.", input_schema: { type: "object", properties: {} } },
 ];
 
 function buildPrompt(ctx, memory, schema) {
@@ -53,6 +54,7 @@ How you work:
 - For company setup, use propose_company_profile when the owner/manager wants to set or revise the company industry and business description. Use industry_catalog choices, preserve unrelated profile values, and propose only the requested changes. Use propose_industry_customization for shortcut labels and visibility.
 - Workspace customization may only hide supported shortcut modules or rename them. Never claim it changes access permissions, creates new software modules, or alters another company's setup.
 - Never delete anything. If asked to delete, explain they can delete it themselves in the app.
+- When the owner asks whether the app is working, use check_app_health for read-only, company-scoped data-access diagnostics. Be explicit that this checks table access only, not every screen, click, PDF, email or external integration.
 - Use only the tables and fields in the schema. Dates are yyyy-mm-dd. Select fields must use one of the listed options exactly. For reference fields, find the id with search_records first.
 - Ask at most one short question when something essential is missing. Otherwise make a sensible assumption and say what you assumed.
 - When you learn a lasting fact or preference about their business (site hours, regular contractors, who usually does what, how they name things, which regulations apply), call remember with one short note and tell them you will remember it. Never save passwords, payment details or private personal information.
@@ -203,6 +205,18 @@ async function runTool(name, input, st) {
     if (error) return "Error: " + error.message;
     st.memory = st.memory.filter((m) => m.id !== input.id); return "Removed.";
   }
+  if (name === "check_app_health") {
+    const modules = ["work_orders","pm_schedules","purchase_orders","shutdowns","damage_reports","expenses","customers","suppliers","vehicles","ohs_inspections","ohs_hazards","ohs_incidents","ohs_ppe","ohs_training","ohs_regs","fire_equipment","fire_inspections","checklist_templates"];
+    const results = await Promise.all(modules.map(async (table) => {
+      try {
+        let q = sb.from(table).select("id").eq("company_id",ctx.company_id).limit(1);
+        if (schema[table] && schema[table].site && ctx.site_id) q=q.eq("site_id",ctx.site_id);
+        const { error } = await q;
+        return { module: table, status: error ? "unavailable" : "accessible", detail: error ? String(error.message).slice(0,160) : "Company-scoped read succeeded" };
+      } catch (e) { return { module: table, status: "unavailable", detail: String(e && e.message || e).slice(0,160) }; }
+    }));
+    return JSON.stringify({ scope: "authenticated company", site: ctx.site_name || null, note: "Read-only data-access probes; not a full UI or integration test.", checks: results });
+  }
   if (name === "attention_summary") {
     const t = ctx.today, in30 = new Date(Date.parse(t) + 30 * 864e5).toISOString().slice(0, 10), out = {};
     const get = async (label, table, build) => {
@@ -256,6 +270,20 @@ Deno.serve(async (req) => {
     const company_id = prof.data && prof.data.company_id;
     if (!company_id) return json({ error: "No company found for this login." }, 400);
 
+    // Treat browser-selected site as untrusted; verify company ownership and membership before AI context is built.
+    const requestedSiteId = typeof body.site_id === "string" ? body.site_id : null;
+    let verifiedSite = null;
+    if (requestedSiteId) {
+      const siteResult = await sb.from("sites").select("id,name").eq("id", requestedSiteId).eq("company_id", company_id).maybeSingle();
+      if (siteResult.error) return json({ error: "Unable to validate active site access." }, 403);
+      if (!siteResult.data) return json({ error: "Selected site is not part of your company." }, 403);
+      verifiedSite = siteResult.data;
+      if (!["owner", "manager"].includes(String(prof.data.role || "").toLowerCase())) {
+        const membership = await sb.from("user_sites").select("user_id").eq("site_id", verifiedSite.id).eq("user_id", user.id).maybeSingle();
+        if (membership.error || !membership.data) return json({ error: "You do not have access to this site." }, 403);
+      }
+    }
+
     const start = new Date(); start.setUTCHours(0, 0, 0, 0);
     const used = await sb.from("assistant_usage").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", start.toISOString());
     if ((used.count || 0) >= DAILY_LIMIT) return json({ reply: `You have used today's ${DAILY_LIMIT} assistant messages. It resets tomorrow.`, proposals: [], remembered: [] });
@@ -277,7 +305,7 @@ Deno.serve(async (req) => {
       configuration_overrides: industryProfileRow.configuration_overrides || {},
       config_version: industryProfileRow.config_version,
     } : null;
-    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: body.site_id || null, site_name: String(body.site_name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
+    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: verifiedSite?.id || null, site_name: String(verifiedSite?.name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
     const st = { sb, schema, ctx, memory: mem.data || [], proposals: [], remembered: [] };
 
     const convo = messages.map((m) => ({ role: m.role, content: m.content }));

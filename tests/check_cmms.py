@@ -25,6 +25,11 @@ for fn, end_marker in [
         raise SystemExit(f"Missing document report/export function: {fn}")
     if ".eq('company_id',me.company_id)" not in html[start:end]:
         raise SystemExit(f"Document report/export is missing company scoping: {fn}")
+    if fn.startswith("async function progDocs"):
+        report_code = html[start:end]
+        for marker in ["if(r.error)", "eq('company_id',me.company_id)", "const cr=await sb.from('customers').select('*').eq('company_id',me.company_id)", "if(cr.error)"]:
+            if marker not in report_code:
+                raise SystemExit("Invoice report missing tenant/error guard: " + marker)
     if fn.startswith("async function exportDocs") and "customers').select('*').eq('company_id',me.company_id)" not in html[start:end]:
         raise SystemExit("Document export customer lookup is missing company scoping")
 

@@ -654,3 +654,21 @@ for marker in [
         raise SystemExit(f"Missing invoice conversion database uniqueness safeguard: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+# Generic updates and deletes must enforce tenant and (where applicable) site scope.
+upd_start = html.find("async function upd(tb,rid,k,t,v,virt)")
+upd_end = html.find("async function ins(id)", upd_start)
+if upd_start < 0 or upd_end < 0:
+    raise SystemExit("Missing generic update function")
+upd_code = html[upd_start:upd_end]
+for marker in [".eq('id',rid).eq('company_id',me.company_id)", "if(MOD[tb]?.s)q=q.eq('site_id',site)"]:
+    if marker not in upd_code:
+        raise SystemExit("Generic update missing tenant/site filter: " + marker)
+del_start = html.find("async function del(tb,rid)")
+del_end = html.find("const STARTER=", del_start)
+if del_start < 0 or del_end < 0:
+    raise SystemExit("Missing generic delete function")
+del_code = html[del_start:del_end]
+for marker in [".eq('id',rid).eq('company_id',me.company_id)", "if(MOD[tb]?.s)q=q.eq('site_id',site)"]:
+    if marker not in del_code:
+        raise SystemExit("Generic delete missing tenant/site filter: " + marker)

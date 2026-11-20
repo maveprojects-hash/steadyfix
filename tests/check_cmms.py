@@ -506,7 +506,7 @@ conversion_guard_migration = root / "supabase" / "migrations" / "20261120230000_
 if not conversion_guard_migration.exists():
     raise SystemExit("Missing unique quote-conversion migration")
 conversion_guard_sql = conversion_guard_migration.read_text(encoding="utf-8").lower()
-for marker in ["documents_one_invoice_per_quote_idx", "kind='invoice' and converted_from is not null", "having count(*)>1", "reconcile them before applying"]:
+for marker in ["documents_one_invoice_per_quote_idx", "on public.documents(company_id,converted_from)", "group by company_id,converted_from", "kind='invoice' and converted_from is not null", "having count(*)>1", "reconcile them before applying"]:
     if marker not in conversion_guard_sql:
         raise SystemExit(f"Missing duplicate quote-conversion database safeguard: {marker}")
 

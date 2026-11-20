@@ -14,6 +14,18 @@ with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8") as f:
     f.flush()
     subprocess.run(["node", "--check", f.name], check=True)
 
+# Company-scoped document analytics and exports.
+for fn, end_marker in [
+    ("async function progDocs()", "async function exportDocs("),
+    ("async function exportDocs(kind)", "function "),
+]:
+    start = html.find(fn)
+    end = html.find(end_marker, start + len(fn))
+    if start < 0 or end < 0:
+        raise SystemExit(f"Missing document report/export function: {fn}")
+    if ".eq('company_id',me.company_id)" not in html[start:end]:
+        raise SystemExit(f"Document report/export is missing company scoping: {fn}")
+
 # PDF document renderer regression guards.
 share_start = html.find("async function shareHtml(")
 share_end = html.find("function docPreview(", share_start)

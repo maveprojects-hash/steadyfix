@@ -12,6 +12,13 @@ header select{background:#2c3b45;color:#fff;border:0;padding:6px;border-radius:3
 nav{background:var(--nav);display:flex;overflow-x:auto;padding:0 8px;position:sticky;top:0;z-index:5}
 nav button{background:none;border:0;color:#c9d3da;padding:11px 12px;font:500 14px system-ui;white-space:nowrap;cursor:pointer;border-bottom:3px solid transparent}
 nav button.on{color:#fff;border-color:var(--am)}
+/* Industry operational theme: authenticated app views only. */
+body.sf-industry-blue{--ac:#2678c7;--nav:#163c5d;--am:#55b6ff;--bg:#eef6ff;--ln:#c9dcef}
+body.sf-industry-red{--ac:#d83b46;--nav:#54242d;--am:#ff7a82;--bg:#fff4f4;--ln:#edd0d3}
+body.sf-industry-blue nav button.on,body.sf-industry-red nav button.on{border-color:var(--am)}
+body.sf-industry-blue .k,body.sf-industry-red .k{border-left-color:var(--ac)}
+body.sf-industry-blue .p,body.sf-industry-red .p{border-top:2px solid color-mix(in srgb,var(--ac) 40%,transparent)}
+
 main{max-width:1100px;margin:0 auto;padding:14px}h2{margin:0 0 10px;font-size:22px}
 .g{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:14px}
 .k{background:var(--pn);border-left:5px solid var(--ac);padding:10px}.k b{font-size:28px;display:block}.k span{color:var(--mut);font-size:13px}
@@ -385,8 +392,9 @@ const NAVI={"dash": "<rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1.5\"/>
 function buildNav(){const ab=$('aib');if(ab)ab.style.display=LOCK?'none':'';const ok=t=>t[0]=='industry'?isMgr()&&!LOCK:(t[0]=='inbox'||t[0]=='act')?!!me.is_admin:LOCK?['sub','sup','set'].includes(t[0]):(isMgr()||!['bud','inv','sub'].includes(t[0]));$('nav').innerHTML=TABS.filter(ok).map(t=>`<button data-t="${t[0]}"><svg class="ni" viewBox="0 0 24 24">${NAVI[t[0]]||''}</svg><span>${t[1]||MOD[t[0]].l}</span></button>`).join('')}
 
 let MT;
+function sfApplyIndustryAppTheme(){const slug=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug||'';const active=['industry_workspace','industry','fleet','work_orders','pm_schedules','chk','rep','inv','assets','stock_items','purchase_orders','ohs','soft'].includes(cur);document.body.classList.remove('sf-industry-blue','sf-industry-red');if(!active)return;if(['logistics-transport','fleet-management'].includes(slug))document.body.classList.add('sf-industry-blue');else if(['automation','workshops','manufacturing-industrial'].includes(slug))document.body.classList.add('sf-industry-red')}
 async function draw(){clearInterval(MT);if(LOCK&&!['sub','sup','set','inbox','act'].includes(cur))cur='sub';[...$('nav').children].forEach(b=>b.classList.toggle('on',b.dataset.t==cur));{const a=$('nav').querySelector('.on');if(a&&a.scrollIntoView)try{a.scrollIntoView({inline:'center',block:'nearest'})}catch(e){}}V.innerHTML='Loading…';
- try{V.innerHTML=cur=='industry'?await industryProfile():cur=='comms'?await communicationCentre():cur=='dash'?await dash():cur=='rep'?await rep():cur=='mon'?await mon():cur=='soft'?await soft():cur=='bud'?await bud():cur=='inv'?await inv():cur=='sup'?await sup():cur=='inbox'?await inbox():cur=='ohs'?await ohs():cur=='fleet'?await fleet():cur=='act'?await activity():cur=='shifts'?await ros():cur=='set'?settings():cur=='chk'?await chk():cur=='sub'?await sub():await mod(cur);if(cur=='comms')renderNotificationSettings();if(cur=='sub')pay();if(cur=='mon')MT=setInterval(()=>{const a=document.activeElement;if(cur!='mon'||(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))||document.querySelector('details[open]'))return;draw()},30000)}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}}
+ try{V.innerHTML=cur=='industry'?await industryProfile():cur=='comms'?await communicationCentre():cur=='dash'?await dash():cur=='rep'?await rep():cur=='mon'?await mon():cur=='soft'?await soft():cur=='bud'?await bud():cur=='inv'?await inv():cur=='sup'?await sup():cur=='inbox'?await inbox():cur=='ohs'?await ohs():cur=='fleet'?await fleet():cur=='act'?await activity():cur=='shifts'?await ros():cur=='set'?settings():cur=='chk'?await chk():cur=='sub'?await sub():await mod(cur);sfApplyIndustryAppTheme();if(cur=='comms')renderNotificationSettings();if(cur=='sub')pay();if(cur=='mon')MT=setInterval(()=>{const a=document.activeElement;if(cur!='mon'||(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))||document.querySelector('details[open]'))return;draw()},30000)}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}}
 
 const goTab=t=>{cur=t;draw()};
 const sec=(title,tab,lines,count)=>`<div class="p"><div class="ct" style="cursor:pointer" onclick="goTab('${tab}')"><div>${title}</div><div style="color:var(--ac);font-size:13px;font-weight:600;white-space:nowrap">${count!=null?count+' · ':''}Open →</div></div>${lines.length?lines.slice(0,6).map(l=>`<div class="rl">${l}</div>`).join(''):'<div class="rl" style="color:var(--mut)">Nothing to show.</div>'}${lines.length>6?`<div class="rl" style="color:var(--mut)">+ ${lines.length-6} more</div>`:''}</div>`;

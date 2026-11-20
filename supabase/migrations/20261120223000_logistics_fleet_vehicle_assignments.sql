@@ -19,7 +19,7 @@ revoke all on function public.validate_logistics_vehicle_assignment() from publi
 drop trigger if exists logistics_vehicle_assignment_validate on public.logistics_shipments;
 create trigger logistics_vehicle_assignment_validate before insert or update of vehicle_id on public.logistics_shipments for each row execute function public.validate_logistics_vehicle_assignment();
 alter table public.logistics_tracking_events drop constraint if exists logistics_tracking_events_event_type_check;
-alter table public.logistics_tracking_events add constraint logistics_tracking_events_event_type_check check (event_type in ('created','status_change','scan','pod','vehicle_assignment'));
+alter table public.logistics_tracking_events add constraint logistics_tracking_events_event_type_check check (event_type in ('created','status_change','scan','pod','vehicle_assignment','exception_note','return_note'));
 create or replace function public.logistics_record_vehicle_assignment_event()
 returns trigger language plpgsql security definer set search_path = pg_catalog, public as $$
 declare v_old_name text; v_new_name text; v_note text;

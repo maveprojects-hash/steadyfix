@@ -515,6 +515,11 @@ if 'p_key":"${s.device_key}' in app_html:
 if '<DEVICE_KEY>' not in app_html:
     raise SystemExit("Smart sensor sample curl command must use a redacted key placeholder")
 
+# Tracker credentials are discarded when a driver stops sharing location.
+stop_fn = tracker_page[tracker_page.index('function stop()'):tracker_page.index("$('go').onclick")]
+if "$('key').value=''" not in stop_fn or 'Tracker key cleared' not in stop_fn:
+    raise SystemExit('Stopping GPS must clear the tracker credential from the phone page')
+
 # Fleet tracker concurrency and stale-position regression guards.
 ordered_positions = root / "supabase" / "migrations" / "20261120213000_fleet_out_of_order_position_guard.sql"
 if not ordered_positions.exists():

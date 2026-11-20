@@ -410,12 +410,21 @@ async function fleet(){if(FT=='ov')return fleetOverview();if(FT=='track')return 
 const hav=(a,b)=>{const t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dg=t(b.lng-a.lng),q=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dg/2)**2;return 12742*Math.asin(Math.sqrt(q))};
 const tAgo=iso=>{if(!iso)return 'never';const m=Math.round((Date.now()-new Date(iso))/60000);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' days ago'};
 async function fleetData(){
- const since=new Date(Date.now()-7*864e5).toISOString(),[v,j,p]=await Promise.all([
+ const nowMs=Date.now(),since=new Date(nowMs-7*864e5).toISOString(),until=new Date(nowMs).toISOString();
+ const [v,j]=await Promise.all([
   sb.from('vehicles').select('*').eq('company_id',me.company_id).eq('site_id',site).order('created_at',{ascending:false}).order('name'),
-  sb.from('workshop_jobs').select('status').eq('company_id',me.company_id).eq('site_id',site),
-  sb.from('vehicle_positions').select('vehicle_id,recorded_at,lat,lng,speed_kmh').eq('company_id',me.company_id).gte('recorded_at',since).order('recorded_at',{ascending:false}).limit(5000)
+  sb.from('workshop_jobs').select('status').eq('company_id',me.company_id).eq('site_id',site)
  ]);
- const V=v.data||[],J=j.data||[],nowMs=Date.now(),lim=Object.fromEntries(V.map(x=>[x.id,+x.speed_limit||100])),by={},info={},events=[];
+ // Read GPS history in stable, bounded pages so fleets above 5,000 records aren't silently truncated.
+ const pageSize=1000,positions=[];let offset=0,pError=null;
+ while(true){
+  const page=await sb.from('vehicle_positions').select('vehicle_id,recorded_at,lat,lng,speed_kmh').eq('company_id',me.company_id).gte('recorded_at',since).lte('recorded_at',until).order('recorded_at',{ascending:false}).order('vehicle_id',{ascending:true}).range(offset,offset+pageSize-1);
+  if(page.error){pError=page.error;break}
+  const rows=page.data||[];positions.push(...rows);
+  if(rows.length<pageSize)break;
+  offset+=pageSize;
+ }
+ const p={data:positions,error:pError},V=v.data||[],J=j.data||[],lim=Object.fromEntries(V.map(x=>[x.id,+x.speed_limit||100])),by={},info={},events=[];
  const validPos=r=>{const t=new Date(r.recorded_at).getTime();return Number.isFinite(t)&&t<=nowMs+120000&&r.lat!=null&&r.lat!==''&&Number.isFinite(+r.lat)&&Math.abs(+r.lat)<=90&&r.lng!=null&&r.lng!==''&&Number.isFinite(+r.lng)&&Math.abs(+r.lng)<=180&&r.speed_kmh!=null&&r.speed_kmh!==''&&Number.isFinite(+r.speed_kmh)&&+r.speed_kmh>=0&&+r.speed_kmh<=300};
  (p.data||[]).filter(validPos).sort((a,b)=>new Date(a.recorded_at)-new Date(b.recorded_at)).forEach(r=>{(by[r.vehicle_id]=by[r.vehicle_id]||[]).push(r)});
  V.forEach(x=>{

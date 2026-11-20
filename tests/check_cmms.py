@@ -457,6 +457,8 @@ for marker in [
     "add column if not exists vehicle_id uuid references public.vehicles(id)",
     "validate_logistics_vehicle_assignment",
     "assigned vehicle must belong to the same company and site",
+    "vehicles in service cannot be assigned to consignments",
+    "if v_status = 'in_service' then",
     "logistics_tracking_events_event_type_check",
     "vehicle_assignment",
     "exception_note",

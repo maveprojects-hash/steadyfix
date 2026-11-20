@@ -430,7 +430,7 @@ for marker in [
     'secondary_industry_slugs',
     'business_description',
     'company_profile',
-    'company setup changes queued for owner/manager approval',
+    'Company setup changes queued for owner/manager approval',
 ]:
     if marker not in assistant_customization:
         raise SystemExit(f"Missing iAssistant company-setup proposal safeguard: {marker}")

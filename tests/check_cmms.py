@@ -445,6 +445,8 @@ for marker in [
     "assigned vehicle must belong to the same company and site",
     "logistics_tracking_events_event_type_check",
     "vehicle_assignment",
+    "exception_note",
+    "return_note",
     "logistics_record_vehicle_assignment_event",
     "delivered or returned consignments cannot change vehicle assignment",
 ]:

@@ -584,7 +584,17 @@ dup_code = html[dup_start:dup_end]
 if "delete rest.converted_from" not in dup_code:
     raise SystemExit("Copied documents must not retain quote conversion linkage")
 
-# Document export must surface query failures instead of silently exporting empty data.\nexport_start = html.find("async function exportDocs(kind)")\nexport_end = html.find("async function exportCust()", export_start)\nif export_start < 0 or export_end < 0:\n    raise SystemExit("Missing document export function")\nexport_code = html[export_start:export_end]\nfor marker in ["if(r.error)", "Could not load company documents for export", "const cr=await sb.from('customers').select('*').eq('company_id',me.company_id)", "if(cr.error)", "Could not load company customers for export"]:\n    if marker not in export_code:\n        raise SystemExit("Document export missing query-error guard: " + marker)\n\n# Expense export must be tenant-scoped and fail visibly on query errors.
+# Document export must surface query failures instead of silently exporting empty data.
+export_start = html.find("async function exportDocs(kind)")
+export_end = html.find("async function exportCust()", export_start)
+if export_start < 0 or export_end < 0:
+    raise SystemExit("Missing document export function")
+export_code = html[export_start:export_end]
+for marker in ["if(r.error)", "Could not load company documents for export", "const cr=await sb.from('customers').select('*').eq('company_id',me.company_id)", "if(cr.error)", "Could not load company customers for export"]:
+    if marker not in export_code:
+        raise SystemExit("Document export missing query-error guard: " + marker)
+
+# Expense export must be tenant-scoped and fail visibly on query errors.
 expense_start = html.find("async function exportExp()")
 expense_end = html.find("const val=", expense_start)
 if expense_start < 0 or expense_end < 0:
@@ -603,6 +613,16 @@ cust_code = html[cust_start:cust_end]
 for marker in ["eq('company_id',me.company_id)", "if(r.error)", "Could not load company customers for export"]:
     if marker not in cust_code:
         raise SystemExit("Customer export missing tenant/error guard: " + marker)
+
+
+# Classic invoice inclusive line totals account for document-level discounts.
+layout_start = html.find("function tableHtml(m,mode)")
+layout_end = html.find("function totHtml(m)", layout_start)
+if layout_start < 0 or layout_end < 0:
+    raise SystemExit("Missing invoice line-table renderer")
+layout_code = html[layout_start:layout_end]
+if "1-(+m.d.discount_pct||0)/100" not in layout_code:
+    raise SystemExit("Classic invoice inclusive line totals must include document discount")
 
 # Database-level uniqueness protects concurrent quote-to-invoice conversions.
 conversion_migration = next((root / "supabase" / "migrations").glob("*_invoice_quote_conversion_unique.sql"))

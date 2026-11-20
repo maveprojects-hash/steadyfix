@@ -139,19 +139,25 @@ function sfPrintServiceContract(id){
 }
 async function sfPrintServiceJobCard(id){
   const r=(LAST&&LAST.rows||[]).find(x=>x.id===id);if(!r)return;
-  const signed=await sb.from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('site_id',site).order('signed_at',{ascending:false}).limit(1);SF_JOB_SIGNOFFS=signed.data||[];const latestSignoff=SF_JOB_SIGNOFFS[0];
+  const [signed,time,issues]=await Promise.all([
+    sb.from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site).order('signed_at',{ascending:false}).limit(1),
+    sb.from('work_order_time_entries').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site).order('work_date',{ascending:false}).order('created_at',{ascending:false}),
+    sb.from('work_order_material_issues').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site).order('issued_at',{ascending:false})
+  ]);
+  for(const q of [signed,time,issues])if(q.error){alert('Could not load the full job-card print record: '+q.error.message);return}
+  SF_JOB_SIGNOFFS=signed.data||[];const latestSignoff=SF_JOB_SIGNOFFS[0],timeRows=time.data||[],stockRows=issues.data||[];
+  const labourHours=timeRows.reduce((a,x)=>a+(Number(x.hours)||0),0),labourValue=timeRows.reduce((a,x)=>a+(Number(x.hours||0)*(Number(x.hourly_rate)||0)),0);
   const find=(t,k)=>((LAST&&LAST.refs&&LAST.refs[t])||[]).find(x=>x.id===k);
   const customer=find('customers',r.customer_id),asset=find('assets',r.asset_id),tech=find('profiles',r.assigned_to);
   let sh=$('sheet');if(!sh){sh=document.createElement('div');sh.id='sheet';document.body.appendChild(sh)}
   const row=(l,v)=>'<tr><th style="width:32%">'+l+'</th><td>'+esc(v==null||v===''?'-':String(v))+'</td></tr>';
   const parts=Array.isArray(r.lines)?r.lines.map(x=>'<tr><td>'+esc(x.d||'')+'</td><td>'+esc(x.q||0)+'</td><td>'+R(x.p||0)+'</td><td>'+R((+x.q||0)*(+x.p||0))+'</td></tr>').join(''):'';
-  sh.innerHTML='<h2>'+esc(CS.label||CO)+' · Automation service job card</h2><p><b>Job card '+esc(r.job_number||'')+'</b> · '+esc(r.title||'')+'</p><table class="pt">'+row('Customer',customer&&customer.name)+row('Equipment',asset&&asset.name)+row('Assigned technician',(tech&&tech.full_name)||r.assigned_name)+row('Service type',r.service_type)+row('Priority',r.priority)+row('Progress',r.status)+row('Due date',r.due_date)+row('Meter reading',r.meter_reading)+row('Labour hours',r.labour_hours)+row('Customer approval',r.customer_approval_status)+'</table><p><b>Problem reported</b></p><div class="box">'+esc(r.reported_problem||'')+'</div><p><b>Diagnosis</b></p><div class="box">'+esc(r.diagnosis||'')+'</div><p><b>Work performed</b></p><div class="box">'+esc(r.work_performed||'')+'</div><p><b>Parts and consumables used</b></p><table class="pt"><tr><th>Item</th><th>Qty</th><th>Unit cost</th><th>Total</th></tr>'+(parts||'<tr><td colspan="4">No parts recorded</td></tr>')+'</table><p style="margin-top:28px"><b>Customer sign-off</b></p>'+(latestSignoff?'<p>Approved by: '+esc(latestSignoff.signer_name)+' · '+esc(new Date(latestSignoff.signed_at).toLocaleString('en-ZA'))+'</p>'+sfSignatureSvg(latestSignoff.signature_points)+'<p>'+esc(latestSignoff.notes||'')+'</p>':'<p>Customer signature: _______________________ Date: __________</p>')+'<p>Technician signature: _____________________ Date: __________</p>';
+  const manualParts='<table class="pt"><tr><th>Item</th><th>Qty</th><th>Unit cost</th><th>Total</th></tr>'+(parts||'<tr><td colspan="4">No manually entered parts</td></tr>')+'</table>';
+  const laborHtml='<table class="pt"><tr><th>Technician</th><th>Date</th><th>Hours</th><th>Rate</th><th>Total</th></tr>'+timeRows.map(x=>'<tr><td>'+esc(find('profiles',x.technician_id)?.full_name||'Technician')+'</td><td>'+esc(x.work_date||'')+'</td><td>'+esc(x.hours||0)+'</td><td>'+R(x.hourly_rate||0)+'</td><td>'+R((Number(x.hours)||0)*(Number(x.hourly_rate)||0))+'</td></tr>').join('')+(timeRows.length?'':'<tr><td colspan="5">No recorded labour entries</td></tr>')+'</table><p><b>Total logged hours:</b> '+labourHours.toFixed(2)+' · <b>Labour value:</b> '+R(labourValue)+'</p>';
+  const stockHtml='<table class="pt"><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Unit cost</th><th>Total</th></tr>'+stockRows.map(x=>'<tr><td>'+esc(x.item_name||'Stock item')+(x.notes?'<div>'+esc(x.notes)+'</div>':'')+'</td><td>'+esc(x.quantity||0)+'</td><td>'+esc(x.unit||'units')+'</td><td>'+R(x.unit_cost||0)+'</td><td>'+R(x.total_cost||0)+'</td></tr>').join('')+(stockRows.length?'':'<tr><td colspan="5">No inventory stock issued</td></tr>')+'</table>';
+  sh.innerHTML='<h2>'+esc(CS.label||CO)+' · Automation service job card</h2><p><b>Job card '+esc(r.job_number||'')+'</b> · '+esc(r.title||'')+'</p><table class="pt">'+row('Customer',customer&&customer.name)+row('Equipment',asset&&asset.name)+row('Assigned technician',(tech&&tech.full_name)||r.assigned_name)+row('Service type',r.service_type)+row('Priority',r.priority)+row('Progress',r.status)+row('Due date',r.due_date)+row('Meter reading',r.meter_reading)+row('Logged labour hours',labourHours.toFixed(2))+row('Previous labour-hours field',r.labour_hours)+row('Customer approval',r.customer_approval_status)+'</table><p><b>Problem reported</b></p><div class="box">'+esc(r.reported_problem||'')+'</div><p><b>Diagnosis</b></p><div class="box">'+esc(r.diagnosis||'')+'</div><p><b>Work performed</b></p><div class="box">'+esc(r.work_performed||'')+'</div><p><b>Recorded labour entries</b></p>'+laborHtml+'<p><b>Parts and consumables (manual entry)</b></p>'+manualParts+'<p><b>Stock issued from inventory</b></p>'+stockHtml+'<p style="margin-top:28px"><b>Customer sign-off</b></p>'+(latestSignoff?'<p>Approved by: '+esc(latestSignoff.signer_name)+' · '+esc(new Date(latestSignoff.signed_at).toLocaleString('en-ZA'))+'</p>'+sfSignatureSvg(latestSignoff.signature_points)+'<p>'+esc(latestSignoff.notes||'')+'</p>':'<p>Customer signature: _______________________ Date: __________</p>')+'<p>Technician signature: _____________________ Date: __________</p>';
   document.body.classList.add('one');setTimeout(()=>window.print(),120);
-}
-
-
-
-// ---------- Job card labour and controlled stock issue ----------
+}// ---------- Job card labour and controlled stock issue ----------
 async function sfOpenJobOperations(id){
   SF_JOB_OPERATIONS_ID=id;cur='job_operations';draw();
 }

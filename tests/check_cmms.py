@@ -28,10 +28,40 @@ required_ui = [
     "notificationEffectSettings",
     "steadyfix.cmms.notification-preferences",
     "row.created_by=me.id",
+    "sb.from('profiles').select('id,full_name,role').eq('company_id',me.company_id).eq('active',true).order('full_name')",
+    "sb.from('customers').select('id,name').eq('company_id',me.company_id).order('name')",
+    "sb.from('assets').select('id,name').eq('company_id',me.company_id).eq('site_id',site).order('name')",
 ]
 for marker in required_ui:
     if marker not in html:
         raise SystemExit(f"Missing notification UI behavior: {marker}")
+
+required_work_order_intake = [
+    "F('job_number','Job card number (optional)','t')",
+    "F('service_type','Service type','s',['callout','installation','maintenance','repair','inspection'])",
+    "F('customer_id','Customer','r',['customers','name'])",
+    "F('asset_id','Equipment / asset','r',['assets','name'])",
+    "F('reported_problem','Reported problem','x')",
+    "F('diagnosis','Diagnosis','x')",
+    "F('work_performed','Work performed','x')",
+    "F('meter_reading','Meter reading','n')",
+    "F('customer_approval_status','Customer approval','s',['pending','approved','declined','not_required'])",
+]
+for marker in required_work_order_intake:
+    if marker not in html:
+        raise SystemExit(f"Missing Work Orders job-card intake field: {marker}")
+
+# Customer approval is a signed record; the generic work-order editor must not bypass sign-off.
+if html.count("id=='work_orders'&&f.k=='customer_approval_status'") < 1 or "id=='work_orders'&&(f.k=='customer_approval_status'||f.k=='assigned_name')" not in html:
+    raise SystemExit("Customer approval must be read-only in edit cards and omitted from the add form")
+if "Customer approval (recorded by customer sign-off)" not in html:
+    raise SystemExit("Work-order editor does not explain that approval comes from signed customer sign-off")
+
+# Assigned technician display is sourced from assigned_to; never edit display text directly.
+if html.count("id=='work_orders'&&f.k=='assigned_name'") < 1 or "id=='work_orders'&&(f.k=='customer_approval_status'||f.k=='assigned_name')" not in html:
+    raise SystemExit("Work-order assigned technician display must be read-only and omitted from creation")
+if "Assigned technician (changed using the staff selector)" not in html:
+    raise SystemExit("Work-order edit card does not explain how to change assignment")
 
 migration = next((root / "supabase" / "migrations").glob("*_work_order_notifications.sql"))
 sql = migration.read_text(encoding="utf-8")
@@ -240,6 +270,15 @@ for marker in [
 ]:
     if marker not in workspace_code:
         raise SystemExit(f"Missing industry workspace capability: {marker}")
+for marker in [
+    "sb.from('work_order_time_entries').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    "sb.from('work_order_material_issues').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    "row('Logged labour hours',labourHours.toFixed(2))",
+    "<b>Recorded labour entries</b>",
+    "<b>Stock issued from inventory</b>",
+]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Printed job card is missing verified labour/stock detail: {marker}")
 
 automation_migration = next((root / "supabase" / "migrations").glob("*_automation_service_operations.sql"))
 automation_sql = automation_migration.read_text(encoding="utf-8").lower()

@@ -253,12 +253,11 @@ async function sfIssueJobStock(id){
 let SF_LOGISTICS_SHIPMENTS=[];
 const SF_SHIPMENT_STATUSES=['booked','collected','in_transit','at_depot','out_for_delivery','delivered','exception','returned'];
 async function sfLogisticsWorkspace(){
-  const [sr,ev]=await Promise.all([
-    sb.from('logistics_shipments').select('*').eq('company_id',me.company_id).eq('site_id',site).order('created_at',{ascending:false}),
-    sb.from('logistics_tracking_events').select('*').eq('company_id',me.company_id).eq('site_id',site).order('event_at',{ascending:false}).limit(500)
-  ]);
-  if(sr.error)throw sr.error;if(ev.error)throw ev.error;
-  SF_LOGISTICS_SHIPMENTS=sr.data||[];const events=ev.data||[];
+  const sr=await sb.from('logistics_shipments').select('*').eq('company_id',me.company_id).eq('site_id',site).order('created_at',{ascending:false});
+  if(sr.error)throw sr.error;
+  const pageSize=1000,events=[];let offset=0;
+  while(true){const ev=await sb.from('logistics_tracking_events').select('*').eq('company_id',me.company_id).eq('site_id',site).order('event_at',{ascending:false}).range(offset,offset+pageSize-1);if(ev.error)throw ev.error;events.push(...(ev.data||[]));if(!ev.data||ev.data.length<pageSize)break;offset+=pageSize;}
+  SF_LOGISTICS_SHIPMENTS=sr.data||[];
   const count=s=>SF_LOGISTICS_SHIPMENTS.filter(x=>x.status===s).length;
   const cards=SF_LOGISTICS_SHIPMENTS.map(x=>{
     const history=events.filter(e=>e.shipment_id===x.id).slice(0,8);

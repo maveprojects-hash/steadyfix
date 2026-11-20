@@ -28,6 +28,23 @@ for fn, end_marker in [
     if fn.startswith("async function exportDocs") and "customers').select('*').eq('company_id',me.company_id)" not in html[start:end]:
         raise SystemExit("Document export customer lookup is missing company scoping")
 
+# Quote-to-invoice validation and failure handling guards.
+convert_start = html.find("async function toInvoice(")
+convert_end = html.find("async function delDoc(", convert_start)
+if convert_start < 0 or convert_end < 0:
+    raise SystemExit("Missing quote-to-invoice conversion function")
+convert_code = html[convert_start:convert_end]
+for marker in [
+    "q.company_id!==me.company_id",
+    "q.kind!=='quote'",
+    "q.status==='cancelled'",
+    "converted_from==q.id",
+    "upd.error",
+    "Invoice was created, but the quote status could not be updated",
+]:
+    if marker not in convert_code:
+        raise SystemExit(f"Missing quote conversion guard: {marker}")
+
 # PDF document renderer regression guards.
 share_start = html.find("async function shareHtml(")
 share_end = html.find("function docPreview(", share_start)

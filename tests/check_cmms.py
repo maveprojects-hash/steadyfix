@@ -407,10 +407,17 @@ for marker in [
 transition_ui = industry_workspaces.read_text(encoding="utf-8")
 logistics_workspace_ui = transition_ui[transition_ui.index("async function sfLogisticsWorkspace"):transition_ui.index("const SF_SHIPMENT_TRANSITIONS")]
 for marker in [
+    "const pageSize=1000,shipments=[],events=[];let shipmentOffset=0,eventOffset=0",
+    "while(true){const sr=await sb.from('logistics_shipments')",
+    ".range(shipmentOffset,shipmentOffset+pageSize-1)",
+    "shipments.push(...(sr.data||[]))",
     "const pageSize=1000,events=[];let offset=0",
     "while(true){const ev=await sb.from('logistics_tracking_events')",
     ".range(offset,offset+pageSize-1)",
     "events.push(...(ev.data||[]))",
+    ".range(eventOffset,eventOffset+pageSize-1)",
+    "eventOffset+=pageSize",
+    "SF_LOGISTICS_SHIPMENTS=shipments",
 ]:
     if marker not in logistics_workspace_ui:
         raise SystemExit(f"Missing Logistics scan pagination safeguard: {marker}")

@@ -29,10 +29,27 @@ required_ui = [
     "steadyfix.cmms.notification-preferences",
     "row.created_by=me.id",
     "sb.from('profiles').select('id,full_name,role').eq('company_id',me.company_id).eq('active',true).order('full_name')",
+    "sb.from('customers').select('id,name').eq('company_id',me.company_id).order('name')",
+    "sb.from('assets').select('id,name').eq('company_id',me.company_id).eq('site_id',site).order('name')",
 ]
 for marker in required_ui:
     if marker not in html:
         raise SystemExit(f"Missing notification UI behavior: {marker}")
+
+required_work_order_intake = [
+    "F('job_number','Job card number (optional)','t')",
+    "F('service_type','Service type','s',['callout','installation','maintenance','repair','inspection'])",
+    "F('customer_id','Customer','r',['customers','name'])",
+    "F('asset_id','Equipment / asset','r',['assets','name'])",
+    "F('reported_problem','Reported problem','x')",
+    "F('diagnosis','Diagnosis','x')",
+    "F('work_performed','Work performed','x')",
+    "F('meter_reading','Meter reading','n')",
+    "F('customer_approval_status','Customer approval','s',['pending','approved','declined','not_required'])",
+]
+for marker in required_work_order_intake:
+    if marker not in html:
+        raise SystemExit(f"Missing Work Orders job-card intake field: {marker}")
 
 migration = next((root / "supabase" / "migrations").glob("*_work_order_notifications.sql"))
 sql = migration.read_text(encoding="utf-8")

@@ -436,7 +436,7 @@ for marker in [
     "invalid gps coordinates",
     "invalid gps speed",
     "invalid gps heading",
-    "timestamp is invalid or too far in future",
+    "gps timestamp is invalid or too far in the future",
     "vehicle must belong to the same company",
     "vehicle_positions_company_recent_idx",
     "vehicles_company_last_seen_idx",

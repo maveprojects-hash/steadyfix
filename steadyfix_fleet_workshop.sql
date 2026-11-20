@@ -60,6 +60,12 @@ begin
   select * into v from vehicles where device_key = p_key limit 1;
   if not found then raise exception 'Unknown tracker key'; end if;
   if p_lat is null or p_lng is null or abs(p_lat) > 90 or abs(p_lng) > 180 then raise exception 'Bad position'; end if;
+  if p_speed is not null and (p_speed < 0 or p_speed > 300) then raise exception 'Bad speed'; end if;
+  if p_heading is not null and (p_heading < 0 or p_heading > 360) then raise exception 'Bad heading'; end if;
+  if p_odometer is not null and p_odometer < 0 then raise exception 'Bad odometer'; end if;
+  if p_odometer is not null and v.odometer_km is not null and p_odometer < v.odometer_km then
+    raise exception 'Odometer cannot move backwards';
+  end if;
   t := least(coalesce(p_at, now()), now());
   insert into vehicle_positions (company_id, vehicle_id, recorded_at, lat, lng, speed_kmh, heading)
     values (v.company_id, v.id, t, p_lat, p_lng, coalesce(p_speed, 0), p_heading);

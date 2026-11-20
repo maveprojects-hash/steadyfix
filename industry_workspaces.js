@@ -54,8 +54,12 @@ async function sfIndustryWorkspace(){
   if(!INDUSTRIES||!INDUSTRIES.length)await loadIndustryProfile();
   const slug=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug||'general-maintenance';
   const ind=(INDUSTRIES||[]).find(x=>x.slug===slug);if(!ind)return sfIndustryHub();
-  let html='<div class="bar2 noprint"><button onclick="openIndustryHub()">← All industries</button><button onclick="goTab(\'dash\')">Main dashboard</button></div>';
-  html+='<h2>'+esc(ind.name)+' workspace</h2><div class="p"><b>'+esc(ind.description||'')+'</b><div class="note">This is the company selected industry workspace. The base CMMS records and security remain shared; these shortcuts organise the functions most relevant to this type of operation.</div>';
+  const SF_THEME=slug==='logistics-transport'||slug==='fleet-management'?{accent:'#2678c7',deep:'#163c5d',soft:'#eaf4ff',glow:'rgba(38,120,199,.16)',label:'Operations blue'}:
+    ['automation','workshops','manufacturing-industrial'].includes(slug)?{accent:'#d83b46',deep:'#54242d',soft:'#fff0f1',glow:'rgba(216,59,70,.15)',label:'Workshop red'}:{accent:'var(--ac)',deep:'var(--nav)',soft:'var(--bg)',glow:'transparent',label:'STEADYFIX'};
+  let html='<div class="sf-industry-surface" style="--sf-accent:'+SF_THEME.accent+';--sf-deep:'+SF_THEME.deep+';--sf-soft:'+SF_THEME.soft+';--sf-glow:'+SF_THEME.glow+'"><style>.sf-industry-surface{border-radius:12px;padding:2px;background:linear-gradient(135deg,var(--sf-glow),transparent 55%)}.sf-industry-surface .sf-industry-hero{background:linear-gradient(125deg,var(--sf-deep),var(--sf-accent));color:#fff;padding:18px 20px;border-radius:10px;margin:0 0 14px;box-shadow:0 8px 24px var(--sf-glow)}.sf-industry-surface .sf-industry-hero .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.85}.sf-industry-surface .sf-industry-hero h2{margin:3px 0 5px;color:#fff;font-size:24px}.sf-industry-surface .sf-industry-hero p{margin:0;opacity:.9;font-size:13px}.sf-industry-surface .card{border-left-color:var(--sf-accent);box-shadow:0 3px 12px rgba(24,40,49,.06);transition:transform .15s,box-shadow .15s}.sf-industry-surface .card:hover{transform:translateY(-2px);box-shadow:0 8px 20px var(--sf-glow)}.sf-industry-surface .tabs .on,.sf-industry-surface .b{background:var(--sf-accent);border-color:var(--sf-accent)}.sf-industry-surface .bar2 button{border-color:var(--sf-accent);color:var(--sf-accent)}.sf-industry-surface .k{border-left-color:var(--sf-accent)}</style>';
+  html+='<div class="bar2 noprint"><button onclick="openIndustryHub()">← All industries</button><button onclick="goTab(\'dash\')">Main dashboard</button></div>';
+  html+='<div class="sf-industry-hero"><div class="eyebrow">STEADYFIX · '+SF_THEME.label+'</div><h2>'+esc(ind.name)+' workspace</h2><p>Industry-specific operations, with your core STEADYFIX account and security intact.</p></div>';
+  html+='<div class="p"><b>'+esc(ind.description||'')+'</b><div class="note">This is the company selected industry workspace. The base CMMS records and security remain shared; these shortcuts organise the functions most relevant to this type of operation.</div>';
   const focus=(ind.default_configuration&&ind.default_configuration.focus_areas)||[];
   if(focus.length)html+='<div class="rl"><b>Industry focus:</b> '+esc(focus.join(' · '))+'</div>';
   html+='</div><div class="dg">';
@@ -64,8 +68,9 @@ async function sfIndustryWorkspace(){
   if(!sfIndustryModules(slug).some(m=>!overrides.disabled.has(m[3])))html+='<div class="p">All workspace shortcuts are currently hidden. A company manager can restore them in Industry profile.</div>';
   html+='</div>';
   if(slug==='logistics-transport')html+='<div class="p"><b>Connected logistics workflow</b><div class="note">Create a consignment, issue its waybill, record tracking scans as it moves through depots, and capture the receiving person and proof-of-delivery reference at delivery. Fleet GPS and vehicle maintenance remain available alongside parcel operations.</div></div>';
-  return html;
+  return html+'</div>';
 }
+
 
 async function sfServiceContracts(){
   if(!isMgr())return '<h2>Service contracts</h2><div class="p">Only company owners and managers can create or change customer service contracts.</div>';

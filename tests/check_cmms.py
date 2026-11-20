@@ -495,3 +495,21 @@ if "class=\"dx\" style=\"padding:0\"" not in doc_layout_source:
     raise SystemExit("Modern layout is missing its printable .dx root")
 if "function docSheet(d){const c=CUST.find(x=>x.id==d.customer_id)||{};return docHtml(d,c)}" not in app_doc:
     raise SystemExit("Quote/invoice print and share document builder changed unexpectedly")
+
+# Fleet dashboards and GPS history are explicitly restricted to company vehicles and active site.
+fleet_start = html.index("async function fleetData()")
+fleet_end = html.index("async function fleetOverview()", fleet_start)
+fleet_source = html[fleet_start:fleet_end]
+for marker in [
+    ".from('vehicles').select('*').eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('workshop_jobs').select('status').eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('vehicle_positions').select('vehicle_id,recorded_at,lat,lng,speed_kmh').eq('company_id',me.company_id).in('vehicle_id',ids)",
+]:
+    if marker not in fleet_source:
+        raise SystemExit(f"Missing fleet company/site data filter: {marker}")
+for marker in [
+    ".from('workshop_jobs').select('status').eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('vehicles').select('*').eq('id',r.vehicle_id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle()",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing scoped fleet query: {marker}")

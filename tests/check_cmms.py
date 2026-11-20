@@ -57,6 +57,12 @@ if html.count("id=='work_orders'&&f.k=='customer_approval_status'") < 2:
 if "Customer approval (recorded by customer sign-off)" not in html:
     raise SystemExit("Work-order editor does not explain that approval comes from signed customer sign-off")
 
+# Assigned technician display is sourced from assigned_to; never edit display text directly.
+if html.count("id=='work_orders'&&f.k=='assigned_name'") < 2:
+    raise SystemExit("Work-order assigned technician display must be read-only and omitted from creation")
+if "Assigned technician (changed using the staff selector)" not in html:
+    raise SystemExit("Work-order edit card does not explain how to change assignment")
+
 migration = next((root / "supabase" / "migrations").glob("*_work_order_notifications.sql"))
 sql = migration.read_text(encoding="utf-8")
 for marker in [

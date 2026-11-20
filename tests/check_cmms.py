@@ -499,6 +499,10 @@ print("CMMS syntax, notifications, industry profiles, Automation operations, log
 app_html = html
 
 # Quotes and invoices: validate workflow transitions and company/site-scoped mutations.
+quote_card_actions = app_html[app_html.index("const cards=D.map"):app_html.index("const pb=")]
+if "DOCS.some(x=>x.kind==='invoice'&&x.converted_from===d.id)" not in quote_card_actions:
+    raise SystemExit("Quote list still offers invoice conversion after conversion")
+
 document_workflow = app_html[app_html.index("async function setDoc"):app_html.index("// ---------- accounting export")]
 for marker in [
     "const d=DOCS.find(x=>x.id===id);if(!d)return;",
@@ -507,7 +511,6 @@ for marker in [
     ".eq('id',id).eq('company_id',me.company_id).eq('site_id',site)",
     "Only managers can delete company documents.",
     "Only sent or accepted quotes can be converted.",
-    "DOCS.some(x=>x.kind==='invoice'&&x.converted_from===d.id)",
     "This quote already has an invoice.",
     "Create an invoice from this quote?",
     "const{error:quoteUpdateError}",

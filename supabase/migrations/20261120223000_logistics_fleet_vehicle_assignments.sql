@@ -6,8 +6,9 @@ create or replace function public.validate_logistics_vehicle_assignment()
 returns trigger language plpgsql set search_path = pg_catalog, public, pg_temp as $$
 declare v_company uuid; v_site uuid;
 begin
-  if new.vehicle_id is null then return new; end if;
+  if old.vehicle_id is not distinct from new.vehicle_id then return new; end if;
   if new.status in ('delivered','returned') then raise exception 'Delivered or returned consignments cannot change vehicle assignment'; end if;
+  if new.vehicle_id is null then return new; end if;
   select company_id,site_id into v_company,v_site from public.vehicles where id=new.vehicle_id;
   if not found or v_company is distinct from new.company_id or v_site is distinct from new.site_id then
     raise exception 'Assigned vehicle must belong to the same company and site';

@@ -143,6 +143,10 @@ async function runTool(name, input, st) {
       const { data, error } = await sb.from("industry_catalog").select("slug").eq("slug", slug).eq("is_active", true).maybeSingle();
       if (error || !data) return "Error: choose an active industry from the catalog.";
       changes.primary_industry_slug = slug;
+      if (input.secondary_industry_slugs === undefined) {
+        const currentSecondary = (ctx.industry_profile?.secondary || []).map(x => x.slug).filter(x => x && x !== slug);
+        if (currentSecondary.length) changes.secondary_industry_slugs = currentSecondary;
+      }
     }
     if (input.secondary_industry_slugs !== undefined) {
       if (!Array.isArray(input.secondary_industry_slugs) || input.secondary_industry_slugs.length > 8) return "Error: secondary industries must be a list of up to eight.";

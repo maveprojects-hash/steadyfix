@@ -615,6 +615,15 @@ for marker in ["eq('company_id',me.company_id)", "if(r.error)", "Could not load 
         raise SystemExit("Customer export missing tenant/error guard: " + marker)
 
 
+# Dashboard invoice summaries must use the signed-in company scope.
+dashboard_start = html.find("isMgr()?sb.from('documents').select('kind,status,total,due_date')")
+dashboard_end = html.find("Promise.resolve({data:[]})", dashboard_start)
+if dashboard_start < 0 or dashboard_end < 0:
+    raise SystemExit("Missing dashboard document summary query")
+dashboard_code = html[dashboard_start:dashboard_end]
+if "eq('company_id',me.company_id)" not in dashboard_code:
+    raise SystemExit("Dashboard invoice summary query must be company-scoped")
+
 # Classic invoice inclusive line totals account for document-level discounts.
 layout_start = html.find("function tableHtml(m,mode)")
 layout_end = html.find("function totHtml(m)", layout_start)

@@ -425,3 +425,21 @@ for marker in [
         raise SystemExit(f"Missing logistics database lifecycle safeguard: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+
+# Fleet GPS integrity migration regression markers.
+fleet_guard = next((root / "supabase" / "migrations").glob("*_fleet_gps_integrity_guards.sql"))
+fleet_guard_sql = fleet_guard.read_text(encoding="utf-8").lower()
+for marker in [
+    "validate_vehicle_position_integrity",
+    "invalid gps coordinates",
+    "invalid gps speed",
+    "invalid gps heading",
+    "invalid or too far in the future",
+    "vehicle must belong to the same company",
+    "vehicle_positions_company_recent_idx",
+    "vehicles_company_last_seen_idx",
+]:
+    if marker not in fleet_guard_sql:
+        raise SystemExit(f"Missing Fleet GPS integrity safeguard: {marker}")
+

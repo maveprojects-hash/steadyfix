@@ -143,13 +143,14 @@ for marker in [
 login_html = (root / "maintdesk_login.html").read_text(encoding="utf-8")
 for marker in [
     "min-height:100svh",
-    "align-items:flex-start",
-    "app.classList.add('company-home')",
-    "app.classList.remove('company-home')",
-    ".box.company-home{max-width:820px;width:100%",
+    "align-items:center",
+    "Create a new company, or join one with an invite code.",
+    "window.location.replace('maintdesk_app.html')",
 ]:
     if marker not in login_html:
-        raise SystemExit(f"Missing responsive company-screen layout: {marker}")
+        raise SystemExit(f"Missing streamlined login flow: {marker}")
+if "Your sites</b>" in login_html or "Open the app →" in login_html:
+    raise SystemExit("Intermediate post-login company landing screen remains")
 
 # Company industry profiles: catalog, tenant-scoped profile UI, onboarding and audit migration.
 industry_migration = next((root / "supabase" / "migrations").glob("*_company_industry_profiles.sql"))

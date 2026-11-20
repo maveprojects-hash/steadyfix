@@ -418,7 +418,7 @@ async function fleetData(){
  // Read GPS history in stable, bounded pages so fleets above 5,000 records aren't silently truncated.
  const pageSize=1000,positions=[];let offset=0,pError=null;
  while(true){
-  const page=await sb.from('vehicle_positions').select('vehicle_id,recorded_at,lat,lng,speed_kmh').eq('company_id',me.company_id).gte('recorded_at',since).lte('recorded_at',until).order('recorded_at',{ascending:false}).order('vehicle_id',{ascending:true}).range(offset,offset+pageSize-1);
+  const page=await sb.from('vehicle_positions').select('id,vehicle_id,recorded_at,lat,lng,speed_kmh').eq('company_id',me.company_id).gte('recorded_at',since).lte('recorded_at',until).order('recorded_at',{ascending:false}).order('vehicle_id',{ascending:true}).order('id',{ascending:true}).range(offset,offset+pageSize-1);
   if(page.error){pError=page.error;break}
   const rows=page.data||[];positions.push(...rows);
   if(rows.length<pageSize)break;

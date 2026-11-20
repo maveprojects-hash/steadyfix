@@ -200,6 +200,33 @@ for marker in [
     if marker not in assistant_code:
         raise SystemExit(f"Missing server-side company industry context safeguard: {marker}")
 
+# Approved iAssistant updates must remain tenant- and site-scoped at write time too.
+for marker in [
+    "update(ch).eq('id',p.rowId).eq('company_id',me.company_id)",
+    "if(sc.site&&site)q=q.eq('site_id',site)",
+    "const{error}=await q;if(error)throw new Error(error.message)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing scoped assistant write safeguard: {marker}")
+if "Could not remove that memory:" not in html:
+    raise SystemExit("Memory deletion must surface failures instead of silently updating the UI")
+
+# iAssistant tenant scope: server search/memory and browser memory operations stay in the current company.
+for marker in [
+    'select("*").eq("company_id", ctx.company_id).limit(200)',
+    'select("*").eq("company_id", ctx.company_id).limit(500)',
+    'select("id,note").eq("company_id", company_id).order("created_at", { ascending: true })',
+    'delete().eq("id", String(input.id)).eq("company_id", ctx.company_id)',
+]:
+    if marker not in assistant_code:
+        raise SystemExit(f"Missing assistant company-scope safeguard: {marker}")
+for marker in [
+    "select('id,note').eq('company_id',me.company_id)",
+    "delete().eq('id',id).eq('company_id',me.company_id)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing assistant UI company-scope safeguard: {marker}")
+
 industry_priority_migration = next((root / "supabase" / "migrations").glob("*_industry_dashboard_priorities.sql"))
 priority_sql = industry_priority_migration.read_text(encoding="utf-8").lower()
 if "dashboard_priority_tabs" not in priority_sql or "property-management-facilities" not in priority_sql:
@@ -394,3 +421,65 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+# iAssistant company setup must offer approved, catalog-validated profile updates.
+for marker in [
+    'propose_company_profile',
+    'only a company owner or manager may change company setup',
+    'industry_catalog',
+    'secondary_industry_slugs',
+    'currentSecondary',
+    'business_description',
+    'company_profile',
+    'Company setup changes queued for owner/manager approval',
+]:
+    if marker not in assistant_customization:
+        raise SystemExit(f"Missing iAssistant company-setup proposal safeguard: {marker}")
+for marker in [
+    "p.kind==='company_profile'",
+    "Only a company owner or manager can approve company setup changes.",
+    "company_industry_profiles').update(patch).eq('company_id',me.company_id)",
+    "function aiDetail(p){if(p.kind==='industry_config'||p.kind==='company_profile')",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing approved company-setup UI safeguard: {marker}")
+
+# iAssistant site context must be server-validated against company and membership.
+for marker in [
+    'const requestedSiteId = typeof body.site_id === "string" ? body.site_id : null;',
+    '.eq("id", requestedSiteId).eq("company_id", company_id).maybeSingle()',
+    'You do not have access to this site.',
+    'site_id: verifiedSite?.id || null',
+]:
+    if marker not in assistant_customization:
+        raise SystemExit(f"Missing server-verified iAssistant site context: {marker}")
+
+# Read-only iAssistant app health diagnostics must probe company-scoped module data access.
+for marker in [
+    'check_app_health',
+    'select("id").eq("company_id",ctx.company_id).limit(1)',
+    'Read-only data-access probes; not a full UI or integration test.',
+    'Company-scoped read succeeded',
+]:
+    if marker not in assistant_customization:
+        raise SystemExit(f"Missing company-scoped assistant diagnostic safeguard: {marker}")
+
+# Company-specific AI setup stores validated operational context and preferences, not fake automation.
+for marker in [
+    "source.services",
+    "source.operating_hours",
+    "source.workflow_preferences",
+    "source.dashboard_focus",
+    "source.automation_preferences",
+    "source.terminology",
+    "changes.company_setup = setup",
+]:
+    if marker not in assistant_customization:
+        raise SystemExit(f"Missing bounded AI company setup preference: {marker}")
+for marker in [
+    "patch.configuration_overrides={...(INDUSTRY_PROFILE?.configuration_overrides||{}),company_setup:setup}",
+    "AI operating preferences",
+    "These preferences help it tailor guidance; they do not activate automated jobs or integrations by themselves.",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing company setup preference display/safety note: {marker}")

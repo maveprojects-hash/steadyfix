@@ -28,12 +28,15 @@ const TOOLS = [
     input_schema: { type: "object", properties: { table: { type: "string" }, id: { type: "string" }, changes: { type: "object" }, summary: { type: "string" } }, required: ["table", "id", "changes", "summary"] } },
   { name: "propose_industry_customization", description: "For an owner or manager, propose approved changes to the company industry workspace: hide shortcuts the company does not use and/or rename shortcuts to match its terminology. This only changes the company workspace presentation, not permissions or underlying data. It queues a proposal and never saves without approval.",
     input_schema: { type: "object", properties: { disabled_modules: { type: "array", items: { type: "string" }, description: "Complete list of workspace module ids to hide; use an empty array to restore all shortcuts." }, module_labels: { type: "object", additionalProperties: { type: "string" }, description: "Custom labels keyed by supported module id; use an empty string to remove a custom label." }, summary: { type: "string" } }, required: ["summary"] } },
+  { name: "propose_company_profile", description: "For a company owner or manager, propose approved company setup changes: primary industry, up to eight secondary industries, a business description and operational setup preferences. Validate industries against the active catalog. Nothing saves without approval.",
+    input_schema: { type: "object", properties: { primary_industry_slug: { type: "string" }, secondary_industry_slugs: { type: "array", items: { type: "string" } }, business_description: { type: "string", description: "Describe services, asset types, operating model and specific needs. Max 4000 characters." }, company_setup: { type: "object", description: "Optional company operating context/preferences: services, hours, workflow preferences, dashboard focus, automation preferences and terminology.", properties: { services: { type: "array", items: { type: "string" } }, operating_hours: { type: "string" }, workflow_preferences: { type: "string" }, dashboard_focus: { type: "array", items: { type: "string" } }, automation_preferences: { type: "array", items: { type: "string" } }, terminology: { type: "object", additionalProperties: { type: "string" } } } }, summary: { type: "string" } }, required: ["summary"] } },
   { name: "remember", description: "Save one short lasting fact or preference about this business so you can use it in future chats.",
     input_schema: { type: "object", properties: { note: { type: "string" } }, required: ["note"] } },
   { name: "forget_memory", description: "Remove a saved note by its id when the user asks you to forget it.",
     input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
   { name: "attention_summary", description: "Counts of what needs attention today: overdue jobs, overdue PMs, open incidents, overdue fire equipment service, expiring training and so on.",
     input_schema: { type: "object", properties: {} } },
+  { name: "check_app_health", description: "Read-only diagnostics of company-scoped data access across core CMMS modules. Report inaccessible tables as checks needing investigation; zero records is not a failure. This does not verify frontend clicks or external integrations.", input_schema: { type: "object", properties: {} } },
 ];
 
 function buildPrompt(ctx, memory, schema) {
@@ -48,8 +51,10 @@ How you work:
 - Be brief and clear, written for a phone screen. Short lists are fine. No long essays.
 - Use search_records to look things up before answering questions about their data. Never invent records, people, dates or numbers.
 - To create or change records call propose_create or propose_update. To tailor a company workspace, call propose_industry_customization only when the authenticated user is an owner or manager. These tools only queue proposals: the user taps Approve first. Say what you queued and ask them to approve it. Never say anything was created or changed before approval.
+- For company setup, use propose_company_profile when the owner/manager wants to set or revise the company industry and business description. Use industry_catalog choices, preserve unrelated profile values, and propose only the requested changes. Use propose_industry_customization for shortcut labels and visibility.
 - Workspace customization may only hide supported shortcut modules or rename them. Never claim it changes access permissions, creates new software modules, or alters another company's setup.
 - Never delete anything. If asked to delete, explain they can delete it themselves in the app.
+- When the owner asks whether the app is working, use check_app_health for read-only, company-scoped data-access diagnostics. Be explicit that this checks table access only, not every screen, click, PDF, email or external integration.
 - Use only the tables and fields in the schema. Dates are yyyy-mm-dd. Select fields must use one of the listed options exactly. For reference fields, find the id with search_records first.
 - Ask at most one short question when something essential is missing. Otherwise make a sensible assumption and say what you assumed.
 - When you learn a lasting fact or preference about their business (site hours, regular contractors, who usually does what, how they name things, which regulations apply), call remember with one short note and tell them you will remember it. Never save passwords, payment details or private personal information.
@@ -102,7 +107,7 @@ async function runTool(name, input, st) {
   const sch = needTable ? schema[table] : null;
 
   if (name === "search_records") {
-    let q = sb.from(table).select("*").limit(200);
+    let q = sb.from(table).select("*").eq("company_id", ctx.company_id).limit(200);
     if (sch.site && ctx.site_id) q = q.eq("site_id", ctx.site_id);
     const known = new Set(["id", ...(sch.fields || []).map((f) => f.k)]);
     for (const [k, v] of Object.entries(input.where || {})) if (known.has(k)) q = q.eq(k, v);
@@ -131,6 +136,74 @@ async function runTool(name, input, st) {
     const p = { id: "p" + (st.proposals.length + 1), kind: "update", table, label: sch.label, rowId: String(input.id), changes: fields, summary: String(input.summary || "").slice(0, 200) };
     st.proposals.push(p);
     return "Queued for the user's approval. Tell them to tap Approve.";
+  }
+  if (name === "propose_company_profile") {
+    if (!["owner", "manager"].includes(ctx.role)) return "Error: only a company owner or manager may change company setup.";
+    const changes = {};
+    if (input.primary_industry_slug !== undefined) {
+      const slug = String(input.primary_industry_slug).trim();
+      const { data, error } = await sb.from("industry_catalog").select("slug").eq("slug", slug).eq("is_active", true).maybeSingle();
+      if (error || !data) return "Error: choose an active industry from the catalog.";
+      changes.primary_industry_slug = slug;
+      if (input.secondary_industry_slugs === undefined) {
+        const currentSecondary = (ctx.industry_profile?.secondary || []).map(x => x.slug).filter(x => x && x !== slug);
+        if (currentSecondary.length) changes.secondary_industry_slugs = currentSecondary;
+      }
+    }
+    if (input.secondary_industry_slugs !== undefined) {
+      if (!Array.isArray(input.secondary_industry_slugs) || input.secondary_industry_slugs.length > 8) return "Error: secondary industries must be a list of up to eight.";
+      const secondary = [...new Set(input.secondary_industry_slugs.map(x => String(x).trim()))];
+      if (changes.primary_industry_slug && secondary.includes(changes.primary_industry_slug)) return "Error: the primary industry cannot also be secondary.";
+      const { data, error } = await sb.from("industry_catalog").select("slug").in("slug", secondary).eq("is_active", true);
+      if (error || (data || []).length !== secondary.length) return "Error: one or more secondary industries are inactive or unknown.";
+      const primary = changes.primary_industry_slug || ctx.industry_profile?.primary?.slug;
+      if (primary && secondary.includes(primary)) return "Error: the primary industry cannot also be secondary.";
+      changes.secondary_industry_slugs = secondary;
+    }
+    if (input.business_description !== undefined) {
+      if (typeof input.business_description !== "string" || input.business_description.length > 4000) return "Error: business description must be text of 4000 characters or less.";
+      changes.business_description = input.business_description.trim();
+    }
+    if (input.company_setup !== undefined) {
+      const source = input.company_setup;
+      if (!source || typeof source !== "object" || Array.isArray(source)) return "Error: company_setup must be an object.";
+      const setup = {};
+      if (source.services !== undefined) {
+        if (!Array.isArray(source.services) || source.services.length > 20 || source.services.some(x => typeof x !== "string" || x.trim().length > 100)) return "Error: services must be a list of up to 20 short names.";
+        setup.services = [...new Set(source.services.map(x => x.trim()).filter(Boolean))];
+      }
+      if (source.operating_hours !== undefined) {
+        if (typeof source.operating_hours !== "string" || source.operating_hours.length > 500) return "Error: operating hours must be text of 500 characters or fewer.";
+        setup.operating_hours = source.operating_hours.trim();
+      }
+      if (source.workflow_preferences !== undefined) {
+        if (typeof source.workflow_preferences !== "string" || source.workflow_preferences.length > 3000) return "Error: workflow preferences must be text of 3000 characters or fewer.";
+        setup.workflow_preferences = source.workflow_preferences.trim();
+      }
+      if (source.dashboard_focus !== undefined) {
+        if (!Array.isArray(source.dashboard_focus) || source.dashboard_focus.length > 12 || source.dashboard_focus.some(x => typeof x !== "string" || x.trim().length > 80)) return "Error: dashboard focus must be a list of up to 12 short items.";
+        setup.dashboard_focus = [...new Set(source.dashboard_focus.map(x => x.trim()).filter(Boolean))];
+      }
+      if (source.automation_preferences !== undefined) {
+        if (!Array.isArray(source.automation_preferences) || source.automation_preferences.length > 20 || source.automation_preferences.some(x => typeof x !== "string" || x.trim().length > 120)) return "Error: automation preferences must be a list of up to 20 short items.";
+        setup.automation_preferences = [...new Set(source.automation_preferences.map(x => x.trim()).filter(Boolean))];
+      }
+      if (source.terminology !== undefined) {
+        const allowedTerms = ["site","work_order","asset","technician","customer","department","inventory","job_card","service_request","supplier","inspection"];
+        if (!source.terminology || typeof source.terminology !== "object" || Array.isArray(source.terminology)) return "Error: terminology must be an object.";
+        const terminology = {};
+        for (const [key, value] of Object.entries(source.terminology)) {
+          if (!allowedTerms.includes(key) || typeof value !== "string" || value.length > 60) return "Error: terminology contains an unsupported key or label.";
+          if (value.trim()) terminology[key] = value.trim();
+        }
+        setup.terminology = terminology;
+      }
+      if (!Object.keys(setup).length) return "Error: company_setup contains no valid fields.";
+      changes.company_setup = setup;
+    }
+    if (!Object.keys(changes).length) return "Error: specify at least one company profile field.";
+    st.proposals.push({ id: "p" + (st.proposals.length + 1), kind: "company_profile", label: "Company setup", changes, summary: String(input.summary || "Update company setup").slice(0, 200) });
+    return "Company setup changes queued for owner/manager approval. Nothing has changed yet.";
   }
   if (name === "propose_industry_customization") {
     if (!["owner", "manager"].includes(ctx.role)) return "Error: only a company owner or manager may customize the company workspace.";
@@ -165,14 +238,26 @@ async function runTool(name, input, st) {
     return "Saved.";
   }
   if (name === "forget_memory") {
-    const { error } = await sb.from("assistant_memory").delete().eq("id", String(input.id));
+    const { error } = await sb.from("assistant_memory").delete().eq("id", String(input.id)).eq("company_id", ctx.company_id);
     if (error) return "Error: " + error.message;
     st.memory = st.memory.filter((m) => m.id !== input.id); return "Removed.";
+  }
+  if (name === "check_app_health") {
+    const modules = ["work_orders","pm_schedules","purchase_orders","shutdowns","damage_reports","expenses","customers","suppliers","vehicles","ohs_inspections","ohs_hazards","ohs_incidents","ohs_ppe","ohs_training","ohs_regs","fire_equipment","fire_inspections","checklist_templates"];
+    const results = await Promise.all(modules.map(async (table) => {
+      try {
+        let q = sb.from(table).select("id").eq("company_id",ctx.company_id).limit(1);
+        if (schema[table] && schema[table].site && ctx.site_id) q=q.eq("site_id",ctx.site_id);
+        const { error } = await q;
+        return { module: table, status: error ? "unavailable" : "accessible", detail: error ? String(error.message).slice(0,160) : "Company-scoped read succeeded" };
+      } catch (e) { return { module: table, status: "unavailable", detail: String(e && e.message || e).slice(0,160) }; }
+    }));
+    return JSON.stringify({ scope: "authenticated company", site: ctx.site_name || null, note: "Read-only data-access probes; not a full UI or integration test.", checks: results });
   }
   if (name === "attention_summary") {
     const t = ctx.today, in30 = new Date(Date.parse(t) + 30 * 864e5).toISOString().slice(0, 10), out = {};
     const get = async (label, table, build) => {
-      try { let q = sb.from(table).select("*").limit(500); if (schema[table] && schema[table].site && ctx.site_id) q = q.eq("site_id", ctx.site_id); const { data, error } = await q; out[label] = error ? "unavailable" : build(data || []); } catch (e) { out[label] = "unavailable"; }
+      try { let q = sb.from(table).select("*").eq("company_id", ctx.company_id).limit(500); if (schema[table] && schema[table].site && ctx.site_id) q = q.eq("site_id", ctx.site_id); const { data, error } = await q; out[label] = error ? "unavailable" : build(data || []); } catch (e) { out[label] = "unavailable"; }
     };
     await Promise.all([
       get("overdue_work_tasks", "work_orders", (r) => r.filter((x) => !["done", "cancelled"].includes(x.status) && x.due_date && x.due_date < t).length),
@@ -222,11 +307,25 @@ Deno.serve(async (req) => {
     const company_id = prof.data && prof.data.company_id;
     if (!company_id) return json({ error: "No company found for this login." }, 400);
 
+    // Treat browser-selected site as untrusted; verify company ownership and membership before AI context is built.
+    const requestedSiteId = typeof body.site_id === "string" ? body.site_id : null;
+    let verifiedSite = null;
+    if (requestedSiteId) {
+      const siteResult = await sb.from("sites").select("id,name").eq("id", requestedSiteId).eq("company_id", company_id).maybeSingle();
+      if (siteResult.error) return json({ error: "Unable to validate active site access." }, 403);
+      if (!siteResult.data) return json({ error: "Selected site is not part of your company." }, 403);
+      verifiedSite = siteResult.data;
+      if (!["owner", "manager"].includes(String(prof.data.role || "").toLowerCase())) {
+        const membership = await sb.from("user_sites").select("user_id").eq("site_id", verifiedSite.id).eq("user_id", user.id).maybeSingle();
+        if (membership.error || !membership.data) return json({ error: "You do not have access to this site." }, 403);
+      }
+    }
+
     const start = new Date(); start.setUTCHours(0, 0, 0, 0);
     const used = await sb.from("assistant_usage").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", start.toISOString());
     if ((used.count || 0) >= DAILY_LIMIT) return json({ reply: `You have used today's ${DAILY_LIMIT} assistant messages. It resets tomorrow.`, proposals: [], remembered: [] });
 
-    const mem = await sb.from("assistant_memory").select("id,note").order("created_at", { ascending: true }).limit(60);
+    const mem = await sb.from("assistant_memory").select("id,note").eq("company_id", company_id).order("created_at", { ascending: true }).limit(60);
     // Never accept industry identity from the browser: derive it from this authenticated company.
     const industryProfileResult = await sb.from("company_industry_profiles")
       .select("primary_industry_slug,secondary_industry_slugs,business_description,configuration_overrides,config_version")
@@ -243,7 +342,7 @@ Deno.serve(async (req) => {
       configuration_overrides: industryProfileRow.configuration_overrides || {},
       config_version: industryProfileRow.config_version,
     } : null;
-    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: body.site_id || null, site_name: String(body.site_name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
+    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: verifiedSite?.id || null, site_name: String(verifiedSite?.name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
     const st = { sb, schema, ctx, memory: mem.data || [], proposals: [], remembered: [] };
 
     const convo = messages.map((m) => ({ role: m.role, content: m.content }));

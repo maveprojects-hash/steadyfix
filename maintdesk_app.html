@@ -309,7 +309,7 @@ async function industryProfile(){
  if(!isMgr())return '<h2>Industry profile</h2><div class="p">Only company owners and managers can change this profile.</div>';
  const{data:history}=await sb.from('company_industry_profile_revisions').select('config_version,change_note,created_at').eq('company_id',me.company_id).order('config_version',{ascending:false}).limit(6);
  const historyHtml=(history||[]).map(x=>'<div class="rl"><b>Version '+esc(x.config_version)+'</b> · '+esc(x.change_note)+'<div class="note">'+esc(new Date(x.created_at).toLocaleString('en-ZA'))+'</div></div>').join('')||'<div class="note">No saved profile history yet.</div>';
- const p=INDUSTRY_PROFILE||{},primary=INDUSTRIES.find(x=>x.slug===p.primary_industry_slug);
+ const p=INDUSTRY_PROFILE||{},primary=INDUSTRIES.find(x=>x.slug===p.primary_industry_slug),setup=p.configuration_overrides?.company_setup||{};
  const selected=new Set(p.secondary_industry_slugs||[]);
  const primaryOptions=INDUSTRIES.map(x=>'<option value="'+esc(x.slug)+'" '+(x.slug===p.primary_industry_slug?'selected':'')+'>'+esc(x.name)+'</option>').join('');
  const secondaryOptions=INDUSTRIES.filter(x=>x.slug!==p.primary_industry_slug).map(x=>'<option value="'+esc(x.slug)+'" '+(selected.has(x.slug)?'selected':'')+'>'+esc(x.name)+'</option>').join('');
@@ -322,6 +322,7 @@ async function industryProfile(){
   '<div class="note">Choose more than one secondary activity where applicable. The primary industry is excluded automatically.</div>'+
   '<label class="el">Describe your company and how it operates<textarea id="industryDescription" maxlength="4000" placeholder="For example: We service copier machines at customer sites, manage service contracts, track device meter readings and keep toner and spare parts in stock.">'+esc(p.business_description||'')+'</textarea></label>'+
   '<button class="b" onclick="saveIndustryProfile()">Save company profile</button></div>'+
+  '<div class="p"><b>AI operating preferences</b><div class="note">Saved company context for iAssistant. These preferences help it tailor guidance; they do not activate automated jobs or integrations by themselves.</div>'+((setup.services||[]).length?'<div class="rl"><b>Services:</b> '+setup.services.map(esc).join(' · ')+'</div>':'')+(setup.operating_hours?'<div class="rl"><b>Operating hours:</b> '+esc(setup.operating_hours)+'</div>':'')+(setup.workflow_preferences?'<div class="rl"><b>Workflow:</b> '+esc(setup.workflow_preferences)+'</div>':'')+((setup.dashboard_focus||[]).length?'<div class="rl"><b>Dashboard focus:</b> '+setup.dashboard_focus.map(esc).join(' · ')+'</div>':'')+((setup.automation_preferences||[]).length?'<div class="rl"><b>Automation preferences (not activated):</b> '+setup.automation_preferences.map(esc).join(' · ')+'</div>':'')+((setup.terminology&&Object.keys(setup.terminology).length)?'<div class="rl"><b>Terminology:</b> '+Object.entries(setup.terminology).map(([k,v])=>esc(k)+' → '+esc(v)).join(' · ')+'</div>':'')+'</div>'+
   '<div class="p"><b>'+(primary?esc(primary.name):'Industry template')+'</b><div class="note">'+esc(primary?.description||'')+'</div>'+
   (examples.length?'<div class="note"><b>Typical operations:</b> '+examples.map(esc).join(' · ')+'</div>':'')+
   (focus.length?'<div class="note"><b>Operational focus areas:</b> '+focus.map(esc).join(' · ')+'</div>':'')+
@@ -768,7 +769,7 @@ function aiSchema(){const T={},ty={t:'text',x:'longtext',n:'number',d:'date',s:'
 function aiInit(){if($('aib'))return;const b=document.createElement('button');b.id='aib';b.className='sf-ai-floating';b.type='button';b.setAttribute('aria-label','Open STEADYFIX AI Assistant');b.textContent='✨ Assistant';b.onclick=aiToggle;document.body.appendChild(b);const p=document.createElement('div');p.id='ai';p.innerHTML='<div class="ai-h"><b>✨ STEADYFIX Assistant</b><button onclick="aiMem()">Memory</button><button onclick="aiNew()">New chat</button><button onclick="aiToggle()">Close</button></div><div id="aim"></div><div class="ai-f"><textarea id="aiin" rows="1" placeholder="Ask me, or tell me what to do…" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();aiSend()}"></textarea><button class="b" onclick="aiSend()">Send</button></div>';document.body.appendChild(p)}
 function aiToggle(){if(!me||LOCK)return;const p=$('ai');p.classList.toggle('on');if(p.classList.contains('on')){aiRender();setTimeout(()=>$('aiin').focus(),80)}}
 function aiNew(){AI.msgs=[];AI.props=[];AI.mem=null;aiRender()}
-function aiDetail(p){if(p.kind==='industry_config')return JSON.stringify(p.changes||{},null,2);const sc=aiSchema()[p.table]||{fields:[]},lab=Object.fromEntries(sc.fields.map(f=>[f.k,f.label||f.k])),o=p.kind=='create'?p.fields:p.changes;const ty=Object.fromEntries(sc.fields.map(f=>[f.k,f.type]));return Object.entries(o||{}).filter(([k])=>lab[k]).map(([k,v])=>`${lab[k]}: ${Array.isArray(v)?v.map(x=>x&&typeof x=='object'?`${x.d} (${x.q} × ${x.p})`:x).join('; '):(ty[k]=='select'?cap(v):(ty[k]=='date'?dd(v):v))}`).join('\n')}
+function aiDetail(p){if(p.kind==='industry_config'||p.kind==='company_profile')return JSON.stringify(p.changes||{},null,2);const sc=aiSchema()[p.table]||{fields:[]},lab=Object.fromEntries(sc.fields.map(f=>[f.k,f.label||f.k])),o=p.kind=='create'?p.fields:p.changes;const ty=Object.fromEntries(sc.fields.map(f=>[f.k,f.type]));return Object.entries(o||{}).filter(([k])=>lab[k]).map(([k,v])=>`${lab[k]}: ${Array.isArray(v)?v.map(x=>x&&typeof x=='object'?`${x.d} (${x.q} × ${x.p})`:x).join('; '):(ty[k]=='select'?cap(v):(ty[k]=='date'?dd(v):v))}`).join('\n')}
 function aiRender(){const el=$('aim');if(!el)return;
  if(AI.mem){el.innerHTML=`<div class="ai2"><b>What I remember about your business</b><br>${AI.mem.length?'':'Nothing yet. Tell me about your business and I will remember the lasting facts.'}</div>${AI.mem.map(m=>`<div class="aipr"><div>${esc(m.note)}</div><button onclick="aiForget('${m.id}')">Forget this</button></div>`).join('')}<button class="b" onclick="AI.mem=null;aiRender()">Back to chat</button>`;return}
  const pend=AI.props.filter(p=>p.state=='pending');
@@ -782,6 +783,27 @@ async function aiSend(t){if(AI.busy)return;t=String(t||$('aiin').value).trim();i
  else{AI.msgs.push({role:'assistant',content:data.reply||'Done.'});(data.proposals||[]).forEach(p=>AI.props.push({...p,state:'pending'}));if((data.remembered||[]).length)AI.msgs.push({role:'assistant',content:'Noted for next time: '+data.remembered.join('; '),note:1})}
  aiRender()}
 async function aiApply(p){
+ if(p.kind==='company_profile'){
+  if(!isMgr())throw new Error('Only a company owner or manager can approve company setup changes.');
+  const ch=p.changes||{},patch={};
+  if(ch.primary_industry_slug!==undefined){if(!INDUSTRIES.some(x=>x.slug===ch.primary_industry_slug))throw new Error('Choose a valid active primary industry.');patch.primary_industry_slug=ch.primary_industry_slug;}
+  if(ch.secondary_industry_slugs!==undefined){if(!Array.isArray(ch.secondary_industry_slugs)||ch.secondary_industry_slugs.length>8||ch.secondary_industry_slugs.some(x=>!INDUSTRIES.some(y=>y.slug===x)))throw new Error('Secondary industry list is invalid.');if(patch.primary_industry_slug&&ch.secondary_industry_slugs.includes(patch.primary_industry_slug))throw new Error('Primary industry cannot also be secondary.');patch.secondary_industry_slugs=ch.secondary_industry_slugs;}
+  if(ch.business_description!==undefined){if(typeof ch.business_description!=='string'||ch.business_description.length>4000)throw new Error('Business description is invalid.');patch.business_description=ch.business_description.trim();}
+  if(ch.company_setup!==undefined){
+   const source=ch.company_setup;if(!source||typeof source!=='object'||Array.isArray(source))throw new Error('Company setup preferences are invalid.');
+   const setup={...(INDUSTRY_PROFILE?.configuration_overrides?.company_setup||{})},allowedTerms=['site','work_order','asset','technician','customer','department','inventory','job_card','service_request','supplier','inspection'];
+   if(source.services!==undefined){if(!Array.isArray(source.services)||source.services.length>20||source.services.some(x=>typeof x!=='string'||x.trim().length>100))throw new Error('Services are invalid.');setup.services=[...new Set(source.services.map(x=>x.trim()).filter(Boolean))];}
+   if(source.operating_hours!==undefined){if(typeof source.operating_hours!=='string'||source.operating_hours.length>500)throw new Error('Operating hours are invalid.');setup.operating_hours=source.operating_hours.trim();}
+   if(source.workflow_preferences!==undefined){if(typeof source.workflow_preferences!=='string'||source.workflow_preferences.length>3000)throw new Error('Workflow preferences are invalid.');setup.workflow_preferences=source.workflow_preferences.trim();}
+   if(source.dashboard_focus!==undefined){if(!Array.isArray(source.dashboard_focus)||source.dashboard_focus.length>12||source.dashboard_focus.some(x=>typeof x!=='string'||x.trim().length>80))throw new Error('Dashboard focus is invalid.');setup.dashboard_focus=[...new Set(source.dashboard_focus.map(x=>x.trim()).filter(Boolean))];}
+   if(source.automation_preferences!==undefined){if(!Array.isArray(source.automation_preferences)||source.automation_preferences.length>20||source.automation_preferences.some(x=>typeof x!=='string'||x.trim().length>120))throw new Error('Automation preferences are invalid.');setup.automation_preferences=[...new Set(source.automation_preferences.map(x=>x.trim()).filter(Boolean))];}
+   if(source.terminology!==undefined){if(!source.terminology||typeof source.terminology!=='object'||Array.isArray(source.terminology))throw new Error('Terminology is invalid.');const terms={...(setup.terminology||{})};for(const[k,v]of Object.entries(source.terminology)){if(!allowedTerms.includes(k)||typeof v!=='string'||v.length>60)throw new Error('Terminology contains an unsupported label.');if(v.trim())terms[k]=v.trim();else delete terms[k]}setup.terminology=terms;}
+   patch.configuration_overrides={...(INDUSTRY_PROFILE?.configuration_overrides||{}),company_setup:setup};
+  }
+  if(!Object.keys(patch).length)throw new Error('No company setup fields to save.');
+  const{error}=await sb.from('company_industry_profiles').update(patch).eq('company_id',me.company_id);
+  if(error)throw new Error(error.message);await loadIndustryProfile();renderIndustrySelector();draw();return;
+ }
  if(p.kind==='industry_config'){
   if(!isMgr())throw new Error('Only a company owner or manager can approve workspace customizations.');
   const allowed=SF_CONFIGURABLE_MODULES||new Set(['work_orders','assets','service_contracts','stock_items','purchase_orders','customers','inv','suppliers','pm_schedules','chk','fleet','rep','ohs','damage_reports','shutdowns','logistics_ops']);
@@ -797,12 +819,12 @@ async function aiApply(p){
  const sc=aiSchema()[p.table];if(!sc)throw new Error('That area is not supported.');const ok=new Set(sc.fields.map(f=>f.k)),m=MOD[p.table];
  const clean=o=>{const r={};for(const[k,v]of Object.entries(o||{})){if(!ok.has(k))continue;const f=m&&m.f.find(x=>x.k==k);r[k]=f&&f.t=='n'&&v!==''&&v!=null?+v:v}if(m)m.f.forEach(f=>{if(f.t=='li'&&Array.isArray(r[f.k])&&f.o&&f.o.tot)r[f.o.tot]=liSum(r[f.k])});return r};
  if(p.kind=='create'){const row={...clean(p.fields),company_id:me.company_id};if(sc.site)row.site_id=site;const{error}=await sb.from(p.table).insert(row);if(error)throw new Error(error.message)}
- else{const ch=clean(p.changes);if(!Object.keys(ch).length)throw new Error('Nothing to change.');const{error}=await sb.from(p.table).update(ch).eq('id',p.rowId);if(error)throw new Error(error.message)}}
+ else{const ch=clean(p.changes);if(!Object.keys(ch).length)throw new Error('Nothing to change.');let q=sb.from(p.table).update(ch).eq('id',p.rowId).eq('company_id',me.company_id);if(sc.site&&site)q=q.eq('site_id',site);const{error}=await q;if(error)throw new Error(error.message)}}
 async function aiApprove(id,quiet){const p=AI.props.find(x=>x.id==id);if(!p||p.state!='pending')return true;try{await aiApply(p);p.state='done';if(!quiet){AI.msgs.push({role:'assistant',content:'Done: '+(p.summary||'saved'),note:1});aiRender();draw()}return true}catch(e){p.state='failed';AI.msgs.push({role:'assistant',content:'Could not save "'+(p.summary||'that')+'": '+e.message,err:true});aiRender();return false}}
 async function aiApproveAll(){const ids=AI.props.filter(p=>p.state=='pending').map(p=>p.id);let n=0;for(const id of ids)if(await aiApprove(id,true))n++;AI.msgs.push({role:'assistant',content:'Done: '+n+' change'+(n==1?'':'s')+' saved.',note:1});aiRender();draw()}
 function aiSkip(id){const p=AI.props.find(x=>x.id==id);if(p)p.state='skipped';aiRender()}
-async function aiMem(){const r=await sb.from('assistant_memory').select('id,note').order('created_at',{ascending:false});AI.mem=r.data||[];aiRender()}
-async function aiForget(id){await sb.from('assistant_memory').delete().eq('id',id);AI.mem=AI.mem.filter(m=>m.id!=id);aiRender()}
+async function aiMem(){const r=await sb.from('assistant_memory').select('id,note').eq('company_id',me.company_id).order('created_at',{ascending:false});AI.mem=r.data||[];aiRender()}
+async function aiForget(id){const{error}=await sb.from('assistant_memory').delete().eq('id',id).eq('company_id',me.company_id);if(error){AI.msgs.push({role:'assistant',content:'Could not remove that memory: '+error.message,err:true});aiRender();return}AI.mem=AI.mem.filter(m=>m.id!=id);aiRender()}
 // ---------- shared item block, totals, layouts, PDF sharing ----------
 const r2=n=>Math.round((+n||0)*100)/100;
 const nl=s=>esc(s||'').replace(/\n/g,'<br>');

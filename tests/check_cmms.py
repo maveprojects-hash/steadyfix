@@ -570,6 +570,25 @@ for marker in [
     if marker not in html:
         raise SystemExit(f"Missing PDF layout overflow safeguard: {marker}")
 
+# Copies must not retain quote-conversion lineage; copied invoices are independent.
+dup_start = html.find("async function dupDoc(")
+dup_end = html.find("async function toInvoice(", dup_start)
+if dup_start < 0 or dup_end < 0:
+    raise SystemExit("Missing document copy function")
+dup_code = html[dup_start:dup_end]
+if "delete rest.converted_from" not in dup_code:
+    raise SystemExit("Copied documents must not retain quote conversion linkage")
+
+# Customer export must be company-scoped and fail visibly on query errors.
+cust_start = html.find("async function exportCust()")
+cust_end = html.find("function ", cust_start)
+if cust_start < 0 or cust_end < 0:
+    raise SystemExit("Missing customer export function")
+cust_code = html[cust_start:cust_end]
+for marker in ["eq('company_id',me.company_id)", "if(r.error)", "Could not load company customers for export"]:
+    if marker not in cust_code:
+        raise SystemExit("Customer export missing tenant/error guard: " + marker)
+
 # Database-level uniqueness protects concurrent quote-to-invoice conversions.
 conversion_migration = next((root / "supabase" / "migrations").glob("*_invoice_quote_conversion_unique.sql"))
 conversion_sql = conversion_migration.read_text(encoding="utf-8").lower()

@@ -399,7 +399,8 @@ transition_ui = industry_workspaces.read_text(encoding="utf-8")
 for marker in [
     "const SF_SHIPMENT_TRANSITIONS=",
     "booked:['collected','exception']",
-    "out_for_delivery:['delivered','exception']",
+    "out_for_delivery:['exception']",
+    "if(status==='delivered'){sfCapturePOD(id);return;}",
     "exception:['collected','in_transit','at_depot','out_for_delivery','delivered','returned']",
     "async function sfUpdateShipmentStatus(id,status)",
     "if(shipment.status===status)return;",

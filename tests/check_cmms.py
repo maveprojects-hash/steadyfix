@@ -555,4 +555,5 @@ for marker in [
 ]:
     if marker not in html:
         raise SystemExit(f"Missing PDF layout overflow safeguard: {marker}")
-\nprint("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")

@@ -84,21 +84,9 @@ async function setup(){
 
 
 async function home(me){
- app.classList.add('company-home');
- const{data:sites}=await sb.from('sites').select('id,name').order('name');
- const mgr=['owner','manager'].includes(me.role);
- app.innerHTML=head(me.companies.name,`Signed in as ${me.full_name} (${me.role})`)+'<p><a href="maintdesk_app.html"><b>Open the app →</b></a></p>'+
- `<b>Your sites</b>`+sites.map(s=>`<div class="row">${s.name}</div>`).join('')+
- (mgr?`<br><b>Add a site</b><input id="sn" placeholder="Site name"><div class="err" id="e"></div><button id="as">Add site</button>
- <b>Invite a team member</b><input id="ie" type="email" placeholder="Their email"><select id="ir"><option>technician</option><option>manager</option><option>storeman</option><option>viewer</option></select>
- <select id="is" multiple size="${Math.min(4,sites.length)}">${sites.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><button id="iv">Create invite</button><div id="ic"></div>`:'')+
- `<br><button class="l" id="lo">Log out</button>`;
- $('lo').onclick=async()=>{await sb.auth.signOut();route()};
- if(mgr){
-  $('as').onclick=async()=>{err();const{error}=await sb.rpc('add_site',{p_name:$('sn').value,p_address:null});error?err(error.message):home(me)};
-  $('iv').onclick=async()=>{err();const ids=[...$('is').selectedOptions].map(o=>o.value);
-   const{data,error}=await sb.from('invitations').insert({company_id:me.company_id,email:$('ie').value.trim(),role:$('ir').value,site_ids:ids,invited_by:me.id}).select('token').single();
-   error?err(error.message):$('ic').innerHTML=`Send them this code: <code>${data.token}</code><br>They sign up with <b>${$('ie').value}</b>, then choose "Join with invite".`}}}
+ // Existing company users go straight into the CMMS. No intermediate company landing screen.
+ window.location.replace('maintdesk_app.html');
+}
 
 async function route(){
  const{data:{session}}=await sb.auth.getSession();if(!session)return auth();

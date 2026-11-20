@@ -286,8 +286,13 @@ async function sfCreateShipment(){
 async function sfUpdateShipmentStatus(id,status){
   if(!SF_SHIPMENT_STATUSES.includes(status))return;
   if(status==='delivered'){sfCapturePOD(id);return;}
-  const {error}=await sb.from('logistics_shipments').update({status,delivered_at:status==='delivered'?new Date().toISOString():null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
-  if(error)alert('Could not update shipment: '+error.message);else draw();
+  const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
+  if(shipment.status===status)return;
+  const {error}=await sb.from('logistics_shipments').update({status,delivered_at:null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
+  if(error){alert('Could not update shipment: '+error.message);return;}
+  const {error:logError}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'status_transition',status,notes:'Status changed from '+shipment.status+' to '+status,created_by:me.id});
+  if(logError)alert('Status was updated, but transition history could not be saved: '+logError.message);
+  draw();
 }
 async function sfAddShipmentScan(id){
   const location=prompt('Depot, town or scan location:');if(location===null)return;

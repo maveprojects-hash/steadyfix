@@ -491,6 +491,14 @@ for marker in [
     if marker not in workspace_code:
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
+# Legacy invoice PDFs clamp paid and balance figures to the document total.
+for marker in [
+    "M2(Math.min(t.tot,Math.max(0,m.paid)))",
+    "M2(Math.max(0,t.tot-m.paid))",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing invoice PDF amount clamp: {marker}")
+
 # Legacy invoice status must not claim Paid/Partial without recorded payment.
 for marker in [
     "const dstat=d=>{if(d.kind!='invoice')return d.status",

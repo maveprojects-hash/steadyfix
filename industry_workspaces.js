@@ -265,7 +265,7 @@ async function sfLogisticsWorkspace(){
       '<div class="kv"><span>Tracking number</span><b>'+esc(x.tracking_no||x.waybill_no)+'</b><span>From</span><b>'+esc(x.origin_address)+'</b><span>To</span><b>'+esc(x.destination_address)+'</b><span>Parcel</span><b>'+esc(x.package_count)+' package(s) · '+esc(x.parcel_description||'-')+'</b><span>Expected delivery</span><b>'+esc(x.expected_delivery||'-')+'</b></div>'+
       (x.status==='delivered'?'<div class="p"><b>Proof of delivery</b><div class="kv"><span>Received by</span><b>'+esc(x.pod_recipient_name||'-')+'</b><span>Delivered at</span><b>'+esc(x.delivered_at?new Date(x.delivered_at).toLocaleString('en-ZA'):'-')+'</b><span>Reference</span><b>'+esc(x.pod_reference||'-')+'</b><span>Notes</span><b>'+esc(x.pod_notes||'-')+'</b></div></div>':'')+
       '<div class="ca noprint"><button onclick="sfPrintWaybill(\''+x.id+'\')">Print waybill</button><button onclick="sfAddShipmentScan(\''+x.id+'\')">Add tracking scan</button><button onclick="sfCapturePOD(\''+x.id+'\')">Proof of delivery</button>'+ (isMgr()?'<button class="x2" onclick="sfDeleteShipment(\''+x.id+'\')">Delete</button>':'')+'</div>'+
-      '<label class="el noprint">Update shipment status<select onchange="sfUpdateShipmentStatus(\''+x.id+'\',this.value)">'+opts+'</select></label>'+
+      '<label class="el noprint">Assign Fleet vehicle<select onchange="sfAssignLogisticsVehicle(\''+x.id+'\',this.value)" '+((x.status==='delivered'||x.status==='returned')?'disabled':'')+'><option value="">Unassigned</option>'+sfLogisticsVehicles.map(v=>'<option value="'+esc(v.id)+'" '+(v.id===x.vehicle_id?'selected':'')+'>'+esc([v.name,v.make_model,v.reg_no].filter(Boolean).join(' · '))+' ('+esc(v.status||'unknown')+')</option>').join('')+'</select></label>'+'<label class="el noprint">Update shipment status<select onchange="sfUpdateShipmentStatus(\''+x.id+'\',this.value)">'+opts+'</select></label>'+
       '<div class="rl"><b>Tracking history</b></div>'+ (history.map(e=>'<div class="rl">'+esc(new Date(e.event_at).toLocaleString('en-ZA'))+' · <b>'+esc(cap(e.status||e.event_type))+'</b>'+(e.location?' · '+esc(e.location):'')+(e.notes?'<div class="note">'+esc(e.notes)+'</div>':'')+'</div>').join('')||'<div class="note">No scans recorded yet.</div>')+
       '</div>';
   }).join('')||'<div class="p">No consignments yet. Create your first waybill below.</div>';
@@ -279,6 +279,14 @@ async function sfLogisticsWorkspace(){
     '<label class="el">Parcel contents<input id="sfParcel" placeholder="Description of goods"></label><label class="el">Package count<input id="sfPackageCount" type="number" min="1" step="1" value="1"></label><label class="el">Weight (kg)<input id="sfWeight" type="number" min="0" step="0.01"></label>'+
     '<label class="el">Service level<select id="sfServiceLevel"><option value="standard">Standard</option><option value="express">Express</option><option value="overnight">Overnight</option><option value="same_day">Same day</option></select></label><label class="el">Expected delivery<input id="sfExpected" type="date"></label></div>'+
     '<button class="b" onclick="sfCreateShipment()">Create waybill</button></details>'+cards;
+}
+async function sfAssignLogisticsVehicle(id,vehicleId){
+  const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
+  if(['delivered','returned'].includes(shipment.status))return alert('Vehicle assignments are locked for completed or returned consignments.');
+  vehicleId=vehicleId||null;if(vehicleId&& !sfLogisticsVehicles.some(v=>v.id===vehicleId))return alert('Choose a vehicle from this company and site.');
+  const {error}=await sb.from('logistics_shipments').update({vehicle_id:vehicleId}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
+  if(error){alert('Could not update vehicle assignment: '+error.message);return;}
+  draw();
 }
 async function sfCreateShipment(){
   const waybill=$('sfWaybill').value.trim(),tracking=$('sfTracking').value.trim(),sender=$('sfSender').value.trim(),recipient=$('sfRecipient').value.trim(),phone=$('sfRecipientPhone').value.trim(),origin=$('sfOrigin').value.trim(),destination=$('sfDestination').value.trim(),parcel=$('sfParcel').value.trim(),weightRaw=$('sfWeight').value,weight=weightRaw===''?null:Number(weightRaw),packageRaw=$('sfPackageCount').value,packages=packageRaw===''?1:Number(packageRaw),service=$('sfServiceLevel').value,expected=$('sfExpected').value||null;

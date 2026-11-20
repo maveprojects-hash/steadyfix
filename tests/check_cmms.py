@@ -581,7 +581,7 @@ if "delete rest.converted_from" not in dup_code:
 
 # Customer export must be company-scoped and fail visibly on query errors.
 cust_start = html.find("async function exportCust()")
-cust_end = html.find("function ", cust_start)
+cust_end = html.find("async function exportExp(", cust_start)
 if cust_start < 0 or cust_end < 0:
     raise SystemExit("Missing customer export function")
 cust_code = html[cust_start:cust_end]

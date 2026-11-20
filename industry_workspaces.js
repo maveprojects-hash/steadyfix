@@ -278,10 +278,14 @@ async function sfLogisticsWorkspace(){
     '<button class="b" onclick="sfCreateShipment()">Create waybill</button></details>'+cards;
 }
 async function sfCreateShipment(){
-  const waybill=$('sfWaybill').value.trim(),recipient=$('sfRecipient').value.trim(),origin=$('sfOrigin').value.trim(),destination=$('sfDestination').value.trim();
+  const waybill=$('sfWaybill').value.trim(),recipient=$('sfRecipient').value.trim(),origin=$('sfOrigin').value.trim(),destination=$('sfDestination').value.trim(),weightRaw=$('sfWeight').value,weight=weightRaw===''?null:Number(weightRaw);
   if(!waybill||!recipient||!origin||!destination)return alert('Waybill number, recipient, origin and destination are required.');
-  const row={company_id:me.company_id,site_id:site,waybill_no:waybill,tracking_no:$('sfTracking').value.trim()||waybill,sender_name:$('sfSender').value.trim()||null,recipient_name:recipient,recipient_phone:$('sfRecipientPhone').value.trim()||null,origin_address:origin,destination_address:destination,parcel_description:$('sfParcel').value.trim()||null,package_count:Math.max(1,parseInt($('sfPackageCount').value,10)||1),weight_kg:$('sfWeight').value===''?null:Number($('sfWeight').value),service_level:$('sfServiceLevel').value,expected_delivery:$('sfExpected').value||null,status:'booked',created_by:me.id};
-  const {error}=await sb.from('logistics_shipments').insert(row);if(error)return alert('Could not create waybill: '+error.message);draw();
+  if(weight!==null&&(!Number.isFinite(weight)||weight<0))return alert('Weight must be a valid non-negative number.');
+  const row={company_id:me.company_id,site_id:site,waybill_no:waybill,tracking_no:$('sfTracking').value.trim()||waybill,sender_name:$('sfSender').value.trim()||null,recipient_name:recipient,recipient_phone:$('sfRecipientPhone').value.trim()||null,origin_address:origin,destination_address:destination,parcel_description:$('sfParcel').value.trim()||null,package_count:Math.max(1,parseInt($('sfPackageCount').value,10)||1),weight_kg:weight,service_level:$('sfServiceLevel').value,expected_delivery:$('sfExpected').value||null,status:'booked',created_by:me.id};
+  const {data,error}=await sb.from('logistics_shipments').insert(row).select('id').single();if(error)return alert('Could not create waybill: '+error.message);
+  const {error:scanError}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:data.id,event_type:'created',status:'booked',location:origin,notes:'Consignment created',created_by:me.id});
+  if(scanError)alert('Waybill created, but initial tracking event failed to save: '+scanError.message);
+  draw();
 }
 async function sfUpdateShipmentStatus(id,status){
   if(!SF_SHIPMENT_STATUSES.includes(status))return;

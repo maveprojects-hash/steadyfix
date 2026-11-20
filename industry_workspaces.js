@@ -250,11 +250,11 @@ async function sfIssueJobStock(id){
 }
 
 // ---------- Logistics parcel, waybill and proof-of-delivery workspace ----------
-let SF_LOGISTICS_SHIPMENTS=[];
+let SF_LOGISTICS_SHIPMENTS=[],sfLogisticsVehicles=[];
 const SF_SHIPMENT_STATUSES=['booked','collected','in_transit','at_depot','out_for_delivery','delivered','exception','returned'];
 async function sfLogisticsWorkspace(){
   const pageSize=1000,shipments=[],events=[];let shipmentOffset=0,eventOffset=0;
-  const vr=await sb.from('vehicles').select('id,name,make_model,reg_no,status').eq('company_id',me.company_id).eq('site_id',site).order('name');if(vr.error)throw vr.error;const sfLogisticsVehicles=(vr.data||[]).filter(v=>v.status!=='in_service');
+  const vr=await sb.from('vehicles').select('id,name,make_model,reg_no,status').eq('company_id',me.company_id).eq('site_id',site).order('name');if(vr.error)throw vr.error;sfLogisticsVehicles=(vr.data||[]).filter(v=>v.status!=='in_service');
   while(true){const sr=await sb.from('logistics_shipments').select('*').eq('company_id',me.company_id).eq('site_id',site).order('created_at',{ascending:false}).range(shipmentOffset,shipmentOffset+pageSize-1);if(sr.error)throw sr.error;shipments.push(...(sr.data||[]));if(!sr.data||sr.data.length<pageSize)break;shipmentOffset+=pageSize;}
   while(true){const ev=await sb.from('logistics_tracking_events').select('*').eq('company_id',me.company_id).eq('site_id',site).order('event_at',{ascending:false}).range(eventOffset,eventOffset+pageSize-1);if(ev.error)throw ev.error;events.push(...(ev.data||[]));if(!ev.data||ev.data.length<pageSize)break;eventOffset+=pageSize;}
   SF_LOGISTICS_SHIPMENTS=shipments;

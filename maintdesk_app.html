@@ -768,7 +768,7 @@ function aiSchema(){const T={},ty={t:'text',x:'longtext',n:'number',d:'date',s:'
 function aiInit(){if($('aib'))return;const b=document.createElement('button');b.id='aib';b.className='sf-ai-floating';b.type='button';b.setAttribute('aria-label','Open STEADYFIX AI Assistant');b.textContent='✨ Assistant';b.onclick=aiToggle;document.body.appendChild(b);const p=document.createElement('div');p.id='ai';p.innerHTML='<div class="ai-h"><b>✨ STEADYFIX Assistant</b><button onclick="aiMem()">Memory</button><button onclick="aiNew()">New chat</button><button onclick="aiToggle()">Close</button></div><div id="aim"></div><div class="ai-f"><textarea id="aiin" rows="1" placeholder="Ask me, or tell me what to do…" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();aiSend()}"></textarea><button class="b" onclick="aiSend()">Send</button></div>';document.body.appendChild(p)}
 function aiToggle(){if(!me||LOCK)return;const p=$('ai');p.classList.toggle('on');if(p.classList.contains('on')){aiRender();setTimeout(()=>$('aiin').focus(),80)}}
 function aiNew(){AI.msgs=[];AI.props=[];AI.mem=null;aiRender()}
-function aiDetail(p){if(p.kind==='industry_config')return JSON.stringify(p.changes||{},null,2);const sc=aiSchema()[p.table]||{fields:[]},lab=Object.fromEntries(sc.fields.map(f=>[f.k,f.label||f.k])),o=p.kind=='create'?p.fields:p.changes;const ty=Object.fromEntries(sc.fields.map(f=>[f.k,f.type]));return Object.entries(o||{}).filter(([k])=>lab[k]).map(([k,v])=>`${lab[k]}: ${Array.isArray(v)?v.map(x=>x&&typeof x=='object'?`${x.d} (${x.q} × ${x.p})`:x).join('; '):(ty[k]=='select'?cap(v):(ty[k]=='date'?dd(v):v))}`).join('\n')}
+function aiDetail(p){if(p.kind==='industry_config'||p.kind==='company_profile')return JSON.stringify(p.changes||{},null,2);const sc=aiSchema()[p.table]||{fields:[]},lab=Object.fromEntries(sc.fields.map(f=>[f.k,f.label||f.k])),o=p.kind=='create'?p.fields:p.changes;const ty=Object.fromEntries(sc.fields.map(f=>[f.k,f.type]));return Object.entries(o||{}).filter(([k])=>lab[k]).map(([k,v])=>`${lab[k]}: ${Array.isArray(v)?v.map(x=>x&&typeof x=='object'?`${x.d} (${x.q} × ${x.p})`:x).join('; '):(ty[k]=='select'?cap(v):(ty[k]=='date'?dd(v):v))}`).join('\n')}
 function aiRender(){const el=$('aim');if(!el)return;
  if(AI.mem){el.innerHTML=`<div class="ai2"><b>What I remember about your business</b><br>${AI.mem.length?'':'Nothing yet. Tell me about your business and I will remember the lasting facts.'}</div>${AI.mem.map(m=>`<div class="aipr"><div>${esc(m.note)}</div><button onclick="aiForget('${m.id}')">Forget this</button></div>`).join('')}<button class="b" onclick="AI.mem=null;aiRender()">Back to chat</button>`;return}
  const pend=AI.props.filter(p=>p.state=='pending');
@@ -782,6 +782,16 @@ async function aiSend(t){if(AI.busy)return;t=String(t||$('aiin').value).trim();i
  else{AI.msgs.push({role:'assistant',content:data.reply||'Done.'});(data.proposals||[]).forEach(p=>AI.props.push({...p,state:'pending'}));if((data.remembered||[]).length)AI.msgs.push({role:'assistant',content:'Noted for next time: '+data.remembered.join('; '),note:1})}
  aiRender()}
 async function aiApply(p){
+ if(p.kind==='company_profile'){
+  if(!isMgr())throw new Error('Only a company owner or manager can approve company setup changes.');
+  const ch=p.changes||{},patch={};
+  if(ch.primary_industry_slug!==undefined){if(!INDUSTRIES.some(x=>x.slug===ch.primary_industry_slug))throw new Error('Choose a valid active primary industry.');patch.primary_industry_slug=ch.primary_industry_slug;}
+  if(ch.secondary_industry_slugs!==undefined){if(!Array.isArray(ch.secondary_industry_slugs)||ch.secondary_industry_slugs.length>8||ch.secondary_industry_slugs.some(x=>!INDUSTRIES.some(y=>y.slug===x)))throw new Error('Secondary industry list is invalid.');if(patch.primary_industry_slug&&ch.secondary_industry_slugs.includes(patch.primary_industry_slug))throw new Error('Primary industry cannot also be secondary.');patch.secondary_industry_slugs=ch.secondary_industry_slugs;}
+  if(ch.business_description!==undefined){if(typeof ch.business_description!=='string'||ch.business_description.length>4000)throw new Error('Business description is invalid.');patch.business_description=ch.business_description.trim();}
+  if(!Object.keys(patch).length)throw new Error('No company setup fields to save.');
+  const{error}=await sb.from('company_industry_profiles').update(patch).eq('company_id',me.company_id);
+  if(error)throw new Error(error.message);await loadIndustryProfile();renderIndustrySelector();draw();return;
+ }
  if(p.kind==='industry_config'){
   if(!isMgr())throw new Error('Only a company owner or manager can approve workspace customizations.');
   const allowed=SF_CONFIGURABLE_MODULES||new Set(['work_orders','assets','service_contracts','stock_items','purchase_orders','customers','inv','suppliers','pm_schedules','chk','fleet','rep','ohs','damage_reports','shutdowns','logistics_ops']);

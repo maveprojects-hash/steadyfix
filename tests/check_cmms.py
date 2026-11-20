@@ -518,3 +518,8 @@ for marker in [
 ]:
     if marker not in ordered_sql:
         raise SystemExit(f"Missing Fleet concurrent telemetry safeguard: {marker}")
+
+
+# The unnecessary company/worker invite startup popup must remain removed.
+if "function intro()" in app_html or "\nintro();\n" in app_html:
+    raise SystemExit("Unnecessary startup intro popup has been reintroduced")

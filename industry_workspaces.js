@@ -322,7 +322,9 @@ async function sfAddShipmentScan(id){
   const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
   const location=prompt('Depot, town or scan location:');if(location===null)return;
   const scanLocation=location.trim();if(!scanLocation)return alert('Enter the scan location so the tracking event is meaningful.');
-  const notes=prompt('Scan notes (optional):')||null;
+  if(scanLocation.length>200)return alert('Scan location must be 200 characters or fewer.');
+  const rawNotes=prompt('Scan notes (optional):');if(rawNotes===null)return;
+  const notes=rawNotes.trim()||null;if(notes&&notes.length>2000)return alert('Scan notes must be 2,000 characters or fewer.');
   const {error}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'scan',status:shipment.status,location:scanLocation,notes,created_by:me.id});
   if(error)alert('Could not save tracking scan: '+error.message);else draw();
 }

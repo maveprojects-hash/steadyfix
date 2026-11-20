@@ -501,4 +501,12 @@ for marker in [
     if marker not in html:
         raise SystemExit(f"Missing invoice partial-payment safeguard: {marker}")
 
+# Invoice status is derived from recorded payment, preventing zero-paid "paid" invoices.
+for marker in [
+    "paid>=t.tot&&t.tot>0?'paid':paid>0?'partial'",
+    "['paid','partial'].includes(e.status)?'sent'",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing invoice payment/status consistency guard: {marker}")
+
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")

@@ -570,4 +570,3 @@ for marker in [
 ]:
     if marker not in create_handler:
         raise SystemExit(f"Missing waybill creation validation: {marker}")
-create_handler = transition_ui[transition_ui.index("async function sfCreateShipment"):transition_ui.index("const SF_SHIPMENT_TRANSITIONS")]\nfor marker in [\n    "waybill.length>100||tracking.length>100",\n    "origin.length>1000||destination.length>1000",\n    "Number.isInteger(packages)||packages<1||packages>500",\n    "duplicate waybill number",\n    ".eq('company_id',me.company_id).eq('site_id',site).eq('waybill_no',waybill)",\n    "if(duplicate.error)",\n]:\n    if marker not in create_handler:\n        raise SystemExit(f"Missing waybill creation validation: {marker}")\n

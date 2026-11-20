@@ -28,6 +28,8 @@ const TOOLS = [
     input_schema: { type: "object", properties: { table: { type: "string" }, id: { type: "string" }, changes: { type: "object" }, summary: { type: "string" } }, required: ["table", "id", "changes", "summary"] } },
   { name: "propose_industry_customization", description: "For an owner or manager, propose approved changes to the company industry workspace: hide shortcuts the company does not use and/or rename shortcuts to match its terminology. This only changes the company workspace presentation, not permissions or underlying data. It queues a proposal and never saves without approval.",
     input_schema: { type: "object", properties: { disabled_modules: { type: "array", items: { type: "string" }, description: "Complete list of workspace module ids to hide; use an empty array to restore all shortcuts." }, module_labels: { type: "object", additionalProperties: { type: "string" }, description: "Custom labels keyed by supported module id; use an empty string to remove a custom label." }, summary: { type: "string" } }, required: ["summary"] } },
+  { name: "propose_company_profile", description: "For a company owner or manager, propose an approved company setup change: primary industry, up to eight secondary industries, and a concise description of the company's services, assets and operating needs. Validate industry choices against the active catalog. It never saves without approval.",
+    input_schema: { type: "object", properties: { primary_industry_slug: { type: "string" }, secondary_industry_slugs: { type: "array", items: { type: "string" } }, business_description: { type: "string", description: "Describe services, asset types, operating model, and specific needs. Max 4000 characters." }, summary: { type: "string" } }, required: ["summary"] } },
   { name: "remember", description: "Save one short lasting fact or preference about this business so you can use it in future chats.",
     input_schema: { type: "object", properties: { note: { type: "string" } }, required: ["note"] } },
   { name: "forget_memory", description: "Remove a saved note by its id when the user asks you to forget it.",
@@ -48,6 +50,7 @@ How you work:
 - Be brief and clear, written for a phone screen. Short lists are fine. No long essays.
 - Use search_records to look things up before answering questions about their data. Never invent records, people, dates or numbers.
 - To create or change records call propose_create or propose_update. To tailor a company workspace, call propose_industry_customization only when the authenticated user is an owner or manager. These tools only queue proposals: the user taps Approve first. Say what you queued and ask them to approve it. Never say anything was created or changed before approval.
+- For company setup, use propose_company_profile when the owner/manager wants to set or revise the company industry and business description. Use industry_catalog choices, preserve unrelated profile values, and propose only the requested changes. Use propose_industry_customization for shortcut labels and visibility.
 - Workspace customization may only hide supported shortcut modules or rename them. Never claim it changes access permissions, creates new software modules, or alters another company's setup.
 - Never delete anything. If asked to delete, explain they can delete it themselves in the app.
 - Use only the tables and fields in the schema. Dates are yyyy-mm-dd. Select fields must use one of the listed options exactly. For reference fields, find the id with search_records first.
@@ -131,6 +134,33 @@ async function runTool(name, input, st) {
     const p = { id: "p" + (st.proposals.length + 1), kind: "update", table, label: sch.label, rowId: String(input.id), changes: fields, summary: String(input.summary || "").slice(0, 200) };
     st.proposals.push(p);
     return "Queued for the user's approval. Tell them to tap Approve.";
+  }
+  if (name === "propose_company_profile") {
+    if (!["owner", "manager"].includes(ctx.role)) return "Error: only a company owner or manager may change company setup.";
+    const changes = {};
+    if (input.primary_industry_slug !== undefined) {
+      const slug = String(input.primary_industry_slug).trim();
+      const { data, error } = await sb.from("industry_catalog").select("slug").eq("slug", slug).eq("is_active", true).maybeSingle();
+      if (error || !data) return "Error: choose an active industry from the catalog.";
+      changes.primary_industry_slug = slug;
+    }
+    if (input.secondary_industry_slugs !== undefined) {
+      if (!Array.isArray(input.secondary_industry_slugs) || input.secondary_industry_slugs.length > 8) return "Error: secondary industries must be a list of up to eight.";
+      const secondary = [...new Set(input.secondary_industry_slugs.map(x => String(x).trim()))];
+      if (changes.primary_industry_slug && secondary.includes(changes.primary_industry_slug)) return "Error: the primary industry cannot also be secondary.";
+      const { data, error } = await sb.from("industry_catalog").select("slug").in("slug", secondary).eq("is_active", true);
+      if (error || (data || []).length !== secondary.length) return "Error: one or more secondary industries are inactive or unknown.";
+      const primary = changes.primary_industry_slug || ctx.industry_profile?.primary?.slug;
+      if (primary && secondary.includes(primary)) return "Error: the primary industry cannot also be secondary.";
+      changes.secondary_industry_slugs = secondary;
+    }
+    if (input.business_description !== undefined) {
+      if (typeof input.business_description !== "string" || input.business_description.length > 4000) return "Error: business description must be text of 4000 characters or less.";
+      changes.business_description = input.business_description.trim();
+    }
+    if (!Object.keys(changes).length) return "Error: specify at least one company profile field.";
+    st.proposals.push({ id: "p" + (st.proposals.length + 1), kind: "company_profile", label: "Company setup", changes, summary: String(input.summary || "Update company setup").slice(0, 200) });
+    return "Company setup changes queued for owner/manager approval. Nothing has changed yet.";
   }
   if (name === "propose_industry_customization") {
     if (!["owner", "manager"].includes(ctx.role)) return "Error: only a company owner or manager may customize the company workspace.";

@@ -500,6 +500,10 @@ if "$('key').value=q.get('key')" in tracker_page or "tracker.html?key=" in app_h
 if "Never accept tracker credentials from URL query strings" not in tracker_page:
     raise SystemExit("Missing tracker URL credential guard")
 
+# Fleet keys stay masked in the UI while preserving manager copy access.
+if '<b>${s.device_key}</b>' in app_html or 'Device key: <b>••••••••</b>' not in app_html or 'copyTxt(\'dk${s.id}\')' not in app_html:
+    raise SystemExit("Fleet device key must be masked with a working copy-key action")
+
 # Fleet sample commands must use a placeholder, never render real vehicle bearer keys.
 fleet_track_fn = app_html[app_html.index("async function fleetTrack()"):]
 if '"p_key":"${x.device_key}"' in fleet_track_fn or '<TRACKER_KEY>' not in fleet_track_fn:

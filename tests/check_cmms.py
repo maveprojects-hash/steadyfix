@@ -491,6 +491,17 @@ for marker in [
     if marker not in workspace_code:
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
+# Print mode must be cleaned after browser printing so the live UI is not left hidden.
+for marker in [
+    "document.body.classList.remove('one')",
+    "window.addEventListener('afterprint',cleanup)",
+    "window.removeEventListener('afterprint',cleanup)",
+    "sh.innerHTML=''",
+    "setTimeout(cleanup,60000)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing print cleanup safeguard: {marker}")
+
 # Document numbers are checked for duplicates within company + document kind before save.
 for marker in [
     "select('id').eq('company_id',me.company_id).eq('kind',e.kind).eq('number',row.number)",

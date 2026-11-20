@@ -361,7 +361,7 @@ async function sfDeleteShipment(id){
   const {error}=await sb.from('logistics_shipments').delete().eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
   if(error)alert(error.message);else draw();
 }
-async async function sfPrintWaybill(id){
+async function sfPrintWaybill(id){
   const x=SF_LOGISTICS_SHIPMENTS.find(s=>s.id===id);if(!x)return;
   const pod=await sb.from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('site_id',site).maybeSingle();const signed=pod.data;
   const brandColor=/^#[0-9a-f]{6}$/i.test(CS.doc_color||'')?CS.doc_color:'#1B2831';

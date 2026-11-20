@@ -357,7 +357,7 @@ async function sfAddShipmentScan(id){
   const {error}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'scan',status:shipment.status,location:scanLocation,notes,created_by:me.id});
   if(error)alert('Could not save tracking scan: '+error.message);else draw();
 }
-function sfCapturePOD(id){SF_POD_SHIPMENT_ID=id;cur='logistics_pod';draw()}
+function sfCapturePOD(id){const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;if(shipment.status!=='delivered'&&!sfShipmentTransitionAllowed(shipment.status,'delivered'))return alert('Proof of delivery is available when a consignment is out for delivery or in exception status.');SF_POD_SHIPMENT_ID=id;cur='logistics_pod';draw()}
 let SF_POD_SHIPMENT_ID=null;
 async function sfLogisticsPODPage(){
   const id=SF_POD_SHIPMENT_ID;if(!id)return '<h2>Proof of delivery</h2><div class="p">Choose a consignment first.</div>';

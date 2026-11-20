@@ -3,7 +3,8 @@ name: CMMS quality checks
 on:
   pull_request:
     paths:
-      - "index.html"\n      - "maintdesk_app.html"
+      - "index.html"
+      - "maintdesk_app.html"
       - "communication.js"
       - "communication.css"
       - "supabase/migrations/**"
@@ -11,6 +12,7 @@ on:
       - ".github/workflows/cmms-quality.yml"
   push:
     paths:
+      - "index.html"
       - "maintdesk_app.html"
       - "communication.js"
       - "communication.css"

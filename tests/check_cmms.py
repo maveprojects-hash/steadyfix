@@ -615,6 +615,14 @@ for marker in ["eq('company_id',me.company_id)", "if(r.error)", "Could not load 
         raise SystemExit("Customer export missing tenant/error guard: " + marker)
 
 
+# Generic company and site queries must be tenant scoped, including reference tables.
+if "const q=(t,c)=>sb.from(t).select(c).eq('company_id',me.company_id).eq('site_id',site)" not in html:
+    raise SystemExit("Dashboard/company site helper missing company scope")
+if "let q=sb.from(id).select('*').eq('company_id',me.company_id)" not in html:
+    raise SystemExit("Generic records list missing company scope")
+if "let q=sb.from(f.o[0]).select('id,'+f.o[1]).eq('company_id',me.company_id)" not in html:
+    raise SystemExit("Reference table query missing company scope")
+
 # Dashboard invoice summaries must use the signed-in company scope.
 dashboard_start = html.find("isMgr()?sb.from('documents').select('kind,status,total,due_date')")
 dashboard_end = html.find("Promise.resolve({data:[]})", dashboard_start)

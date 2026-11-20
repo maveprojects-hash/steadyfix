@@ -877,7 +877,7 @@ async function shareHtml(html,fname,subject,text,to){
   if(typeof window.html2pdf!=='function')throw new Error('The PDF library did not load.');
   el=document.createElement('div');
   el.setAttribute('aria-hidden','true');
-  el.style.cssText='position:absolute;left:0;top:0;width:794px;min-height:1123px;background:#fff;color:#111;z-index:2147483647;pointer-events:none;display:block;visibility:visible;opacity:1;overflow:visible;contain:layout style';
+  el.style.cssText='position:absolute;left:0;top:0;width:794px;min-height:1123px;background:#fff;color:#111;z-index:2147483647;pointer-events:none;display:block;visibility:visible;opacity:1;overflow:visible';
   el.innerHTML=html;
   document.body.appendChild(el);
   if(document.fonts&&document.fonts.ready)await document.fonts.ready;
@@ -886,8 +886,9 @@ async function shareHtml(html,fname,subject,text,to){
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
   const docNode=el.querySelector('.dx');
   if(!docNode||!docNode.textContent||!docNode.textContent.trim())throw new Error('The quote or invoice layout did not render.');
+  docNode.style.width='794px';docNode.style.maxWidth='none';docNode.style.margin='0';
   const rect=docNode.getBoundingClientRect();
-  const width=Math.max(794,Math.ceil(rect.width)),height=Math.max(1123,Math.ceil(rect.height));
+  const width=Math.max(794,Math.ceil(rect.width),docNode.scrollWidth),height=Math.max(1123,Math.ceil(rect.height),docNode.scrollHeight);
   if(!width||!height)throw new Error('The document has no printable size.');
   const blob=await html2pdf().set({
    margin:0,

@@ -38,6 +38,8 @@ for marker in [
     "q.company_id!==me.company_id",
     "q.kind!=='quote'",
     "q.status==='cancelled'",
+    "x.company_id===me.company_id&&x.kind=='invoice'&&x.converted_from==q.id",
+    ".eq('kind','quote')",
     "converted_from==q.id",
     "upd.error",
     "Invoice was created, but the quote status could not be updated",

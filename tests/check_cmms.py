@@ -419,6 +419,7 @@ for marker in [
     "async function sfUpdateShipmentStatus(id,status)",
     "if(shipment.status===status)return;",
     "if(!sfShipmentTransitionAllowed(shipment.status,status)",
+    "const next=SF_SHIPMENT_TRANSITIONS[x.status]||[],available=[x.status,...next]",
 ]:
     if marker not in transition_ui:
         raise SystemExit(f"Missing logistics UI lifecycle safeguard: {marker}")

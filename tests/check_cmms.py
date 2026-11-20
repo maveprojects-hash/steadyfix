@@ -83,6 +83,14 @@ for marker in [
     if marker not in convert_code:
         raise SystemExit(f"Missing quote conversion guard: {marker}")
 
+# Print and email actions validate the document and company scope before rendering.
+action_start = html.index("function printDoc(id)")
+action_end = html.index("async function poDoc(", action_start)
+action_code = html[action_start:action_end]
+for marker in ["d.company_id!==me.company_id", "Document unavailable or outside your company."]:
+    if marker not in action_code:
+        raise SystemExit("Missing document action guard: " + marker)
+
 # PDF document renderer regression guards.
 share_start = html.find("async function shareHtml(")
 share_end = html.find("function docPreview(", share_start)

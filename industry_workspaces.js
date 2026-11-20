@@ -110,7 +110,7 @@ async function sfSaveServiceContract(){
   if(endDate&&endDate<startDate)return alert('The contract end date cannot be before its start date.');
   const fee=Math.max(0,Number($('sfContractFee').value)||0);
   const row={company_id:me.company_id,site_id:site,kind:'service_contract',number,customer_id:customer.id,customer_name:customer.name,issue_date:startDate,due_date:endDate,start_date:startDate,end_date:endDate,status:$('sfContractStatus').value,currency:(CS&&CS.currency)||'R',vat_rate:(CS&&CS.tax_rate)||15,contract_type:$('sfContractType').value,billing_cycle:$('sfContractCycle').value,monthly_fee:fee,subtotal:fee,vat_amount:0,total:fee,response_hours:Math.max(0,Number($('sfContractResponse').value)||0),included_pages:Math.max(0,Number($('sfContractPages').value)||0),overage_rate:Math.max(0,Number($('sfContractOverage').value)||0),covered_devices:$('sfContractDevices').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),notes:$('sfContractNotes').value.trim()};
-  const result=SF_EDITING_CONTRACT_ID?await sb.from('documents').update(row).eq('id',SF_EDITING_CONTRACT_ID).eq('kind','service_contract'):await sb.from('documents').insert(row);
+  const result=SF_EDITING_CONTRACT_ID?await sb.from('documents').update(row).eq('id',SF_EDITING_CONTRACT_ID).eq('kind','service_contract').eq('company_id',me.company_id).eq('site_id',site):await sb.from('documents').insert(row);
   if(result.error)return alert('Could not save the service contract: '+result.error.message);
   SF_EDITING_CONTRACT_ID=null;draw();
 }
@@ -129,7 +129,7 @@ function sfResetServiceContract(){
 }
 async function sfDeleteServiceContract(id){
   if(!confirm('Delete this service contract?'))return;
-  const {error}=await sb.from('documents').delete().eq('id',id).eq('kind','service_contract');if(error)alert(error.message);else draw();
+  const {error}=await sb.from('documents').delete().eq('id',id).eq('kind','service_contract').eq('company_id',me.company_id).eq('site_id',site);if(error)alert(error.message);else draw();
 }
 function sfPrintServiceContract(id){
   const c=SF_SERVICE_CONTRACTS.find(x=>x.id===id);if(!c)return;let sh=$('sheet');if(!sh){sh=document.createElement('div');sh.id='sheet';document.body.appendChild(sh)}
@@ -139,7 +139,7 @@ function sfPrintServiceContract(id){
 }
 async function sfPrintServiceJobCard(id){
   const r=(LAST&&LAST.rows||[]).find(x=>x.id===id);if(!r)return;
-  const signed=await sb.from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('site_id',site).order('signed_at',{ascending:false}).limit(1);SF_JOB_SIGNOFFS=signed.data||[];const latestSignoff=SF_JOB_SIGNOFFS[0];
+  const signed=await sb.from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site).order('signed_at',{ascending:false}).limit(1);SF_JOB_SIGNOFFS=signed.data||[];const latestSignoff=SF_JOB_SIGNOFFS[0];
   const find=(t,k)=>((LAST&&LAST.refs&&LAST.refs[t])||[]).find(x=>x.id===k);
   const customer=find('customers',r.customer_id),asset=find('assets',r.asset_id),tech=find('profiles',r.assigned_to);
   let sh=$('sheet');if(!sh){sh=document.createElement('div');sh.id='sheet';document.body.appendChild(sh)}
@@ -162,12 +162,12 @@ async function sfJobOperations(){
   const id=SF_JOB_OPERATIONS_ID;if(!id)return '<h2>Job operations</h2><div class="p">Choose a service job card first.</div>';
   const [wr,tm,mi,st,lv,ps,sg]=await Promise.all([
     sb.from('work_orders').select('*').eq('id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle(),
-    sb.from('work_order_time_entries').select('*').eq('work_order_id',id).eq('site_id',site).order('work_date',{ascending:false}).order('created_at',{ascending:false}),
-    sb.from('work_order_material_issues').select('*').eq('work_order_id',id).eq('site_id',site).order('issued_at',{ascending:false}),
+    sb.from('work_order_time_entries').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site).order('work_date',{ascending:false}).order('created_at',{ascending:false}),
+    sb.from('work_order_material_issues').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site).order('issued_at',{ascending:false}),
     sb.from('stock_items').select('id,name,sku,unit,unit_cost').eq('company_id',me.company_id).order('name'),
     sb.from('stock_levels').select('item_id,on_hand').eq('company_id',me.company_id).eq('site_id',site),
     sb.from('profiles').select('id,full_name,role').eq('company_id',me.company_id).eq('active',true).order('full_name'),
-    sb.from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('site_id',site).order('signed_at',{ascending:false})
+    sb.from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site).order('signed_at',{ascending:false})
   ]);
   if(wr.error)throw wr.error;if(!wr.data)return '<h2>Job operations</h2><div class="p">This job card is not available at the selected site.</div>';
   for(const x of [tm,mi,st,lv,ps,sg])if(x.error)throw x.error;
@@ -302,7 +302,7 @@ async function sfLogisticsPODPage(){
   const id=SF_POD_SHIPMENT_ID;if(!id)return '<h2>Proof of delivery</h2><div class="p">Choose a consignment first.</div>';
   const [sr,pr]=await Promise.all([
     sb.from('logistics_shipments').select('*').eq('id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle(),
-    sb.from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('site_id',site).maybeSingle()
+    sb.from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle()
   ]);
   if(sr.error)throw sr.error;if(pr.error)throw pr.error;if(!sr.data)return '<h2>Proof of delivery</h2><div class="p">This consignment is not available at this site.</div>';
   const x=sr.data,p=pr.data;
@@ -322,7 +322,7 @@ async function sfDeleteShipment(id){
 }
 async function sfPrintWaybill(id){
   const x=SF_LOGISTICS_SHIPMENTS.find(s=>s.id===id);if(!x)return;
-  const pod=await sb.from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('site_id',site).maybeSingle();const signed=pod.data;
+  const pod=await sb.from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle();const signed=pod.data;
   const row=(l,v)=>'<tr><th style="width:32%">'+l+'</th><td>'+esc(v==null||v===''?'-':String(v))+'</td></tr>';
   sheetPrint(ph('Transport waybill')+'<br><table class="pt">'+row('Waybill number',x.waybill_no)+row('Tracking number',x.tracking_no)+row('Service level',cap(x.service_level))+row('Status',cap(x.status))+row('Sender',x.sender_name)+row('Recipient',x.recipient_name)+row('Recipient phone',x.recipient_phone)+row('Origin',x.origin_address)+row('Destination',x.destination_address)+row('Contents',x.parcel_description)+row('Packages',x.package_count)+row('Weight (kg)',x.weight_kg)+row('Expected delivery',x.expected_delivery)+'</table>'+(signed?'<h3>Electronic proof of delivery</h3><p>Received by: '+esc(signed.receiver_name)+' · '+esc(new Date(signed.signed_at).toLocaleString('en-ZA'))+'</p>'+sfSignatureSvg(signed.signature_points)+'<p>'+esc(signed.notes||'')+'</p>':'')+'<p><b>Driver / collection signature</b> ___________________________</p><p><b>Receiver signature / name</b> ___________________________ Date: __________</p>');
 }

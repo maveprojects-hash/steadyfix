@@ -208,6 +208,24 @@ if "priorityTabs" not in html or "industryBanner" not in html:
     raise SystemExit("Industry templates are not personalising dashboard section order")
 
 
+# Job labour/material/signoff history must be explicitly company/site scoped in client queries.
+industry_code = (root / "industry_workspaces.js").read_text(encoding="utf-8")
+for marker in [
+    ".from('work_order_time_entries').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('work_order_material_issues').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site)",
+]:
+    if marker not in industry_code:
+        raise SystemExit(f"Missing company/site filter on industry job-history query: {marker}")
+
+# Industry service-contract edits and deletes must be scoped to company and active site.
+for marker in [
+    ".update(row).eq('id',SF_EDITING_CONTRACT_ID).eq('kind','service_contract').eq('company_id',me.company_id).eq('site_id',site)",
+    ".delete().eq('id',id).eq('kind','service_contract').eq('company_id',me.company_id).eq('site_id',site)",
+]:
+    if marker not in industry_code:
+        raise SystemExit(f"Unscoped industry service-contract mutation detected: {marker}")
+
 # Industry workspace entry point and Automation service operations.
 industry_workspaces = root / "industry_workspaces.js"
 if not industry_workspaces.exists():
@@ -320,6 +338,34 @@ for marker in [
         raise SystemExit(f"Missing approved industry customization UI: {marker}")
 
 assistant_customization = assistant_source.read_text(encoding="utf-8")
+# iAssistant data access must be explicitly tenant-scoped; site-bound records also
+# carry the active-site filter. Company memory reads and deletes are tenant-scoped.
+for marker in [
+    'const requestedSiteId = typeof body.site_id === "string" ? body.site_id : null;',
+    '.eq("id", requestedSiteId).eq("company_id", company_id).maybeSingle()',
+    'if (!["owner", "manager"].includes(String(prof.data.role || "").toLowerCase()))',
+    '.eq("site_id", verifiedSite.id).eq("user_id", user.id).maybeSingle()',
+    'site_id: verifiedSite?.id || null, site_name: String(verifiedSite?.name || "").slice(0, 80)',
+]:
+    if marker not in assistant_customization:
+        raise SystemExit(f"Missing iAssistant server-side site access safeguard: {marker}")
+for marker in [
+    '.select("*").limit(200).eq("company_id", ctx.company_id)',
+    'if (sch.site && ctx.site_id) q = q.eq("site_id", ctx.site_id);',
+    '.delete().eq("id", String(input.id)).eq("company_id", ctx.company_id)',
+    '.select("id,note").eq("company_id", company_id).order("created_at"',
+    '.select("*").limit(500).eq("company_id", ctx.company_id)',
+]:
+    if marker not in assistant_customization:
+        raise SystemExit(f"Missing iAssistant company-scope safeguard: {marker}")
+# Approved iAssistant updates carry explicit tenant/site filters in the client query.
+for marker in [
+    ".eq('id',p.rowId).eq('company_id',me.company_id)",
+    "if(sc.site)updateQuery=updateQuery.eq('site_id',site)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing explicit iAssistant approved-update scope: {marker}")
+
 for marker in [
     "propose_industry_customization",
     "CONFIGURABLE_MODULES",
@@ -360,6 +406,14 @@ for marker in [
 module_start = workspace_code.index("function sfIndustryModules")
 module_end = workspace_code.index("async function sfIndustryWorkspace", module_start)
 module_source = workspace_code[module_start:module_end]
+# The industry module map must explicitly cover all nine catalog workspace profiles.
+for industry_slug in [
+    "automation", "fleet-management", "workshops", "logistics-transport",
+    "hospitality-tourism", "food-beverage", "property-management-facilities",
+    "manufacturing-industrial", "general-maintenance",
+]:
+    if industry_slug not in module_source:
+        raise SystemExit(f"Missing industry workspace module profile: {industry_slug}")
 industry_routes = set(re.findall(r"\['[^']*','[^']*','[^']*','([a-z_]+)'\]", module_source))
 mod_source = html.split("const MOD={", 1)[1].split("};\nconst TABS=", 1)[0]
 base_modules = set(re.findall(r"^\s*([a-z_]+):\{", mod_source, re.MULTILINE))
@@ -370,6 +424,13 @@ if unresolved_routes:
 
 
 # Logistics proof of delivery must include a receiver signature and consent.
+# Signed POD reads must be explicitly company/site scoped in the client.
+for marker in [
+    ".eq('shipment_id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle()",
+]:
+    if marker not in industry_code:
+        raise SystemExit(f"Unscoped logistics POD read detected: {marker}")
+
 # The app and RPC both cap signature stroke and point counts.
 pod_migration = next((root / "supabase" / "migrations").glob("*_logistics_pod_signoffs.sql"))
 pod_sql = pod_migration.read_text(encoding="utf-8").lower()
@@ -394,3 +455,97 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+
+# Quote/invoice document pipeline regression guards. These are source-level checks,
+# not a substitute for a real browser/PDF text-render test; they ensure the
+# generation path keeps its fail-safe checks and that all layouts render into
+# the same printable root.
+app_doc = html
+for marker in [
+    "function docHtml(d,c,o)",
+    "const L_classic=",
+    "const L_modern=",
+    "const L_minimal=",
+    "const L_bold=",
+    "async function shareHtml(html,fname,subject,text,to)",
+    "await loadPdfLib()",
+    "typeof window.html2pdf!=='function'",
+    "el.querySelector('.dx')",
+    "docNode.textContent",
+    "getBoundingClientRect()",
+    "outputPdf('blob')",
+    "blob.size<1500",
+    "sheetPrint(html)",
+    "function docSheet(d)",
+    "async function mailDoc(id)",
+    "function printDoc(id)",
+]:
+    if marker not in app_doc:
+        raise SystemExit(f"Missing quote/invoice PDF pipeline safeguard: {marker}")
+
+# All four document layout templates must expose a .dx printable root and remain
+# registered with docHtml; print/share paths must both consume docSheet().
+doc_layout_start = app_doc.index("const L_classic=")
+doc_layout_end = app_doc.index("// ---------- preview, PDF and sharing", doc_layout_start)
+doc_layout_source = app_doc[doc_layout_start:doc_layout_end]
+if doc_layout_source.count('class="dx"') < 3:
+    raise SystemExit("Expected printable .dx roots in the classic, minimal and bold layouts")
+if "class=\"dx\" style=\"padding:0\"" not in doc_layout_source:
+    raise SystemExit("Modern layout is missing its printable .dx root")
+if "function docSheet(d){const c=CUST.find(x=>x.id==d.customer_id)||{};return docHtml(d,c)}" not in app_doc:
+    raise SystemExit("Quote/invoice print and share document builder changed unexpectedly")
+
+# Fleet dashboards and GPS history are explicitly restricted to company vehicles and active site.
+fleet_start = html.index("async function fleetData()")
+fleet_end = html.index("async function fleetOverview()", fleet_start)
+fleet_source = html[fleet_start:fleet_end]
+for marker in [
+    ".from('vehicles').select('*').eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('workshop_jobs').select('status').eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('vehicle_positions').select('vehicle_id,recorded_at,lat,lng,speed_kmh').eq('company_id',me.company_id).in('vehicle_id',ids)",
+]:
+    if marker not in fleet_source:
+        raise SystemExit(f"Missing fleet company/site data filter: {marker}")
+for marker in [
+    ".from('workshop_jobs').select('status').eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('vehicles').select('*').eq('id',r.vehicle_id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle()",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing scoped fleet query: {marker}")
+
+# Printed signoff and POD history must use explicit tenant and site filters.
+for marker in [
+    ".from('work_order_customer_signoffs').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle()",
+]:
+    if marker not in industry_code:
+        raise SystemExit(f"Missing company/site scope for printed industry signature records: {marker}")
+
+
+# Fleet workspace baseline: company/site scope, service/compliance dashboard and starter inspection lists.
+fleet_source = html[html.index("async function fleetData()"):html.index("async function fleetOverview()")]
+for marker in [
+    ".from('vehicles').select('*').eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('workshop_jobs').select('status').eq('company_id',me.company_id).eq('site_id',site)",
+    ".from('vehicle_positions').select('vehicle_id,recorded_at,lat,lng,speed_kmh').eq('company_id',me.company_id).in('vehicle_id',ids)"]:
+    if marker not in fleet_source:
+        raise SystemExit(f"Fleet dashboard is missing its tenant/site data boundary: {marker}")
+fleet_overview = html[html.index("async function fleetOverview()"):html.index("async function fleetTrack()")]
+for marker in [
+    "next_service_km", "next_service_date", "license_expiry",
+    "Licences expiring in 30 days", "Services due"]:
+    if marker not in fleet_overview:
+        raise SystemExit(f"Fleet overview missing service/compliance alert: {marker}")
+fleet_checklists = html[html.index("const FLEET_LISTS="):html.index("// ---------- OHS and fire safety")]
+for marker in [
+    "Vehicle pre-trip inspection", "Vehicle weekly walk-round", "Workshop safety check",
+    "Tyres and tyre pressures", "Lights and indicators", "Licence disc valid"]:
+    if marker not in fleet_checklists:
+        raise SystemExit(f"Fleet starter checklist missing required safety item: {marker}")
+fleet_sql = (root / "steadyfix_fleet_workshop.sql").read_text(encoding="utf-8").lower()
+for marker in [
+    "create table if not exists workshop_jobs", "create table if not exists vehicle_positions",
+    "enable row level security", "company_id = auth_company()", "auth_site_ok(site_id)"]:
+    if marker not in fleet_sql:
+        raise SystemExit(f"Fleet/workshop SQL missing tenant boundary or core schema: {marker}")

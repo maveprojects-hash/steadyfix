@@ -102,7 +102,7 @@ async function runTool(name, input, st) {
   const sch = needTable ? schema[table] : null;
 
   if (name === "search_records") {
-    let q = sb.from(table).select("*").limit(200);
+    let q = sb.from(table).select("*").limit(200).eq("company_id", ctx.company_id);
     if (sch.site && ctx.site_id) q = q.eq("site_id", ctx.site_id);
     const known = new Set(["id", ...(sch.fields || []).map((f) => f.k)]);
     for (const [k, v] of Object.entries(input.where || {})) if (known.has(k)) q = q.eq(k, v);
@@ -165,14 +165,14 @@ async function runTool(name, input, st) {
     return "Saved.";
   }
   if (name === "forget_memory") {
-    const { error } = await sb.from("assistant_memory").delete().eq("id", String(input.id));
+    const { error } = await sb.from("assistant_memory").delete().eq("id", String(input.id)).eq("company_id", ctx.company_id);
     if (error) return "Error: " + error.message;
     st.memory = st.memory.filter((m) => m.id !== input.id); return "Removed.";
   }
   if (name === "attention_summary") {
     const t = ctx.today, in30 = new Date(Date.parse(t) + 30 * 864e5).toISOString().slice(0, 10), out = {};
     const get = async (label, table, build) => {
-      try { let q = sb.from(table).select("*").limit(500); if (schema[table] && schema[table].site && ctx.site_id) q = q.eq("site_id", ctx.site_id); const { data, error } = await q; out[label] = error ? "unavailable" : build(data || []); } catch (e) { out[label] = "unavailable"; }
+      try { let q = sb.from(table).select("*").limit(500).eq("company_id", ctx.company_id); if (schema[table] && schema[table].site && ctx.site_id) q = q.eq("site_id", ctx.site_id); const { data, error } = await q; out[label] = error ? "unavailable" : build(data || []); } catch (e) { out[label] = "unavailable"; }
     };
     await Promise.all([
       get("overdue_work_tasks", "work_orders", (r) => r.filter((x) => !["done", "cancelled"].includes(x.status) && x.due_date && x.due_date < t).length),
@@ -222,11 +222,26 @@ Deno.serve(async (req) => {
     const company_id = prof.data && prof.data.company_id;
     if (!company_id) return json({ error: "No company found for this login." }, 400);
 
+    // Treat the active site sent by the browser as untrusted: confirm it belongs
+    // to this company and that non-manager users are explicitly assigned to it.
+    const requestedSiteId = typeof body.site_id === "string" ? body.site_id : null;
+    let verifiedSite = null;
+    if (requestedSiteId) {
+      const siteResult = await sb.from("sites").select("id,name").eq("id", requestedSiteId).eq("company_id", company_id).maybeSingle();
+      if (siteResult.error) return json({ error: "Unable to validate active site access." }, 403);
+      if (!siteResult.data) return json({ error: "Selected site is not part of your company." }, 403);
+      verifiedSite = siteResult.data;
+      if (!["owner", "manager"].includes(String(prof.data.role || "").toLowerCase())) {
+        const membership = await sb.from("user_sites").select("user_id").eq("site_id", verifiedSite.id).eq("user_id", user.id).maybeSingle();
+        if (membership.error || !membership.data) return json({ error: "You do not have access to this site." }, 403);
+      }
+    }
+
     const start = new Date(); start.setUTCHours(0, 0, 0, 0);
     const used = await sb.from("assistant_usage").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", start.toISOString());
     if ((used.count || 0) >= DAILY_LIMIT) return json({ reply: `You have used today's ${DAILY_LIMIT} assistant messages. It resets tomorrow.`, proposals: [], remembered: [] });
 
-    const mem = await sb.from("assistant_memory").select("id,note").order("created_at", { ascending: true }).limit(60);
+    const mem = await sb.from("assistant_memory").select("id,note").eq("company_id", company_id).order("created_at", { ascending: true }).limit(60);
     // Never accept industry identity from the browser: derive it from this authenticated company.
     const industryProfileResult = await sb.from("company_industry_profiles")
       .select("primary_industry_slug,secondary_industry_slugs,business_description,configuration_overrides,config_version")
@@ -243,7 +258,7 @@ Deno.serve(async (req) => {
       configuration_overrides: industryProfileRow.configuration_overrides || {},
       config_version: industryProfileRow.config_version,
     } : null;
-    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: body.site_id || null, site_name: String(body.site_name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
+    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: verifiedSite?.id || null, site_name: String(verifiedSite?.name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
     const st = { sb, schema, ctx, memory: mem.data || [], proposals: [], remembered: [] };
 
     const convo = messages.map((m) => ({ role: m.role, content: m.content }));

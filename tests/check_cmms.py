@@ -672,3 +672,13 @@ del_code = html[del_start:del_end]
 for marker in [".eq('id',rid).eq('company_id',me.company_id)", "if(MOD[tb]?.s)q=q.eq('site_id',site)"]:
     if marker not in del_code:
         raise SystemExit("Generic delete missing tenant/site filter: " + marker)
+
+# Purchase-order document creation must verify the order and supplier belong to the current tenant.
+po_start = html.find("async function poDoc(rid,mode)")
+po_end = html.find("// ---------- accounting export ----------", po_start)
+if po_start < 0 or po_end < 0:
+    raise SystemExit("Missing purchase order document function")
+po_code = html[po_start:po_end]
+for marker in ["x.id==rid&&x.company_id==me.company_id", ".eq('id',r.supplier_id).eq('company_id',me.company_id)"]:
+    if marker not in po_code:
+        raise SystemExit("Purchase order document missing tenant check: " + marker)

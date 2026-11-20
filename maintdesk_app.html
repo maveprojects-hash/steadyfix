@@ -856,7 +856,7 @@ async function shareHtml(html,fname,subject,text,to){
   if(typeof window.html2pdf!=='function')throw new Error('The PDF library did not load.');
   el=document.createElement('div');
   el.setAttribute('aria-hidden','true');
-  el.style.cssText='position:absolute;left:0;top:0;width:794px;min-height:1123px;background:#fff;color:#111;z-index:2147483647;pointer-events:none;display:block;visibility:visible;opacity:1;overflow:visible;contain:layout style';
+  el.style.cssText='position:absolute;left:0;top:0;width:794px;min-height:1123px;background:#fff;color:#111;z-index:2147483647;pointer-events:none;display:block;visibility:visible;opacity:1;overflow:visible;contain:none';
   el.innerHTML=html;
   document.body.appendChild(el);
   if(document.fonts&&document.fonts.ready)await document.fonts.ready;

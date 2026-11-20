@@ -491,4 +491,14 @@ for marker in [
     if marker not in workspace_code:
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
+# Invoice partial payments must remain visible, editable, and included in balance calculations.
+for marker in [
+    "'partial'",
+    "Record payment",
+    "Math.max(0,+d.total-(+d.paid_amount||0))",
+    "['sent','overdue','partial']",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing invoice partial-payment safeguard: {marker}")
+
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")

@@ -51,6 +51,12 @@ for marker in required_work_order_intake:
     if marker not in html:
         raise SystemExit(f"Missing Work Orders job-card intake field: {marker}")
 
+# Customer approval is a signed record; the generic work-order editor must not bypass sign-off.
+if html.count("id=='work_orders'&&f.k=='customer_approval_status'") < 2:
+    raise SystemExit("Customer approval must be read-only in edit cards and omitted from the add form")
+if "Customer approval (recorded by customer sign-off)" not in html:
+    raise SystemExit("Work-order editor does not explain that approval comes from signed customer sign-off")
+
 migration = next((root / "supabase" / "migrations").glob("*_work_order_notifications.sql"))
 sql = migration.read_text(encoding="utf-8")
 for marker in [

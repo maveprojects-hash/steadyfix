@@ -264,6 +264,15 @@ for marker in [
 ]:
     if marker not in workspace_code:
         raise SystemExit(f"Missing industry workspace capability: {marker}")
+for marker in [
+    "sb.from('work_order_time_entries').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    "sb.from('work_order_material_issues').select('*').eq('work_order_id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    "row('Logged labour hours',labourHours.toFixed(2))",
+    "<b>Recorded labour entries</b>",
+    "<b>Stock issued from inventory</b>",
+]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Printed job card is missing verified labour/stock detail: {marker}")
 
 automation_migration = next((root / "supabase" / "migrations").glob("*_automation_service_operations.sql"))
 automation_sql = automation_migration.read_text(encoding="utf-8").lower()

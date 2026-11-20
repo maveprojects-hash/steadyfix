@@ -299,10 +299,11 @@ async function sfUpdateShipmentStatus(id,status){
   draw();
 }
 async function sfAddShipmentScan(id){
-  const location=prompt('Depot, town or scan location:');if(location===null)return;
-  const notes=prompt('Scan notes (optional):')||null;
   const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
-  const {error}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'scan',status:shipment.status,location:location.trim()||null,notes,created_by:me.id});
+  const location=prompt('Depot, town or scan location:');if(location===null)return;
+  const scanLocation=location.trim();if(!scanLocation)return alert('Enter the scan location so the tracking event is meaningful.');
+  const notes=prompt('Scan notes (optional):')||null;
+  const {error}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'scan',status:shipment.status,location:scanLocation,notes,created_by:me.id});
   if(error)alert('Could not save tracking scan: '+error.message);else draw();
 }
 function sfCapturePOD(id){SF_POD_SHIPMENT_ID=id;cur='logistics_pod';draw()}

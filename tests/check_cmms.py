@@ -52,13 +52,13 @@ for marker in required_work_order_intake:
         raise SystemExit(f"Missing Work Orders job-card intake field: {marker}")
 
 # Customer approval is a signed record; the generic work-order editor must not bypass sign-off.
-if html.count("id=='work_orders'&&f.k=='customer_approval_status'") < 2:
+if html.count("id=='work_orders'&&f.k=='customer_approval_status'") < 1 or "id=='work_orders'&&(f.k=='customer_approval_status'||f.k=='assigned_name')" not in html:
     raise SystemExit("Customer approval must be read-only in edit cards and omitted from the add form")
 if "Customer approval (recorded by customer sign-off)" not in html:
     raise SystemExit("Work-order editor does not explain that approval comes from signed customer sign-off")
 
 # Assigned technician display is sourced from assigned_to; never edit display text directly.
-if html.count("id=='work_orders'&&f.k=='assigned_name'") < 2:
+if html.count("id=='work_orders'&&f.k=='assigned_name'") < 1 or "id=='work_orders'&&(f.k=='customer_approval_status'||f.k=='assigned_name')" not in html:
     raise SystemExit("Work-order assigned technician display must be read-only and omitted from creation")
 if "Assigned technician (changed using the staff selector)" not in html:
     raise SystemExit("Work-order edit card does not explain how to change assignment")

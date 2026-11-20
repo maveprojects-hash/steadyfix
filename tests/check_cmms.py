@@ -491,6 +491,15 @@ for marker in [
     if marker not in workspace_code:
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
+# Document numbers are checked for duplicates within company + document kind before save.
+for marker in [
+    "select('id').eq('company_id',me.company_id).eq('kind',e.kind).eq('number',row.number)",
+    "Could not verify document number uniqueness",
+    "That number is already used for this document type in your company",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing company-scoped document-number uniqueness guard: {marker}")
+
 # Invoice partial payments must remain visible, editable, and included in balance calculations.
 for marker in [
     "'partial'",

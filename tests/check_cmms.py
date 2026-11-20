@@ -428,6 +428,7 @@ for marker in [
     'only a company owner or manager may change company setup',
     'industry_catalog',
     'secondary_industry_slugs',
+    'currentSecondary',
     'business_description',
     'company_profile',
     'Company setup changes queued for owner/manager approval',

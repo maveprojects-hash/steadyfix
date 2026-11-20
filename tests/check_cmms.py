@@ -584,7 +584,7 @@ dup_code = html[dup_start:dup_end]
 if "delete rest.converted_from" not in dup_code:
     raise SystemExit("Copied documents must not retain quote conversion linkage")
 
-# Customer export must be company-scoped and fail visibly on query errors.
+# Document export must surface query failures instead of silently exporting empty data.\nexport_start = html.find("async function exportDocs(kind)")\nexport_end = html.find("async function exportCust()", export_start)\nif export_start < 0 or export_end < 0:\n    raise SystemExit("Missing document export function")\nexport_code = html[export_start:export_end]\nfor marker in ["if(r.error)", "Could not load company documents for export", "const cr=await sb.from('customers').select('*').eq('company_id',me.company_id)", "if(cr.error)", "Could not load company customers for export"]:\n    if marker not in export_code:\n        raise SystemExit("Document export missing query-error guard: " + marker)\n\n# Customer export must be company-scoped and fail visibly on query errors.
 cust_start = html.find("async function exportCust()")
 cust_end = html.find("async function exportExp(", cust_start)
 if cust_start < 0 or cust_end < 0:

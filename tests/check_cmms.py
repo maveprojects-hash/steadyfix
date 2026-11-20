@@ -682,3 +682,28 @@ po_code = html[po_start:po_end]
 for marker in ["x.id==rid&&x.company_id==me.company_id", ".eq('id',r.supplier_id).eq('company_id',me.company_id)"]:
     if marker not in po_code:
         raise SystemExit("Purchase order document missing tenant check: " + marker)
+
+
+# Duplicate invoices must not carry historical payments into a fresh draft.
+dup_start = html.find("async function dupDoc(")
+dup_end = html.find("async function toInvoice(", dup_start)
+if dup_start < 0 or dup_end < 0:
+    raise SystemExit("Missing document copy function")
+dup_code = html[dup_start:dup_end]
+if "paid_amount:0" not in dup_code:
+    raise SystemExit("Copied invoices must reset paid amount to zero")
+
+# Company-scoped quote/invoice numbering must be enforced by the database too,
+# because client-side duplicate checks can race during concurrent saves.
+number_migration = root / "supabase" / "migrations" / "20261120150000_company_document_number_unique.sql"
+if not number_migration.exists():
+    raise SystemExit("Missing company document-number uniqueness migration")
+number_sql = number_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "documents_company_kind_number_uidx",
+    "create unique index",
+    "on public.documents (company_id, kind, number)",
+    "duplicate quote or invoice numbers exist within a company",
+]:
+    if marker not in number_sql:
+        raise SystemExit("Missing company document-number database safeguard: " + marker)

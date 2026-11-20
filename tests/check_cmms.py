@@ -428,6 +428,20 @@ for marker in [
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
 
 
+# Fleet client-side GPS validation must reject corrupt or future telemetry.
+app_html = html
+for marker in [
+    "const validPos=r=>",
+    "t<=nowMs+120000",
+    "Math.abs(+r.lat)<=90",
+    "Math.abs(+r.lng)<=180",
+    "+r.speed_kmh<=300",
+    "age>=0&&age<864e5",
+    "seen<=nowMs+120000",
+]:
+    if marker not in app_html:
+        raise SystemExit(f"Missing Fleet telemetry validation: {marker}")
+
 # Fleet GPS integrity migration regression markers.
 fleet_guard = next((root / "supabase" / "migrations").glob("*_fleet_gps_integrity_guards.sql"))
 fleet_guard_sql = fleet_guard.read_text(encoding="utf-8").lower()

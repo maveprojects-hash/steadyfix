@@ -650,7 +650,7 @@ async function mon(){
   offl?off++:on++;if(alert&&!offl)al++;
   const stt=offl?chip('overdue','Offline'):alert?chip('overdue','Alert'):chip('done','OK'),disp=last?(net?(v>=1?'Up':'Down'):v+' '+(s.unit||k[2])):'No data yet';
   txt.push('- '+s.name+': '+disp+' ('+(offl?'OFFLINE':alert?'ALERT':'OK')+(last?', last seen '+ago(mins):'')+')');
-  const curl=`curl -X POST ${URL_} -H "apikey: ${SUPABASE_ANON_KEY}" -H "Content-Type: application/json" -d '{"p_key":"${s.device_key}","p_value":${net?1:23.5}}'`;
+  const curl=`curl -X POST ${URL_} -H "apikey: ${SUPABASE_ANON_KEY}" -H "Content-Type: application/json" -d '{"p_key":"<DEVICE_KEY>","p_value":${net?1:23.5}}'`;
   const lim=(s.alert_min!=null?' · alert below '+s.alert_min:'')+(s.alert_max!=null?' · alert above '+s.alert_max:'');
   const vals=h.map(x=>+x.value),avg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0,st_=vals.length?(net?'Uptime '+Math.round(avg*100)+'% over '+vals.length+' checks':'Min '+Math.min(...vals).toFixed(1)+' · Average '+avg.toFixed(1)+' · Max '+Math.max(...vals).toFixed(1)):'';
   return`<div class="card"><div class="ct"><div>${k[0]} ${esc(s.name)}</div><div class="chips">${stt}</div></div><div style="font-size:26px;font-weight:700;margin-top:6px" class="${alert||offl?'bad':''}">${esc(disp)}</div><div class="note" style="margin:2px 0">${esc(k[1])} · ${last?'last seen '+ago(mins):'waiting for first reading'}${lim}</div><div class="note" style="margin:2px 0">${st_}</div>${spark(bin(h.slice().reverse().map(x=>+x.value),60),s.alert_min!=null?+s.alert_min:null,s.alert_max!=null?+s.alert_max:null)}

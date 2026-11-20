@@ -25,6 +25,8 @@ for fn, end_marker in [
         raise SystemExit(f"Missing document report/export function: {fn}")
     if ".eq('company_id',me.company_id)" not in html[start:end]:
         raise SystemExit(f"Document report/export is missing company scoping: {fn}")
+    if fn.startswith("async function exportDocs") and "customers').select('*').eq('company_id',me.company_id)" not in html[start:end]:
+        raise SystemExit("Document export customer lookup is missing company scoping")
 
 # PDF document renderer regression guards.
 share_start = html.find("async function shareHtml(")

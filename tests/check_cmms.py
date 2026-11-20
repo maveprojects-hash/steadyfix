@@ -393,4 +393,34 @@ for marker in [
     if marker not in workspace_code:
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
+
+# Logistics shipment lifecycle: UI and database guard must remain in agreement.
+transition_ui = industry_workspaces.read_text(encoding="utf-8")
+for marker in [
+    "const SF_SHIPMENT_TRANSITIONS=",
+    "booked:['collected','exception']",
+    "out_for_delivery:['delivered','exception']",
+    "exception:['collected','in_transit','at_depot','out_for_delivery','delivered','returned']",
+    "async function sfUpdateShipmentStatus(id,status)",
+    "if(shipment.status===status)return;",
+    "if(!sfShipmentTransitionAllowed(shipment.status,status)",
+]:
+    if marker not in transition_ui:
+        raise SystemExit(f"Missing logistics UI lifecycle safeguard: {marker}")
+
+status_guard = next((root / "supabase" / "migrations").glob("*_logistics_status_transition_guard.sql"))
+status_guard_sql = status_guard.read_text(encoding="utf-8").lower()
+for marker in [
+    "logistics_validate_status_transition",
+    "new.status is not distinct from old.status",
+    "old.status = 'booked' and new.status in ('collected','exception')",
+    "old.status = 'out_for_delivery' and new.status in ('delivered','exception')",
+    "old.status = 'exception' and new.status in ('collected','in_transit','at_depot','out_for_delivery','delivered','returned')",
+    "delivered shipments require delivery timestamp and receiver name",
+    "shipments may only be returned from exception status",
+    "for each row execute function public.logistics_validate_status_transition",
+]:
+    if marker not in status_guard_sql:
+        raise SystemExit(f"Missing logistics database lifecycle safeguard: {marker}")
+
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")

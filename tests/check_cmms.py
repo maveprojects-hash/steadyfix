@@ -564,7 +564,7 @@ for marker in [
     "waybill.length>100||tracking.length>100",
     "origin.length>1000||destination.length>1000",
     "Number.isInteger(packages)||packages<1||packages>500",
-    "duplicate waybill number",
+    "This waybill number already exists at this site",
     ".eq('company_id',me.company_id).eq('site_id',site).eq('waybill_no',waybill)",
     "if(duplicate.error)",
 ]:

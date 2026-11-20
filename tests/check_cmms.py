@@ -28,6 +28,27 @@ for fn, end_marker in [
     if fn.startswith("async function exportDocs") and "customers').select('*').eq('company_id',me.company_id)" not in html[start:end]:
         raise SystemExit("Document export customer lookup is missing company scoping")
 
+# Document editor validates numeric inputs before totals or database writes.
+save_start = html.index("function saveDoc(pr)")
+save_end = html.index("async function setDoc(", save_start)
+if save_start < 0 or save_end < 0:
+    raise SystemExit("Missing document save function")
+save_code = html[save_start:save_end]
+for marker in [
+    "Add a document number.",
+    "Invalid document type",
+    "Number.isFinite(+l.q)",
+    "+l.q<=0",
+    "+l.p<0",
+    "(+l.x||0)>100",
+    "vat<0||vat>100",
+    "dp<0||dp>100",
+    "paid>t.tot+0.01",
+    ".eq('company_id',me.company_id)",
+]:
+    if marker not in save_code:
+        raise SystemExit("Missing document save validation: " + marker)
+
 # Document status and duplication action safeguards.
 status_start = html.find("async function setDoc(")
 status_end = html.find("async function dupDoc(", status_start)

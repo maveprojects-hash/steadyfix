@@ -326,7 +326,7 @@ async function sfUpdateShipmentStatus(id,status){
   if(!SF_SHIPMENT_STATUSES.includes(status))return;
   const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
   if(shipment.status===status)return;
-  if(!sfShipmentTransitionAllowed(shipment.status,status)){
+  if(!sfShipmentTransitionAllowed(shipment.status,status){
     alert('Invalid shipment transition: '+shipment.status.replace(/_/g,' ')+' → '+status.replace(/_/g,' ')+'. Use the correct next step or record an exception.');
     return;
   }
@@ -338,14 +338,9 @@ async function sfUpdateShipmentStatus(id,status){
     eventNotes=raw.trim();if(!eventNotes)return alert('A reason is required to record this status.');
     if(eventNotes.length>2000)return alert('Reason must be 2,000 characters or fewer.');
   }
-  const {error}=await sb.from('logistics_shipments').update({status,delivered_at:null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
-  if(error){alert('Could not update shipment: '+error.message);return;}
-  if(eventNotes){
-    const eventType=status==='exception'?'exception_note':'return_note';
-    const {error:eventError}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:eventType,status,notes:eventNotes,created_by:me.id});
-    if(eventError){alert('Status was saved, but its reason could not be recorded: '+eventError.message);draw();return;}
-  }
-  // Status changes are recorded by the database trigger; reason notes are supplemental events.
+  const {error}=await sb.rpc('logistics_update_status_with_reason',{p_shipment_id:id,p_status:status,p_reason:eventNotes});
+  if(error){alert('Could not update shipment status and reason: '+error.message);return;}
+  // Status history and exception/return reason are committed atomically by the RPC.
   draw();
 }
 async function sfAddShipmentScan(id){

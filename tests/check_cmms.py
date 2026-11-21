@@ -698,6 +698,7 @@ atomic_sql = atomic_status_migration.read_text(encoding="utf-8").lower()
 for marker in [
     "logistics_update_status_with_reason",
     "if p_status is null or p_status not in",
+    "'collected','in_transit','at_depot','out_for_delivery','exception','returned'",
     "security invoker",
     "for update",
     "auth_company()",

@@ -344,7 +344,7 @@ async function sfUpdateShipmentStatus(id,status){
   draw();
 }
 async function sfAddShipmentScan(id){
-  const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
+  const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;if(['delivered','returned'].includes(shipment.status))return alert('Tracking scans are closed for delivered or returned consignments.');
   const location=prompt('Depot, town or scan location:');if(location===null)return;
   const scanLocation=location.trim();if(!scanLocation)return alert('Enter the scan location so the tracking event is meaningful.');
   if(scanLocation.length>200)return alert('Scan location must be 200 characters or fewer.');

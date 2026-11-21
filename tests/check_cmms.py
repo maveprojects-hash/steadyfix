@@ -406,6 +406,20 @@ for marker in [
         raise SystemExit(f"Missing shipment scan safeguard: {marker}")
 
 
+# Newly inserted logistics shipments must start booked; lifecycle transitions are guarded separately.
+initial_status_guard = root / "supabase" / "migrations" / "20261121200000_logistics_booking_initial_status_guard.sql"
+if not initial_status_guard.exists():
+    raise SystemExit("Missing initial Logistics booked-status guard migration")
+initial_status_sql = initial_status_guard.read_text(encoding="utf-8").lower()
+for marker in [
+    "guard_logistics_shipment_initial_status",
+    "new.status is distinct from 'booked'",
+    "new shipments must begin in booked status",
+    "before insert on public.logistics_shipments",
+]:
+    if marker not in initial_status_sql:
+        raise SystemExit(f"Missing initial shipment status safeguard: {marker}")
+
 # Shipment status history is recorded by the database trigger, not a second UI insert.
 if "event_type:'status_change',status,notes:'Status changed from '+shipment.status+' to '+status" in workspace_code:
     raise SystemExit("Shipment status history is duplicated by the UI")

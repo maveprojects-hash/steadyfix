@@ -19,6 +19,7 @@ create policy logistics_tracking_events_insert on public.logistics_tracking_even
         and s.company_id = logistics_tracking_events.company_id
         and s.site_id = logistics_tracking_events.site_id
         and s.status is not distinct from logistics_tracking_events.status
+        and s.status not in ('delivered','returned')
     )
   );
 

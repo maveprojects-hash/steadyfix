@@ -677,3 +677,16 @@ for marker in [
         raise SystemExit(f"Logistics shipment pagination missing: {marker}")
 if ".limit(500)" in shipment_workspace or "SF_LOGISTICS_SHIPMENTS=sr.data||[]" in shipment_workspace:
     raise SystemExit("Logistics shipment list still has a capped/unpaginated fetch")
+
+
+# Logistics tracking events are grouped once; avoid rescanning all events for each shipment.
+for marker in [
+    "const eventsByShipment=new Map();",
+    "for(const event of events){const key=event.shipment_id;",
+    "eventsByShipment.get(key).push(event)",
+    "const history=eventsByShipment.get(x.id)||[];",
+]:
+    if marker not in shipment_workspace:
+        raise SystemExit(f"Logistics event grouping missing: {marker}")
+if "events.filter(e=>e.shipment_id===x.id)" in shipment_workspace:
+    raise SystemExit("Logistics history still rescans all events per shipment")

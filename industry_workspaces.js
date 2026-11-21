@@ -10,7 +10,10 @@ async function chooseIndustryWorkspace(slug){
     if(!isMgr()){alert('Only a company owner or manager can change the company industry workspace.');return}
     if(!confirm('Switch the company workspace to '+target.name+'? The current industry will be kept as a secondary activity where possible.'))return;
     const secondary=[...new Set((INDUSTRY_PROFILE.secondary_industry_slugs||[]).filter(x=>x!==slug))];
-    if(current&&!secondary.includes(current)&&secondary.length<8)secondary.push(current);
+    if(current&&!secondary.includes(current)){
+      if(secondary.length>=8){alert('Cannot switch industry: your company already has 8 secondary industries. Remove one in Industry profile first so the current industry can be preserved.');return}
+      secondary.push(current);
+    }
     const {error}=await sb.from('company_industry_profiles').update({primary_industry_slug:slug,secondary_industry_slugs:secondary}).eq('company_id',me.company_id);
     if(error){alert('Could not switch industry: '+error.message);return}
     await loadIndustryProfile();renderIndustrySelector();

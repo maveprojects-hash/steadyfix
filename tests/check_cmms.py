@@ -404,3 +404,14 @@ for marker in [
     "finally{SF_SCAN_SUBMISSIONS.delete(id);}"]:
     if marker not in workspace_code:
         raise SystemExit(f"Missing shipment scan safeguard: {marker}")
+
+# Shipment tracking status-transition guard coverage.
+for marker in [
+    "const SF_SHIPMENT_TRANSITIONS={booked:['collected','exception']",
+    "if(status===shipment.status)return;",
+    "Invalid shipment status transition:",
+    "if(!(SF_SHIPMENT_TRANSITIONS[shipment.status]||[]).includes(status))",
+    "delivered:['",
+]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Missing shipment status transition safeguard: {marker")

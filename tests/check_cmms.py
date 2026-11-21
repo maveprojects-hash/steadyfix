@@ -399,6 +399,10 @@ for marker in [
 if "'workshop_jobs'" not in workspace_code[workspace_code.index('const SF_CONFIGURABLE_MODULES'):workspace_code.index('function sfIndustryModuleOverrides')]:
     raise SystemExit('Workshop job cards are not available for workspace customization')
 
+# Industry workspace shortcuts must declare configurable modules.
+if "SF_CONFIGURABLE_MODULES" not in workspace_code:
+    raise SystemExit('Missing configurable industry workspace modules')
+
 # Industry profile save must enforce the same 8-secondary-industry cap as switching.
 if "secondary.length>8" not in html or "no more than 8 secondary industries" not in html:
     raise SystemExit('Industry profile save does not enforce the 8-secondary-industry cap')

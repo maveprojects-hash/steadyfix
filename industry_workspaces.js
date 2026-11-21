@@ -97,7 +97,7 @@ async function sfSaveServiceContract(){
   if(endDate&&endDate<startDate)return alert('The contract end date cannot be before its start date.');
   const fee=Math.max(0,Number($('sfContractFee').value)||0);
   const row={company_id:me.company_id,site_id:site,kind:'service_contract',number,customer_id:customer.id,customer_name:customer.name,issue_date:startDate,due_date:endDate,start_date:startDate,end_date:endDate,status:$('sfContractStatus').value,currency:(CS&&CS.currency)||'R',vat_rate:(CS&&CS.tax_rate)||15,contract_type:$('sfContractType').value,billing_cycle:$('sfContractCycle').value,monthly_fee:fee,subtotal:fee,vat_amount:0,total:fee,response_hours:Math.max(0,Number($('sfContractResponse').value)||0),included_pages:Math.max(0,Number($('sfContractPages').value)||0),overage_rate:Math.max(0,Number($('sfContractOverage').value)||0),covered_devices:$('sfContractDevices').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),notes:$('sfContractNotes').value.trim()};
-  const result=SF_EDITING_CONTRACT_ID?await sb.from('documents').update(row).eq('id',SF_EDITING_CONTRACT_ID).eq('kind','service_contract'):await sb.from('documents').insert(row);
+  const result=SF_EDITING_CONTRACT_ID?await sb.from('documents').update(row).eq('id',SF_EDITING_CONTRACT_ID).eq('company_id',me.company_id).eq('site_id',site).eq('kind','service_contract'):await sb.from('documents').insert(row);
   if(result.error)return alert('Could not save the service contract: '+result.error.message);
   SF_EDITING_CONTRACT_ID=null;draw();
 }
@@ -116,7 +116,7 @@ function sfResetServiceContract(){
 }
 async function sfDeleteServiceContract(id){
   if(!confirm('Delete this service contract?'))return;
-  const {error}=await sb.from('documents').delete().eq('id',id).eq('kind','service_contract');if(error)alert(error.message);else draw();
+  const {error}=await sb.from('documents').delete().eq('id',id).eq('company_id',me.company_id).eq('site_id',site).eq('kind','service_contract');if(error)alert(error.message);else draw();
 }
 function sfPrintServiceContract(id){
   const c=SF_SERVICE_CONTRACTS.find(x=>x.id===id);if(!c)return;let sh=$('sheet');if(!sh){sh=document.createElement('div');sh.id='sheet';document.body.appendChild(sh)}

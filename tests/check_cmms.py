@@ -581,3 +581,16 @@ for marker in [
     if marker not in re.sub(r"\\s+", "", booking_validation_sql) and marker not in booking_validation_sql:
         raise SystemExit(f"Missing Logistics booking validation: {marker}")
 
+
+# Terminal shipments cannot receive user-created scan events.
+terminal_scan_guard = root / "supabase" / "migrations" / "20261121182000_logistics_terminal_scan_guard.sql"
+if not terminal_scan_guard.exists():
+    raise SystemExit("Missing terminal shipment scan guard migration")
+terminal_scan_sql = terminal_scan_guard.read_text(encoding="utf-8").lower()
+for marker in [
+    "drop policy if exists logistics_tracking_events_insert",
+    "create policy logistics_tracking_events_insert",
+    "s.status not in ('delivered','returned')",
+]:
+    if marker not in terminal_scan_sql:
+        raise SystemExit(f"Missing terminal scan restriction: {marker}")

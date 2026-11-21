@@ -10,7 +10,8 @@ declare v_status text;
 begin
   if new.event_type <> 'scan' then return new; end if;
   select status into v_status from public.logistics_shipments
-    where id=new.shipment_id and company_id=new.company_id and site_id=new.site_id;
+    where id=new.shipment_id and company_id=new.company_id and site_id=new.site_id
+    for update;
   if v_status in ('delivered','returned') then
     raise exception 'Tracking scans are closed for delivered or returned consignments';
   end if;

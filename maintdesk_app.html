@@ -343,6 +343,29 @@ let notificationChannel=null, NOTIFICATIONS=[], notificationToastTimer=null;
 let me,site,cur='dash',cf='daily';
 let INDUSTRIES=[],INDUSTRY_PROFILE=null;
 
+// Industry quick-access dropdown: render catalog, preserve keyboard and dismissal behavior.
+function sfIndustryQuickPick(){
+  const menu=$('industryQuickAccessMenu'),btn=$('industryQuickAccessBtn');if(!menu||!btn)return;
+  const current=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug;
+  menu.innerHTML=(INDUSTRIES||[]).map(ind=>'<button type="button" role="option" class="sf-industry-quick-option'+(ind.slug===current?' active':'')+'" aria-selected="'+(ind.slug===current)+'" data-industry-slug="'+esc(ind.slug)+'"><span>'+esc(ind.name)+'</span>'+(ind.slug===current?'<span aria-hidden="true">✓</span>':'')+'</button>').join('');
+  menu.querySelectorAll('[data-industry-slug]').forEach(option=>option.addEventListener('click',()=>{const slug=option.dataset.industrySlug;sfCloseIndustryQuickAccess();chooseIndustryWorkspace(slug)}));
+}
+function toggleIndustryQuickAccess(){
+  const btn=$('industryQuickAccessBtn'),menu=$('industryQuickAccessMenu');if(!btn||!menu)return;
+  if(!menu.hidden){sfCloseIndustryQuickAccess();return}
+  sfIndustryQuickPick();menu.hidden=false;btn.setAttribute('aria-expanded','true');
+}
+function sfCloseIndustryQuickAccess(){
+  const btn=$('industryQuickAccessBtn'),menu=$('industryQuickAccessMenu');if(!btn||!menu)return;
+  menu.hidden=true;btn.setAttribute('aria-expanded','false');
+}
+function sfBindIndustryQuickAccessDismiss(){
+  if(document.__sfIndustryQuickAccessBound)return;document.__sfIndustryQuickAccessBound=true;
+  document.addEventListener('click',event=>{const btn=$('industryQuickAccessBtn'),menu=$('industryQuickAccessMenu');if(btn&&menu&&!btn.contains(event.target)&&!menu.contains(event.target))sfCloseIndustryQuickAccess()});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'){const btn=$('industryQuickAccessBtn'),menu=$('industryQuickAccessMenu');if(btn&&menu&&!menu.hidden){sfCloseIndustryQuickAccess();btn.focus()}}});
+}
+
+
 function notificationTime(v){try{return new Date(v).toLocaleString('en-ZA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}catch(e){return''}}
 let UNREAD_NOTIFICATION_COUNT=0, notificationAudioContext=null;
 const NOTIFICATION_PREF_KEY='steadyfix.cmms.notification-preferences';

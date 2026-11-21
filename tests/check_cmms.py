@@ -672,7 +672,7 @@ for marker in [
 ]:
     if marker not in waybill_print:
         raise SystemExit(f"Missing company branding on waybill: {marker}")
-# Logistics exception/return status changes must capture a required reason and action.
+# Logistics exception/return status and reason must commit atomically through the RPC.
 status_handler = transition_ui[transition_ui.index("async function sfUpdateShipmentStatus"):transition_ui.index("async function sfAddShipmentScan")]
 for marker in [
     "status==='exception'||status==='returned'",
@@ -680,9 +680,26 @@ for marker in [
     "Describe the return reason and next action",
     "A reason is required to record this status",
     "eventNotes.length>2000",
-    "eventType=status==='exception'?'exception_note':'return_note'",
-    "eventNotes",
-    "Status was saved, but its reason could not be recorded",
+    "sb.rpc('logistics_update_status_with_reason'",
+    "Status history and exception/return reason are committed atomically by the RPC",
 ]:
     if marker not in status_handler:
-        raise SystemExit(f"Missing Logistics exception/return reason workflow: {marker}")
+        raise SystemExit(f"Missing Logistics atomic status/reason workflow: {marker}")
+if ".from('logistics_shipments').update({status,delivered_at:null})" in status_handler or ".from('logistics_tracking_events').insert({" in status_handler:
+    raise SystemExit("Logistics status and reason are still written in separate client requests")
+atomic_status_migration = next((root / "supabase" / "migrations").glob("*_logistics_atomic_status_reason.sql"))
+atomic_sql = atomic_status_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "logistics_update_status_with_reason",
+    "security invoker",
+    "for update",
+    "auth_company()",
+    "auth_site_ok(site_id)",
+    "status=p_status",
+    "exception_note",
+    "return_note",
+    "a reason is required",
+    "grant execute on function public.logistics_update_status_with_reason(uuid,text,text) to authenticated",
+]:
+    if marker not in atomic_sql:
+        raise SystemExit(f"Missing Logistics atomic RPC database safeguard: {marker}")

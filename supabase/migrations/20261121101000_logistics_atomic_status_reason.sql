@@ -23,7 +23,7 @@ begin
     raise exception 'Unsupported shipment status';
   end if;
   if p_status in ('exception','returned') then
-    v_reason := nullif(btrim(p_reason),'");
+    v_reason := nullif(btrim(p_reason),'');
     if v_reason is null then raise exception 'A reason is required'; end if;
     if length(v_reason)>2000 then raise exception 'Reason must be 2,000 characters or fewer'; end if;
   elsif p_reason is not null and btrim(p_reason)<>'' then

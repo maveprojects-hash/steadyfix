@@ -517,3 +517,12 @@ for marker in [
 # Assistant memory delete: report DB failures and keep local memory until delete succeeds.
 if "async function aiForget(id){const{error}=await sb.from('assistant_memory').delete().eq('id',id);if(error){alert('Could not forget this memory: '+error.message);return}AI.mem=AI.mem.filter(m=>m.id!=id);aiRender()}" not in html:
     raise SystemExit("Assistant memory deletion error handling regression")
+# Accounting exports and reports must filter by active company and site.
+for marker in [
+    "select('*').eq('company_id',me.company_id).eq('site_id',site).eq('kind',kind).gte('issue_date',AX.from)",
+    "select('*').eq('company_id',me.company_id).order('name')",
+    "select('*').eq('company_id',me.company_id).eq('site_id',site).gte('spent_on',AX.from)",
+    "select('*').eq('company_id',me.company_id).eq('site_id',site).eq('kind','invoice').gte('issue_date',AX.from)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Accounting export/report scope missing: {marker}")

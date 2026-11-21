@@ -414,3 +414,14 @@ for marker in [
 ]:
     if marker not in workspace_code:
         raise SystemExit(f"Missing shipment status transition safeguard: {marker}")
+
+# Shipment creation input validation and duplicate-submit lock.
+for marker in [
+    "const SF_SHIPMENT_CREATE_LOCK={active:false}",
+    "if(SF_SHIPMENT_CREATE_LOCK.active)return;",
+    "Number.isInteger(packageCount)",
+    "Number.isFinite(weight)",
+    "finally{SF_SHIPMENT_CREATE_LOCK.active=false;}"
+]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Missing shipment creation safeguard: {marker}")

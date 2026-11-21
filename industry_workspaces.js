@@ -277,11 +277,20 @@ async function sfLogisticsWorkspace(){
     '<label class="el">Service level<select id="sfServiceLevel"><option value="standard">Standard</option><option value="express">Express</option><option value="overnight">Overnight</option><option value="same_day">Same day</option></select></label><label class="el">Expected delivery<input id="sfExpected" type="date"></label></div>'+
     '<button class="b" onclick="sfCreateShipment()">Create waybill</button></details>'+cards;
 }
+const SF_SHIPMENT_CREATE_LOCK={active:false};
 async function sfCreateShipment(){
+  if(SF_SHIPMENT_CREATE_LOCK.active)return;
   const waybill=$('sfWaybill').value.trim(),recipient=$('sfRecipient').value.trim(),origin=$('sfOrigin').value.trim(),destination=$('sfDestination').value.trim();
+  const tracking=$('sfTracking').value.trim()||waybill,packageInput=$('sfPackageCount').value.trim(),packageCount=packageInput===''?1:Number(packageInput),weightInput=$('sfWeight').value.trim(),weight=weightInput===''?null:Number(weightInput),serviceLevel=$('sfServiceLevel').value;
   if(!waybill||!recipient||!origin||!destination)return alert('Waybill number, recipient, origin and destination are required.');
-  const row={company_id:me.company_id,site_id:site,waybill_no:waybill,tracking_no:$('sfTracking').value.trim()||waybill,sender_name:$('sfSender').value.trim()||null,recipient_name:recipient,recipient_phone:$('sfRecipientPhone').value.trim()||null,origin_address:origin,destination_address:destination,parcel_description:$('sfParcel').value.trim()||null,package_count:Math.max(1,parseInt($('sfPackageCount').value,10)||1),weight_kg:$('sfWeight').value===''?null:Number($('sfWeight').value),service_level:$('sfServiceLevel').value,expected_delivery:$('sfExpected').value||null,status:'booked',created_by:me.id};
-  const {error}=await sb.from('logistics_shipments').insert(row);if(error)return alert('Could not create waybill: '+error.message);draw();
+  if(!Number.isInteger(packageCount)||packageCount<1||packageCount>10000)return alert('Package count must be a whole number between 1 and 10000.');
+  if(weight!==null&&(!Number.isFinite(weight)||weight<0||weight>1000000))return alert('Weight must be a valid non-negative number.');
+  if(!['standard','express','overnight','same_day'].includes(serviceLevel))return alert('Choose a valid service level.');
+  SF_SHIPMENT_CREATE_LOCK.active=true;
+  try{
+    const row={company_id:me.company_id,site_id:site,waybill_no:waybill,tracking_no:tracking,sender_name:$('sfSender').value.trim()||null,recipient_name:recipient,recipient_phone:$('sfRecipientPhone').value.trim()||null,origin_address:origin,destination_address:destination,parcel_description:$('sfParcel').value.trim()||null,package_count:packageCount,weight_kg:weight,service_level:serviceLevel,expected_delivery:$('sfExpected').value||null,status:'booked',created_by:me.id};
+    const {error}=await sb.from('logistics_shipments').insert(row);if(error){alert('Could not create waybill: '+error.message);return;}draw();
+  }finally{SF_SHIPMENT_CREATE_LOCK.active=false;}
 }
 const SF_SHIPMENT_TRANSITIONS={booked:['collected','exception'],collected:['in_transit','exception'],in_transit:['at_depot','out_for_delivery','exception'],at_depot:['out_for_delivery','in_transit','exception'],out_for_delivery:['delivered','at_depot','exception'],exception:['booked','collected','in_transit','at_depot','out_for_delivery','returned'],delivered:[],returned:[]};
 async function sfUpdateShipmentStatus(id,status){

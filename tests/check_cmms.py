@@ -552,3 +552,19 @@ for marker in [
 ]:
     if marker not in role_guard_sql:
         raise SystemExit(f"Missing shipment edit-role safeguard: {marker}")
+
+// Logistics database booking-validation guard: reject blank required fields and oversized booking inputs.
+booking_validation_migration = next((root / "supabase" / "migrations").glob("*_logistics_booking_validation_guard.sql"))
+booking_validation_sql = booking_validation_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "nullif(btrim(new.waybill_no),'') is null",
+    "nullif(btrim(new.recipient_name),'') is null",
+    "nullif(btrim(new.origin_address),'') is null",
+    "nullif(btrim(new.destination_address),'') is null",
+    "new.package_count>10000",
+    "new.weight_kg>1000000",
+    "new.updated_at:=now()",
+]:
+    if marker not in re.sub(r"\\s+", "", booking_validation_sql) and marker not in booking_validation_sql:
+        raise SystemExit(f"Missing Logistics booking validation: {marker}")
+

@@ -346,6 +346,12 @@ for marker in [
         raise SystemExit(f"Missing iAssistant industry customization safeguard: {marker}")
 
 
+# Company-wide site discovery and customer dropdown reads must remain tenant scoped.
+if "sb.from('sites').select('id,name').eq('company_id',me.company_id).order('name')" not in html:
+    raise SystemExit("Sites discovery missing company filter")
+if "sb.from('customers').select('*').eq('company_id',me.company_id).order('name')" not in html:
+    raise SystemExit("Customer dropdown query missing company filter")
+
 # Signed customer approval on Automation service job cards.
 signoff_migration = next((root / "supabase" / "migrations").glob("*_work_order_customer_signoffs.sql"))
 signoff_sql = signoff_migration.read_text(encoding="utf-8").lower()

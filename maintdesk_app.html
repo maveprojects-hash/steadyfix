@@ -274,7 +274,7 @@ const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return ymd(d)};
 async function docList(kind){
  const pr=PER['d_'+kind]||{p:'all',d:''};let q=sb.from('documents').select('*').eq('company_id',me.company_id).eq('site_id',site).eq('kind',kind).order('created_at',{ascending:false}).order('issue_date',{ascending:false}).order('number',{ascending:false}),pl='';
  if(pr.p!='all'){const R_=rng(pr.p,pr.d||today);q=q.gte('issue_date',R_.a).lte('issue_date',R_.b);pl=pr.p=='daily'?dd(R_.a):dd(R_.a)+' to '+dd(R_.b)}
- const[r,cu]=await Promise.all([q,sb.from('customers').select('*').order('name')]);
+ const[r,cu]=await Promise.all([q,sb.from('customers').select('*').eq('company_id',me.company_id).order('name')]);
  if(r.error)return`<h2>Invoicing</h2>${itabs()}<div class="p">Invoicing needs one more database step. Run the invoicing SQL I sent, then reload this page.</div>`;
  CUST=cu.data||[];const all=(r.data||[]).map(d=>({...d,st:dstat(d)}));DOCS=all;
  const qq=(INVF.q||'').toLowerCase();let D=all.filter(d=>(INVF.st=='all'||d.st==INVF.st)&&(!qq||(d.number+' '+(d.customer_name||'')).toLowerCase().includes(qq)));
@@ -510,7 +510,7 @@ async function boot(){
  const{data:{session}}=await sb.auth.getSession(); if(!session)return location.href='maintdesk_login.html';
  let pr_=await sb.from('profiles').select('id,company_id,full_name,role,is_admin').eq('id',session.user.id).maybeSingle();if(pr_.error)pr_=await sb.from('profiles').select('id,company_id,full_name,role').eq('id',session.user.id).maybeSingle();const data=pr_.data;
  if(!data)return location.href='maintdesk_login.html'; me=data;
- const{data:sites}=await sb.from('sites').select('id,name').order('name'); site=sites[0]?.id;
+ const{data:sites}=await sb.from('sites').select('id,name').eq('company_id',me.company_id).order('name'); site=sites[0]?.id;
  $('site').innerHTML=sites.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
  $('site').onchange=e=>{site=e.target.value;draw()};
  await lockCheck();buildNav();

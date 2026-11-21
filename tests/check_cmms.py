@@ -542,6 +542,16 @@ if "event_type = 'status_change'" in scan_guard_sql or "event_type = 'pod'" in s
     raise SystemExit("User tracking event policy must not allow status-change or POD inserts")
 
 
+# Tracking scan locations are bounded at the database boundary and validated in the UI.
+scan_location_guard = root / "supabase" / "migrations" / "20261121220000_logistics_scan_location_length_guard.sql"
+if not scan_location_guard.exists():
+    raise SystemExit("Missing Logistics scan-location length guard migration")
+scan_location_sql = scan_location_guard.read_text(encoding="utf-8").lower()
+if "length(btrim(location)) between 1 and 200" not in scan_location_sql:
+    raise SystemExit("Tracking scan locations must be bounded to 200 characters")
+if "if(location.length>200)" not in workspace_code.replace(" ", ""):
+    raise SystemExit("Tracking scan UI must reject locations longer than 200 characters")
+
 # Shipment identity guard: immutable booking/company/site attribution and waybill.
 identity_guard_migration = next((root / "supabase" / "migrations").glob("*_logistics_shipment_identity_guard.sql"))
 identity_guard_sql = identity_guard_migration.read_text(encoding="utf-8").lower()

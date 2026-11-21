@@ -400,6 +400,7 @@ for marker in [
     "receiver confirmation is required",
     "a receiver signature is required",
     "status='delivered'",
+    "for update;",
 ]:
     if marker.lower() not in pod_sql:
         raise SystemExit(f"Missing signed logistics POD safeguard: {marker}")

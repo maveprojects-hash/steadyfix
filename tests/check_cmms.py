@@ -465,3 +465,12 @@ for validation in ["Number.isFinite(fee)", "fee<0", "responseHours*2!==Math.roun
 # Service contracts must preserve an explicit zero company VAT rate (tax-exempt configuration).
 if "vat_rate:CS&&CS.tax_rate!=null?CS.tax_rate:15" not in contract_save:
     raise SystemExit("Service-contract save incorrectly replaces zero VAT with the default rate")
+
+
+# Staff roster edits and deletes enforce manager permission and tenant/site ownership.
+ren_staff = workspace_code[workspace_code.index("async function renStaff"):workspace_code.index("async function delStaff")]
+del_staff = workspace_code[workspace_code.index("async function delStaff"):workspace_code.index("async function copyPrev")]
+for block, action in [(ren_staff, "update"), (del_staff, "delete")]:
+    for guard in ["if(!isMgr())", ".eq('company_id',me.company_id)", "if(site)q=q.eq('site_id',site)"]:
+        if guard not in block:
+            raise SystemExit(f"Staff {action} missing tenant/site or permission guard: {guard}")

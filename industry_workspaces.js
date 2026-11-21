@@ -283,10 +283,14 @@ async function sfCreateShipment(){
   const row={company_id:me.company_id,site_id:site,waybill_no:waybill,tracking_no:$('sfTracking').value.trim()||waybill,sender_name:$('sfSender').value.trim()||null,recipient_name:recipient,recipient_phone:$('sfRecipientPhone').value.trim()||null,origin_address:origin,destination_address:destination,parcel_description:$('sfParcel').value.trim()||null,package_count:Math.max(1,parseInt($('sfPackageCount').value,10)||1),weight_kg:$('sfWeight').value===''?null:Number($('sfWeight').value),service_level:$('sfServiceLevel').value,expected_delivery:$('sfExpected').value||null,status:'booked',created_by:me.id};
   const {error}=await sb.from('logistics_shipments').insert(row);if(error)return alert('Could not create waybill: '+error.message);draw();
 }
+const SF_SHIPMENT_TRANSITIONS={booked:['collected','exception'],collected:['in_transit','exception'],in_transit:['at_depot','out_for_delivery','exception'],at_depot:['out_for_delivery','in_transit','exception'],out_for_delivery:['delivered','at_depot','exception'],exception:['booked','collected','in_transit','at_depot','out_for_delivery','returned'],delivered:[],returned:[]};
 async function sfUpdateShipmentStatus(id,status){
   if(!SF_SHIPMENT_STATUSES.includes(status))return;
+  const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
+  if(status===shipment.status)return;
+  if(!(SF_SHIPMENT_TRANSITIONS[shipment.status]||[]).includes(status)){alert('Invalid shipment status transition: '+shipment.status+' → '+status);return;}
   if(status==='delivered'){sfCapturePOD(id);return;}
-  const {error}=await sb.from('logistics_shipments').update({status,delivered_at:status==='delivered'?new Date().toISOString():null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
+  const {error}=await sb.from('logistics_shipments').update({status,delivered_at:null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
   if(error)alert('Could not update shipment: '+error.message);else draw();
 }
 const SF_SCAN_SUBMISSIONS=new Set();

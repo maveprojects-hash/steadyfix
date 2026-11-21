@@ -10,10 +10,8 @@ async function chooseIndustryWorkspace(slug){
     if(!isMgr()){alert('Only a company owner or manager can change the company industry workspace.');return}
     if(!confirm('Switch the company workspace to '+target.name+'? The current industry will be kept as a secondary activity where possible.'))return;
     const secondary=[...new Set((INDUSTRY_PROFILE.secondary_industry_slugs||[]).filter(x=>x!==slug))];
-    if(current&&!secondary.includes(current)){
-      if(secondary.length>=8){alert('Cannot switch industry: your company already has 8 secondary industries. Remove one in Industry profile first so the current industry can be preserved.');return}
-      secondary.push(current);
-    }
+    if(current&&!secondary.includes(current))secondary.push(current);
+    if(secondary.length>8){alert('Cannot switch industry: this would exceed the maximum of 8 secondary industries. Remove one in Industry profile first.');return}
     const {error}=await sb.from('company_industry_profiles').update({primary_industry_slug:slug,secondary_industry_slugs:secondary}).eq('company_id',me.company_id);
     if(error){alert('Could not switch industry: '+error.message);return}
     await loadIndustryProfile();renderIndustrySelector();
@@ -22,56 +20,6 @@ async function chooseIndustryWorkspace(slug){
 }
 
 
-// Dismiss the header menu on outside click or Escape; restore focus for keyboard users.
-function sfBindIndustryQuickAccessDismiss(){
- if(window.__sfIndustryQuickAccessDismissBound)return; window.__sfIndustryQuickAccessDismissBound=true; document.addEventListener('click',event=>{
-  const btn=document.getElementById('industryQuickAccessBtn'),menu=document.getElementById('industryQuickAccessMenu');
-  if(!btn||!menu||menu.hidden)return;
-  if(btn.contains(event.target)||menu.contains(event.target))return;
-  menu.hidden=true;btn.setAttribute('aria-expanded','false');
- });
- document.addEventListener('keydown',event=>{
-  if(event.key!=='Escape')return;
-  const btn=document.getElementById('industryQuickAccessBtn'),menu=document.getElementById('industryQuickAccessMenu');
-  if(!btn||!menu||menu.hidden)return;
-  menu.hidden=true;btn.setAttribute('aria-expanded','false');btn.focus();
- });
-}
-// Header industry quick access: load the live catalog and switch without opening the full hub.
-async function toggleIndustryQuickAccess(){
- const btn=document.getElementById('industryQuickAccessBtn'),menu=document.getElementById('industryQuickAccessMenu');if(!btn||!menu)return;
- if(!menu.hidden){menu.hidden=true;btn.setAttribute('aria-expanded','false');return}
- sfBindIndustryQuickAccessDismiss();
- menu.textContent='Loading industries…';menu.hidden=false;btn.setAttribute('aria-expanded','true');
- try{
-  if(!INDUSTRIES||!INDUSTRIES.length)await loadIndustryProfile();
-  const active=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug;
-  menu.replaceChildren();
-  (INDUSTRIES||[]).filter(x=>x.slug).forEach(x=>{
-   const option=document.createElement('button');option.type='button';option.className='sf-industry-quick-option';option.setAttribute('role','option');option.setAttribute('aria-selected',String(x.slug===active));option.textContent=x.name;
-   if(x.slug===active){const current=document.createElement('small');current.textContent='Current';option.appendChild(current)}
-   option.addEventListener('click',()=>sfIndustryQuickPick(x.slug));menu.appendChild(option);
-  });
-  if(!menu.childElementCount)menu.textContent='No industries are available.';
- }catch(err){menu.textContent='Industries could not be loaded. Please try again.';console.error('Industry quick access load failed',err)}
-}
-async function sfIndustryQuickPick(slug){const menu=document.getElementById('industryQuickAccessMenu'),btn=document.getElementById('industryQuickAccessBtn');if(menu)menu.hidden=true;if(btn)btn.setAttribute('aria-expanded','false');await chooseIndustryWorkspace(slug)}
-async function sfIndustryHub(){
-  if(!INDUSTRIES||!INDUSTRIES.length)await loadIndustryProfile();
-  const current=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug;
-  let html='<h2>Choose your industry workspace</h2><div class="p"><b>One STEADYFIX CMMS. Different industry setups.</b><div class="note">Choose the type of business you operate. STEADYFIX keeps one secure base application and organises its departments, terminology and day-to-day tools around that industry. Owners and managers can change the company primary workspace.</div></div><div class="dg">';
-  (INDUSTRIES||[]).forEach(ind=>{
-    const focus=(ind.default_configuration&&ind.default_configuration.focus_areas)||[], examples=ind.business_examples||[], active=ind.slug===current;
-    html+='<div class="card"><div class="ct"><div>'+esc(ind.name)+'</div>'+(active?'<span class="chip g">Current workspace</span>':'')+'</div>';
-    html+='<div class="note">'+esc(ind.description||'')+'</div>';
-    if(examples.length)html+='<div class="rl"><b>Typical businesses:</b> '+esc(examples.slice(0,4).join(' · '))+'</div>';
-    if(focus.length)html+='<div class="rl"><b>Day-to-day focus:</b> '+esc(focus.slice(0,5).join(' · '))+'</div>';
-    html+='<div class="ca"><button class="b" onclick="chooseIndustryWorkspace(\''+esc(ind.slug)+'\')">'+(active?'Open workspace':'Choose this industry')+'</button></div></div>';
-  });
-  return html+'</div>';
-}
-
-const SF_CONFIGURABLE_MODULES=new Set(['work_orders','assets','service_contracts','stock_items','purchase_orders','customers','inv','suppliers','pm_schedules','chk','fleet','rep','ohs','damage_reports','shutdowns','logistics_ops','workshop_jobs']);
 function sfIndustryModuleOverrides(){const o=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.configuration_overrides||{};return{disabled:new Set(Array.isArray(o.disabled_modules)?o.disabled_modules:[]),labels:o.module_labels&&typeof o.module_labels==='object'?o.module_labels:{}}}
 function sfIndustryModules(slug){
   const all={

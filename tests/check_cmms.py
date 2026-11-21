@@ -396,7 +396,7 @@ for marker in [
 
 
 # Industry quick-access dropdown must render catalog choices and route workshop job cards correctly.
-for marker in ['id="industryQuickAccessBtn"','id="industryQuickAccessMenu"','toggleIndustryQuickAccess','sfIndustryQuickPick','role="listbox"']:
+for marker in ['id="industryQuickAccessBtn"','id="industryQuickAccessMenu"','toggleIndustryQuickAccess','sfIndustryQuickPick','role="listbox"','sfBindIndustryQuickAccessDismiss',"event.key!=='Escape'",'btn.focus()','btn.contains(event.target)','menu.contains(event.target)']:
     if marker not in html and marker not in workspace_code:
         raise SystemExit(f"Missing industry quick-access control: {marker}")
 if "['🔧','Workshop & job cards','Workshop bookings, vehicle job cards and repair progress','workshop_jobs']" not in workspace_code:

@@ -31,8 +31,8 @@ begin
   end if;
   select company_id,site_id,status into v_company_id,v_site_id,v_current_status
     from public.logistics_shipments
-    where id=p_shipment_id and company_id=(select company_id from public.profiles where id=auth.uid())
-      and site_id=public.auth_site_ok(site_id)
+    where id=p_shipment_id and company_id=(select public.auth_company())
+      and (select public.auth_site_ok(site_id))
     for update;
   if not found then raise exception 'Shipment not found or access denied'; end if;
   update public.logistics_shipments

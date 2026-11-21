@@ -440,3 +440,24 @@ for marker in [
 ]:
     if marker not in workspace_code:
         raise SystemExit(f"Missing shipment creation safeguard: {marker}")
+
+
+# Database-level shipment lifecycle guard, with delivery gated by signed POD.
+transition_migration = next((root / "supabase" / "migrations").glob("*_logistics_status_transition_guard.sql"))
+transition_sql = transition_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "guard_logistics_shipment_status_transition",
+    "logistics_shipments_status_transition_guard",
+    "invalid shipment status transition",
+    "old.status='out_for_delivery' and new.status in ('delivered','at_depot','exception')",
+    "old.status='exception' and new.status in ('booked','collected','in_transit','at_depot','out_for_delivery','returned')",
+    "shipment delivery requires a valid signed proof of delivery",
+    "from public.logistics_pod_signoffs p",
+    "p.receiver_consent=true",
+]:
+    if marker not in transition_sql:
+        raise SystemExit(f"Missing database shipment transition safeguard: {marker}")
+# Signed POD RPC inserts signoff before setting delivered; transition guard validates that order.
+pod_impl = pod_sql[pod_sql.find("record_logistics_pod_signoff_impl"):]
+if pod_impl.find("insert into public.logistics_pod_signoffs") < 0 or pod_impl.find("update public.logistics_shipments") < 0 or pod_impl.find("insert into public.logistics_pod_signoffs") > pod_impl.find("update public.logistics_shipments"):
+    raise SystemExit("POD must persist receiver signoff before delivery status update")

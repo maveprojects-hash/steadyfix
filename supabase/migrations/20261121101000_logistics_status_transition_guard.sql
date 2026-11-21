@@ -29,6 +29,10 @@ begin
       and p.site_id=new.site_id
       and p.receiver_consent=true
       and length(btrim(p.receiver_name))>=2
+      and p.signed_at=new.delivered_at
+      and btrim(p.receiver_name)=btrim(new.pod_recipient_name)
+      and p.reference is not distinct from nullif(btrim(new.pod_reference),'')
+      and p.notes is not distinct from nullif(btrim(new.pod_notes),'')
   ) then
     raise exception 'Shipment delivery requires a valid signed proof of delivery';
   end if;

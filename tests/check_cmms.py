@@ -400,6 +400,10 @@ if "'workshop_jobs'" not in workspace_code[workspace_code.index('const SF_CONFIG
     raise SystemExit('Workshop job cards are not available for workspace customization')
 
 # Industry workspace shortcuts must declare configurable modules.
+# AI workspace customization fallback must include workshop job cards even if module registry is unavailable.
+if "'workshop_jobs'" not in html[html.index("const allowed=SF_CONFIGURABLE_MODULES"):html.index("const changes=p.changes")]:
+    raise SystemExit('AI industry customization fallback omits workshop job cards')
+
 if "SF_CONFIGURABLE_MODULES" not in workspace_code:
     raise SystemExit('Missing configurable industry workspace modules')
 

@@ -348,7 +348,20 @@ function sfIndustryQuickPick(){
   const menu=$('industryQuickAccessMenu'),btn=$('industryQuickAccessBtn');if(!menu||!btn)return;
   const current=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug;
   menu.innerHTML=(INDUSTRIES||[]).map(ind=>'<button type="button" role="option" class="sf-industry-quick-option'+(ind.slug===current?' active':'')+'" aria-selected="'+(ind.slug===current)+'" data-industry-slug="'+esc(ind.slug)+'"><span>'+esc(ind.name)+'</span>'+(ind.slug===current?'<span aria-hidden="true">✓</span>':'')+'</button>').join('');
-  menu.querySelectorAll('[data-industry-slug]').forEach(option=>option.addEventListener('click',()=>{const slug=option.dataset.industrySlug;sfCloseIndustryQuickAccess();chooseIndustryWorkspace(slug)}));
+  const options=[...menu.querySelectorAll('[data-industry-slug]')];
+  options.forEach((option,index)=>{
+    option.addEventListener('click',()=>{const slug=option.dataset.industrySlug;sfCloseIndustryQuickAccess();chooseIndustryWorkspace(slug)});
+    option.addEventListener('keydown',event=>{
+      let targetIndex=index;
+      if(event.key==='ArrowDown')targetIndex=Math.min(options.length-1,index+1);
+      else if(event.key==='ArrowUp')targetIndex=Math.max(0,index-1);
+      else if(event.key==='Home')targetIndex=0;
+      else if(event.key==='End')targetIndex=options.length-1;
+      else return;
+      event.preventDefault();options[targetIndex]?.focus();
+    });
+  });
+  if(options.length)options.find(option=>option.dataset.industrySlug===current)?.focus();
 }
 function toggleIndustryQuickAccess(){
   const btn=$('industryQuickAccessBtn'),menu=$('industryQuickAccessMenu');if(!btn||!menu)return;

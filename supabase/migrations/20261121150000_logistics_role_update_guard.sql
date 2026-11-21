@@ -48,9 +48,22 @@ begin
         )
       )
     )
-    or new.pod_recipient_name is distinct from old.pod_recipient_name
-    or new.pod_reference is distinct from old.pod_reference
-    or new.pod_notes is distinct from old.pod_notes
+    or (
+      (new.pod_recipient_name is distinct from old.pod_recipient_name
+        or new.pod_reference is distinct from old.pod_reference
+        or new.pod_notes is distinct from old.pod_notes)
+      and not (
+        new.status='delivered'
+        and exists (
+          select 1 from public.logistics_pod_signoffs p
+          where p.shipment_id=new.id
+            and p.company_id=new.company_id
+            and p.site_id=new.site_id
+            and p.receiver_consent=true
+            and length(btrim(p.receiver_name))>=2
+        )
+      )
+    )
     or new.created_by is distinct from old.created_by
     or new.created_at is distinct from old.created_at
   then

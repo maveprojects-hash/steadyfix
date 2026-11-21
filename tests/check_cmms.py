@@ -212,7 +212,7 @@ for marker in [
     "update(ch).eq('id',p.rowId).eq('company_id',me.company_id)",
     "if(sc.site)q=q.eq('site_id',site)"]:
     if marker not in html:
-        raise SystemExit(f"Missing AI record update tenant/site guard: {marker")
+        raise SystemExit(f"Missing AI record update tenant/site guard: {marker}")
 
 industry_priority_migration = next((root / "supabase" / "migrations").glob("*_industry_dashboard_priorities.sql"))
 priority_sql = industry_priority_migration.read_text(encoding="utf-8").lower()

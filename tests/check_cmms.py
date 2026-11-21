@@ -461,6 +461,8 @@ for marker in [
         raise SystemExit(f"Missing assignment UI validation: {marker}")
 fleet_assignment_migration = next((root / "supabase" / "migrations").glob("*_logistics_fleet_vehicle_assignments.sql"))
 fleet_assignment_sql = fleet_assignment_migration.read_text(encoding="utf-8").lower()
+if "for update;" not in fleet_assignment_sql:
+    raise SystemExit("Vehicle assignment must lock the fleet vehicle against concurrent status changes")
 for marker in [
     "add column if not exists vehicle_id uuid references public.vehicles(id)",
     "validate_logistics_vehicle_assignment",

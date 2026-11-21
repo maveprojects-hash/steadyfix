@@ -661,3 +661,19 @@ for marker in [
 ]:
     if marker not in logistics_ui:
         raise SystemExit(f"Missing Logistics UI lifecycle restriction: {marker}")
+
+
+# Logistics shipment list must paginate beyond the Supabase default row cap.
+shipment_workspace = logistics_ui[logistics_ui.index("async function sfLogisticsWorkspace()"):logistics_ui.index("const SF_SHIPMENT_CREATE_LOCK")]
+for marker in [
+    "const shipments=[];const shipmentPageSize=500;let shipmentOffset=0",
+    "while(true){",
+    ".order('created_at',{ascending:false}).order('id',{ascending:false}).range(shipmentOffset,shipmentOffset+shipmentPageSize-1)",
+    "shipments.push(...page)",
+    "if(page.length<shipmentPageSize)break",
+    "SF_LOGISTICS_SHIPMENTS=shipments;",
+]:
+    if marker not in shipment_workspace:
+        raise SystemExit(f"Logistics shipment pagination missing: {marker}")
+if ".limit(500)" in shipment_workspace or "SF_LOGISTICS_SHIPMENTS=sr.data||[]" in shipment_workspace:
+    raise SystemExit("Logistics shipment list still has a capped/unpaginated fetch")

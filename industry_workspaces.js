@@ -252,7 +252,7 @@ async function sfLogisticsWorkspace(){
   if(sr.error)throw sr.error;
   const events=[];const eventPageSize=500;let eventOffset=0;
   while(true){
-    const ev=await sb.from('logistics_tracking_events').select('*').eq('company_id',me.company_id).eq('site_id',site).order('event_at',{ascending:false}).range(eventOffset,eventOffset+eventPageSize-1);
+    const ev=await sb.from('logistics_tracking_events').select('*').eq('company_id',me.company_id).eq('site_id',site).order('event_at',{ascending:false}).order('id',{ascending:false}).range(eventOffset,eventOffset+eventPageSize-1);
     if(ev.error)throw ev.error;
     const page=ev.data||[];events.push(...page);
     if(page.length<eventPageSize)break;

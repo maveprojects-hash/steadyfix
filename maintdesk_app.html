@@ -972,7 +972,7 @@ async function aiApply(p){
 async function aiApprove(id,quiet){const p=AI.props.find(x=>x.id==id);if(!p||p.state!='pending')return true;try{await aiApply(p);p.state='done';if(!quiet){AI.msgs.push({role:'assistant',content:'Done: '+(p.summary||'saved'),note:1});aiRender();draw()}return true}catch(e){p.state='failed';AI.msgs.push({role:'assistant',content:'Could not save "'+(p.summary||'that')+'": '+e.message,err:true});aiRender();return false}}
 async function aiApproveAll(){const ids=AI.props.filter(p=>p.state=='pending').map(p=>p.id);let n=0;for(const id of ids)if(await aiApprove(id,true))n++;AI.msgs.push({role:'assistant',content:'Done: '+n+' change'+(n==1?'':'s')+' saved.',note:1});aiRender();draw()}
 function aiSkip(id){const p=AI.props.find(x=>x.id==id);if(p)p.state='skipped';aiRender()}
-async function aiMem(){const r=await sb.from('assistant_memory').select('id,note').order('created_at',{ascending:false});AI.mem=r.data||[];aiRender()}
+async function aiMem(){const r=await sb.from('assistant_memory').select('id,note').order('created_at',{ascending:false});if(r.error){AI.mem=null;aiRender();alert('Could not load assistant memory: '+r.error.message);return}AI.mem=r.data||[];aiRender()}
 async function aiForget(id){const{error}=await sb.from('assistant_memory').delete().eq('id',id);if(error){alert('Could not forget this memory: '+error.message);return}AI.mem=AI.mem.filter(m=>m.id!=id);aiRender()}
 // ---------- shared item block, totals, layouts, PDF sharing ----------
 const r2=n=>Math.round((+n||0)*100)/100;

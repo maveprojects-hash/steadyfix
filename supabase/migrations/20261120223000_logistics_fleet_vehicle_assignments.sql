@@ -10,6 +10,7 @@ begin
   if new.status in ('delivered','returned') then raise exception 'Delivered or returned consignments cannot change vehicle assignment'; end if;
   if new.vehicle_id is null then return new; end if;
   select company_id,site_id,status into v_company,v_site,v_status from public.vehicles where id=new.vehicle_id;
+  for update;
   if not found or v_company is distinct from new.company_id or v_site is distinct from new.site_id then
     raise exception 'Assigned vehicle must belong to the same company and site';
   end if;

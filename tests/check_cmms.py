@@ -484,7 +484,7 @@ if lock_select_start < 0 or lock_select_end < 0:
 lock_statement = pod_lock_sql[lock_select_start:lock_select_end]
 if ";" in lock_statement:
     raise SystemExit("POD shipment SELECT must not terminate before FOR UPDATE")
-compact_lock = re.sub(r"\\s+", "", lock_statement)
+compact_lock = re.sub(r"\s+", "", lock_statement)
 if "wheres.id=p_shipment_idands.company_id=v_company" not in compact_lock:
     raise SystemExit("POD row lock must scope the shipment to its company")
 if "for update;" not in pod_lock_sql:

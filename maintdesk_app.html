@@ -863,7 +863,7 @@ const FAQ=[['How do I add or change a checklist?','Open Checklists, pick Daily, 
 ['Can the app be customized for our business?','Yes. Send a “Customization” request describing what you need, for example your own report layout, extra fields, branding or a connection to another system, and we will reply here with options.']];
 async function sup(){
  const{data:{session}}=await sb.auth.getSession(),em=session?.user?.email||'',pf_=PREF||{};PREF=null;
- const tk=await sb.from('support_tickets').select('*').order('created_at',{ascending:false});
+ const tk=await sb.from('support_tickets').select('*').eq('user_id',me.id).order('created_at',{ascending:false});
  if(tk.error)return`<h2>Support</h2><div class="p">Support needs one more database step. Run the support SQL I sent, then reload this page.</div>`;
  const btn='class="b" style="display:inline-block;text-decoration:none;text-align:center;flex:1;padding:10px"';
  const contact=(SUPPORT_EMAIL||SUPPORT_WA)?`<div class="p"><b>Contact us directly</b><div class="f" style="margin-top:8px">${SUPPORT_EMAIL?`<a ${btn} href="mailto:${esc(SUPPORT_EMAIL)}?subject=STEADYFIX%20support">✉ Email us</a>`:''}${SUPPORT_WA?`<a ${btn} href="https://wa.me/${esc(SUPPORT_WA)}">WhatsApp</a>`:''}</div></div>`:'';

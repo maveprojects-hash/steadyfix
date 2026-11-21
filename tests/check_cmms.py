@@ -437,4 +437,9 @@ for function_code, guard_name in [(contract_save, "save"), (contract_edit, "edit
     if "if(!isMgr())" not in function_code:
         raise SystemExit(f"Service-contract {guard_name} action lacks its own manager permission guard")
 
-# Service contract numeric inputs are validated explicitly instead of silently clamped/coerced.\ncontract_save = workspace_code[workspace_code.index("async function sfSaveServiceContract"):workspace_code.index("function sfEditServiceContract")]\nfor validation in ["Number.isFinite(fee)", "fee<0", "responseHours*2!==Math.round(responseHours*2)", "!Number.isInteger(includedPages)", "Math.round(overageRate*10000)!==overageRate*10000"]:\n    if validation not in contract_save:\n        raise SystemExit(f"Service-contract numeric validation missing: {validation}")\n
+
+# Service contract numeric input validation is enforced (including precision constraints).
+contract_save = workspace_code[workspace_code.index("async function sfSaveServiceContract"):workspace_code.index("function sfEditServiceContract")]
+for validation in ["Number.isFinite(fee)", "fee<0", "responseHours*2!==Math.round(responseHours*2)", "!Number.isInteger(includedPages)", "Math.round(overageRate*10000)!==overageRate*10000"]:
+    if validation not in contract_save:
+        raise SystemExit(f"Service-contract numeric validation missing: {validation}")

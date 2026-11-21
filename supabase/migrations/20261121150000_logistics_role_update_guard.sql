@@ -34,6 +34,20 @@ begin
     or new.service_level is distinct from old.service_level
     or new.expected_delivery is distinct from old.expected_delivery
     or new.dispatched_at is distinct from old.dispatched_at
+    or (
+      new.delivered_at is distinct from old.delivered_at
+      and not (
+        new.status='delivered'
+        and exists (
+          select 1 from public.logistics_pod_signoffs p
+          where p.shipment_id=new.id
+            and p.company_id=new.company_id
+            and p.site_id=new.site_id
+            and p.receiver_consent=true
+            and length(btrim(p.receiver_name))>=2
+        )
+      )
+    )
     or new.pod_recipient_name is distinct from old.pod_recipient_name
     or new.pod_reference is distinct from old.pod_reference
     or new.pod_notes is distinct from old.pod_notes

@@ -393,5 +393,11 @@ for marker in [
     if marker not in workspace_code:
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
-\n# Industry quick-access dropdown must render catalog choices and route workshop job cards correctly.\nfor marker in ['id="industryQuickAccessBtn"','id="industryQuickAccessMenu"','toggleIndustryQuickAccess','sfIndustryQuickPick','role="listbox"']:\n    if marker not in html and marker not in workspace_code:\n        raise SystemExit(f"Missing industry quick-access control: {marker}")\nif "['🔧','Workshop & job cards','Workshop bookings, vehicle job cards and repair progress','workshop_jobs']" not in workspace_code:\n    raise SystemExit("Workshop job-card quick access does not route to workshop_jobs")\n
+\n# Industry quick-access dropdown must render catalog choices and route workshop job cards correctly.
+for marker in ['id="industryQuickAccessBtn"','id="industryQuickAccessMenu"','toggleIndustryQuickAccess','sfIndustryQuickPick','role="listbox"']:
+    if marker not in html and marker not in workspace_code:
+        raise SystemExit(f"Missing industry quick-access control: {marker}")
+if "['🔧','Workshop & job cards','Workshop bookings, vehicle job cards and repair progress','workshop_jobs']" not in workspace_code:
+    raise SystemExit("Workshop job-card quick access does not route to workshop_jobs")
+
 print("CMMS syntax, notifications, industry profiles, quick access, Automation operations, logistics and tenant safeguards: PASS")

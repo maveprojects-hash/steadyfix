@@ -841,8 +841,8 @@ async function rcyc(sid,ds){const k=sid+'|'+ds,i=SHK.indexOf(RS[k]),nx=i+1<SHK.l
  const r=nx?await sb.from('roster_shifts').upsert({company_id:me.company_id,site_id:site,staff_id:sid,shift_date:ds,shift_type:nx},{onConflict:'staff_id,shift_date'}):await sb.from('roster_shifts').delete().eq('staff_id',sid).eq('shift_date',ds);
  if(r.error)alert(r.error.message)}
 async function addStaff(){const n=$('stn').value.trim();if(!n)return alert('Type a name first.');const{error}=await sb.from('staff_members').insert({company_id:me.company_id,site_id:site,name:n,role:$('str').value.trim()||null});error?alert(error.message):draw()}
-async function renStaff(id,f,v){const{error}=await sb.from('staff_members').update({[f]:v||null}).eq('id',id);if(error)alert(error.message)}
-async function delStaff(id){if(!confirm('Remove this staff member and their roster entries?'))return;const{error}=await sb.from('staff_members').delete().eq('id',id);error?alert(error.message):draw()}
+async function renStaff(id,f,v){if(!isMgr())return alert('Manager access required.');let q=sb.from('staff_members').update({[f]:v||null}).eq('id',id).eq('company_id',me.company_id);if(site)q=q.eq('site_id',site);const{error}=await q;if(error)alert(error.message)}
+async function delStaff(id){if(!isMgr())return alert('Manager access required.');if(!confirm('Remove this staff member and their roster entries?'))return;let q=sb.from('staff_members').delete().eq('id',id).eq('company_id',me.company_id);if(site)q=q.eq('site_id',site);const{error}=await q;error?alert(error.message):draw()}
 async function copyPrev(){const R=rng('weekly',RD||today),a=new Date(R.da),b=new Date(R.db);a.setDate(a.getDate()-7);b.setDate(b.getDate()-7);
  const{data}=await sb.from('roster_shifts').select('staff_id,shift_date,shift_type').eq('site_id',site).gte('shift_date',ymd(a)).lte('shift_date',ymd(b));
  if(!data||!data.length)return alert('Nothing to copy from last week.');if(!confirm("Copy last week's roster into this week? Shifts already set this week will be replaced."))return;

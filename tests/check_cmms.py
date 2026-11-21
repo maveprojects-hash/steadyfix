@@ -406,6 +406,7 @@ for marker in [
 for marker in [
     "sfLogisticsPODPage",
     'async function sfLogisticsPODPage',
+    "async async function sfLogisticsPODPage",
     "sfInitPODSignaturePad",
     "sfSaveLogisticsPOD",
     "record_logistics_pod_signoff",

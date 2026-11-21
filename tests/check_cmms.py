@@ -594,3 +594,17 @@ for marker in [
 ]:
     if marker not in terminal_scan_sql:
         raise SystemExit(f"Missing terminal scan restriction: {marker}")
+
+# Collection status must stamp dispatched_at at database level.
+dispatch_timestamp_guard = root / "supabase" / "migrations" / "20261121190000_logistics_dispatch_timestamp.sql"
+if not dispatch_timestamp_guard.exists():
+    raise SystemExit("Missing logistics dispatch timestamp migration")
+dispatch_timestamp_sql = dispatch_timestamp_guard.read_text(encoding="utf-8").lower()
+for marker in [
+    "create or replace function public.set_logistics_dispatch_timestamp",
+    "old.status is distinct from new.status and new.status='collected'",
+    "new.dispatched_at:=coalesce(new.dispatched_at,now())",
+    "before update of status on public.logistics_shipments",
+]:
+    if marker not in dispatch_timestamp_sql:
+        raise SystemExit(f"Missing dispatch timestamp safeguard: {marker}")

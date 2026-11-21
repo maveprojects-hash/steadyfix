@@ -14,7 +14,7 @@ input{width:100%;padding:12px;border:1px solid #d6dce0;border-radius:8px;font:in
 <script>
 const URL_='https://wqggnimaglsikdusbvuh.supabase.co/rest/v1/rpc/ingest_position',KEY_='sb_publishable_NhiAgVZ451DMdfwzWTSGvQ_zQlbwW8l';
 const $=id=>document.getElementById(id),q=new URLSearchParams(location.search);let wid=null,lock=null,lastSent=0,sent=0,run=false,pos=null;
-$('key').value=q.get('key')||'';$('vn').textContent=q.get('name')||'Your vehicle';
+/* Never accept tracker credentials from URL query strings; URLs can leak into history/logs. */$('key').value='';$('vn').textContent=q.get('name')||'Your vehicle';
 async function send(p){const c=p.coords,now=Date.now();if(now-lastSent<20000)return;lastSent=now;
  try{const r=await fetch(URL_,{method:'POST',headers:{apikey:KEY_,'Content-Type':'application/json'},body:JSON.stringify({p_key:$('key').value.trim(),p_lat:c.latitude,p_lng:c.longitude,p_speed:c.speed!=null?Math.round(c.speed*3.6*10)/10:0,p_heading:c.heading!=null&&!isNaN(c.heading)?c.heading:null})});
   if(r.ok){sent++;$('st').innerHTML='<span class="ok">Sending. '+sent+' updates sent.</span>';$('ls').textContent='Last update '+new Date().toLocaleTimeString()}
@@ -25,7 +25,7 @@ function start(){if(!$('key').value.trim()){$('st').innerHTML='<span class="bad"
  run=true;$('go').textContent='Stop tracking';$('go').className='stop';$('st').textContent='Finding your location…';
  wid=navigator.geolocation.watchPosition(p=>{pos=p;const s=p.coords.speed!=null?Math.round(p.coords.speed*3.6):0;$('sp').textContent=s+' km/h';send(p)},e=>{$('st').innerHTML='<span class="bad">'+(e.code==1?'Location is switched off for this page. Allow it in your browser settings.':'Could not get your location.')+'</span>'},{enableHighAccuracy:true,maximumAge:5000,timeout:30000});
  try{if(navigator.wakeLock)navigator.wakeLock.request('screen').then(l=>lock=l).catch(()=>{})}catch(e){}}
-function stop(){run=false;if(wid!=null)navigator.geolocation.clearWatch(wid);wid=null;if(lock){lock.release();lock=null}$('go').textContent='Start tracking';$('go').className='';$('st').textContent='Stopped.'}
+function stop(){run=false;if(wid!=null)navigator.geolocation.clearWatch(wid);wid=null;if(lock){lock.release();lock=null}$('key').value='';$('go').textContent='Start tracking';$('go').className='';$('st').textContent='Stopped. Tracker key cleared; paste it again to restart.'}
 $('go').onclick=()=>run?stop():start();
 document.addEventListener('visibilitychange',()=>{if(run&&document.visibilityState=='visible'&&navigator.wakeLock)navigator.wakeLock.request('screen').then(l=>lock=l).catch(()=>{})});
 </script></body></html>

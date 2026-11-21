@@ -54,8 +54,12 @@ async function sfIndustryWorkspace(){
   if(!INDUSTRIES||!INDUSTRIES.length)await loadIndustryProfile();
   const slug=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug||'general-maintenance';
   const ind=(INDUSTRIES||[]).find(x=>x.slug===slug);if(!ind)return sfIndustryHub();
-  let html='<div class="bar2 noprint"><button onclick="openIndustryHub()">← All industries</button><button onclick="goTab(\'dash\')">Main dashboard</button></div>';
-  html+='<h2>'+esc(ind.name)+' workspace</h2><div class="p"><b>'+esc(ind.description||'')+'</b><div class="note">This is the company selected industry workspace. The base CMMS records and security remain shared; these shortcuts organise the functions most relevant to this type of operation.</div>';
+  const SF_THEME=slug==='logistics-transport'||slug==='fleet-management'?{accent:'#2678c7',deep:'#163c5d',soft:'#eaf4ff',glow:'rgba(38,120,199,.16)',label:'Operations blue'}:
+    ['automation','workshops','manufacturing-industrial'].includes(slug)?{accent:'#d83b46',deep:'#54242d',soft:'#fff0f1',glow:'rgba(216,59,70,.15)',label:'Workshop red'}:{accent:'var(--ac)',deep:'var(--nav)',soft:'var(--bg)',glow:'transparent',label:'STEADYFIX'};
+  let html='<div class="sf-industry-surface" style="--sf-accent:'+SF_THEME.accent+';--sf-deep:'+SF_THEME.deep+';--sf-soft:'+SF_THEME.soft+';--sf-glow:'+SF_THEME.glow+'"><style>.sf-industry-surface{border-radius:12px;padding:2px;background:linear-gradient(135deg,var(--sf-glow),transparent 55%)}.sf-industry-surface .sf-industry-hero{background:linear-gradient(125deg,var(--sf-deep),var(--sf-accent));color:#fff;padding:18px 20px;border-radius:10px;margin:0 0 14px;box-shadow:0 8px 24px var(--sf-glow)}.sf-industry-surface .sf-industry-hero .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.85}.sf-industry-surface .sf-industry-hero h2{margin:3px 0 5px;color:#fff;font-size:24px}.sf-industry-surface .sf-industry-hero p{margin:0;opacity:.9;font-size:13px}.sf-industry-surface .card{border-left-color:var(--sf-accent);box-shadow:0 3px 12px rgba(24,40,49,.06);transition:transform .15s,box-shadow .15s}.sf-industry-surface .card:hover{transform:translateY(-2px);box-shadow:0 8px 20px var(--sf-glow)}.sf-industry-surface .tabs .on,.sf-industry-surface .b{background:var(--sf-accent);border-color:var(--sf-accent)}.sf-industry-surface .bar2 button{border-color:var(--sf-accent);color:var(--sf-accent)}.sf-industry-surface .k{border-left-color:var(--sf-accent)}</style>';
+  html+='<div class="bar2 noprint"><button onclick="openIndustryHub()">← All industries</button><button onclick="goTab(\'dash\')">Main dashboard</button></div>';
+  html+='<div class="sf-industry-hero"><div class="eyebrow">STEADYFIX · '+SF_THEME.label+'</div><h2>'+esc(ind.name)+' workspace</h2><p>Industry-specific operations, with your core STEADYFIX account and security intact.</p></div>';
+  html+='<div class="p"><b>'+esc(ind.description||'')+'</b><div class="note">This is the company selected industry workspace. The base CMMS records and security remain shared; these shortcuts organise the functions most relevant to this type of operation.</div>';
   const focus=(ind.default_configuration&&ind.default_configuration.focus_areas)||[];
   if(focus.length)html+='<div class="rl"><b>Industry focus:</b> '+esc(focus.join(' · '))+'</div>';
   html+='</div><div class="dg">';
@@ -64,8 +68,9 @@ async function sfIndustryWorkspace(){
   if(!sfIndustryModules(slug).some(m=>!overrides.disabled.has(m[3])))html+='<div class="p">All workspace shortcuts are currently hidden. A company manager can restore them in Industry profile.</div>';
   html+='</div>';
   if(slug==='logistics-transport')html+='<div class="p"><b>Connected logistics workflow</b><div class="note">Create a consignment, issue its waybill, record tracking scans as it moves through depots, and capture the receiving person and proof-of-delivery reference at delivery. Fleet GPS and vehicle maintenance remain available alongside parcel operations.</div></div>';
-  return html;
+  return html+'</div>';
 }
+
 
 async function sfServiceContracts(){
   if(!isMgr())return '<h2>Service contracts</h2><div class="p">Only company owners and managers can create or change customer service contracts.</div>';
@@ -245,24 +250,24 @@ async function sfIssueJobStock(id){
 }
 
 // ---------- Logistics parcel, waybill and proof-of-delivery workspace ----------
-let SF_LOGISTICS_SHIPMENTS=[];
+let SF_LOGISTICS_SHIPMENTS=[],sfLogisticsVehicles=[];
 const SF_SHIPMENT_STATUSES=['booked','collected','in_transit','at_depot','out_for_delivery','delivered','exception','returned'];
 async function sfLogisticsWorkspace(){
-  const [sr,ev]=await Promise.all([
-    sb.from('logistics_shipments').select('*').eq('company_id',me.company_id).eq('site_id',site).order('created_at',{ascending:false}),
-    sb.from('logistics_tracking_events').select('*').eq('company_id',me.company_id).eq('site_id',site).order('event_at',{ascending:false}).limit(500)
-  ]);
-  if(sr.error)throw sr.error;if(ev.error)throw ev.error;
-  SF_LOGISTICS_SHIPMENTS=sr.data||[];const events=ev.data||[];
+  const pageSize=1000,shipments=[],events=[];let shipmentOffset=0,eventOffset=0;
+  const vr=await sb.from('vehicles').select('id,name,make_model,reg_no,status').eq('company_id',me.company_id).eq('site_id',site).order('name');if(vr.error)throw vr.error;const allVehicles=vr.data||[];
+  while(true){const sr=await sb.from('logistics_shipments').select('*').eq('company_id',me.company_id).eq('site_id',site).order('created_at',{ascending:false}).range(shipmentOffset,shipmentOffset+pageSize-1);if(sr.error)throw sr.error;shipments.push(...(sr.data||[]));if(!sr.data||sr.data.length<pageSize)break;shipmentOffset+=pageSize;}
+  while(true){const ev=await sb.from('logistics_tracking_events').select('*').eq('company_id',me.company_id).eq('site_id',site).order('event_at',{ascending:false}).order('id',{ascending:true}).range(eventOffset,eventOffset+pageSize-1);if(ev.error)throw ev.error;events.push(...(ev.data||[]));if(!ev.data||ev.data.length<pageSize)break;eventOffset+=pageSize;}
+  sfLogisticsVehicles=allVehicles.filter(v=>v.status!=='in_service'||shipments.some(s=>s.vehicle_id===v.id));
+  SF_LOGISTICS_SHIPMENTS=shipments;
   const count=s=>SF_LOGISTICS_SHIPMENTS.filter(x=>x.status===s).length;
   const cards=SF_LOGISTICS_SHIPMENTS.map(x=>{
     const history=events.filter(e=>e.shipment_id===x.id).slice(0,8);
-    const opts=SF_SHIPMENT_STATUSES.map(s=>'<option value="'+s+'" '+(s===x.status?'selected':'')+'>'+esc(cap(s))+'</option>').join('');
+    const next=SF_SHIPMENT_TRANSITIONS[x.status]||[],available=[x.status,...next];const opts=available.map(s=>'<option value="'+s+'" '+(s===x.status?'selected':'')+'>'+esc(cap(s))+'</option>').join('');
     return '<div class="card"><div class="ct"><div>'+esc(x.waybill_no)+' · '+esc(x.recipient_name)+'</div><div class="chips">'+chip(x.status,cap(x.status))+'</div></div>'+
-      '<div class="kv"><span>Tracking number</span><b>'+esc(x.tracking_no||x.waybill_no)+'</b><span>From</span><b>'+esc(x.origin_address)+'</b><span>To</span><b>'+esc(x.destination_address)+'</b><span>Parcel</span><b>'+esc(x.package_count)+' package(s) · '+esc(x.parcel_description||'-')+'</b><span>Expected delivery</span><b>'+esc(x.expected_delivery||'-')+'</b></div>'+
+      '<div class="kv"><span>Tracking number</span><b>'+esc(x.tracking_no||x.waybill_no)+'</b><span>From</span><b>'+esc(x.origin_address)+'</b><span>To</span><b>'+esc(x.destination_address)+'</b><span>Parcel</span><b>'+esc(x.package_count)+' package(s) · '+esc(x.parcel_description||'-')+'</b><span>Expected delivery</span><b>'+esc(x.expected_delivery||'-')+'</b><span>Assigned vehicle</span><b>'+esc((sfLogisticsVehicles.find(v=>v.id===x.vehicle_id)?.name)||'-')+'</b></div>'+
       (x.status==='delivered'?'<div class="p"><b>Proof of delivery</b><div class="kv"><span>Received by</span><b>'+esc(x.pod_recipient_name||'-')+'</b><span>Delivered at</span><b>'+esc(x.delivered_at?new Date(x.delivered_at).toLocaleString('en-ZA'):'-')+'</b><span>Reference</span><b>'+esc(x.pod_reference||'-')+'</b><span>Notes</span><b>'+esc(x.pod_notes||'-')+'</b></div></div>':'')+
       '<div class="ca noprint"><button onclick="sfPrintWaybill(\''+x.id+'\')">Print waybill</button><button onclick="sfAddShipmentScan(\''+x.id+'\')">Add tracking scan</button><button onclick="sfCapturePOD(\''+x.id+'\')">Proof of delivery</button>'+ (isMgr()?'<button class="x2" onclick="sfDeleteShipment(\''+x.id+'\')">Delete</button>':'')+'</div>'+
-      '<label class="el noprint">Update shipment status<select onchange="sfUpdateShipmentStatus(\''+x.id+'\',this.value)">'+opts+'</select></label>'+
+      '<label class="el noprint">Assign Fleet vehicle<select onchange="sfAssignLogisticsVehicle(\''+x.id+'\',this.value)" '+((x.status==='delivered'||x.status==='returned')?'disabled':'')+'><option value="">Unassigned</option>'+sfLogisticsVehicles.map(v=>'<option value="'+esc(v.id)+'" '+(v.id===x.vehicle_id?'selected':'')+'>'+esc([v.name,v.make_model,v.reg_no].filter(Boolean).join(' · '))+' ('+esc(v.status||'unknown')+')</option>').join('')+'</select></label>'+'<label class="el noprint">Update shipment status<select onchange="sfUpdateShipmentStatus(\''+x.id+'\',this.value)">'+opts+'</select></label>'+
       '<div class="rl"><b>Tracking history</b></div>'+ (history.map(e=>'<div class="rl">'+esc(new Date(e.event_at).toLocaleString('en-ZA'))+' · <b>'+esc(cap(e.status||e.event_type))+'</b>'+(e.location?' · '+esc(e.location):'')+(e.notes?'<div class="note">'+esc(e.notes)+'</div>':'')+'</div>').join('')||'<div class="note">No scans recorded yet.</div>')+
       '</div>';
   }).join('')||'<div class="p">No consignments yet. Create your first waybill below.</div>';
@@ -277,26 +282,78 @@ async function sfLogisticsWorkspace(){
     '<label class="el">Service level<select id="sfServiceLevel"><option value="standard">Standard</option><option value="express">Express</option><option value="overnight">Overnight</option><option value="same_day">Same day</option></select></label><label class="el">Expected delivery<input id="sfExpected" type="date"></label></div>'+
     '<button class="b" onclick="sfCreateShipment()">Create waybill</button></details>'+cards;
 }
+async function sfAssignLogisticsVehicle(id,vehicleId){
+  const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
+  if(['delivered','returned'].includes(shipment.status))return alert('Vehicle assignments are locked for completed or returned consignments.');
+  vehicleId=vehicleId||null;if(vehicleId&& !sfLogisticsVehicles.some(v=>v.id===vehicleId))return alert('Choose a vehicle from this company and site.');
+  const {error}=await sb.from('logistics_shipments').update({vehicle_id:vehicleId}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
+  if(error){alert('Could not update vehicle assignment: '+error.message);return;}
+  draw();
+}
 async function sfCreateShipment(){
-  const waybill=$('sfWaybill').value.trim(),recipient=$('sfRecipient').value.trim(),origin=$('sfOrigin').value.trim(),destination=$('sfDestination').value.trim();
+  const waybill=$('sfWaybill').value.trim(),tracking=$('sfTracking').value.trim(),sender=$('sfSender').value.trim(),recipient=$('sfRecipient').value.trim(),phone=$('sfRecipientPhone').value.trim(),origin=$('sfOrigin').value.trim(),destination=$('sfDestination').value.trim(),parcel=$('sfParcel').value.trim(),weightRaw=$('sfWeight').value,weight=weightRaw===''?null:Number(weightRaw),packageRaw=$('sfPackageCount').value,packages=packageRaw===''?1:Number(packageRaw),service=$('sfServiceLevel').value,expected=$('sfExpected').value||null;
   if(!waybill||!recipient||!origin||!destination)return alert('Waybill number, recipient, origin and destination are required.');
-  const row={company_id:me.company_id,site_id:site,waybill_no:waybill,tracking_no:$('sfTracking').value.trim()||waybill,sender_name:$('sfSender').value.trim()||null,recipient_name:recipient,recipient_phone:$('sfRecipientPhone').value.trim()||null,origin_address:origin,destination_address:destination,parcel_description:$('sfParcel').value.trim()||null,package_count:Math.max(1,parseInt($('sfPackageCount').value,10)||1),weight_kg:$('sfWeight').value===''?null:Number($('sfWeight').value),service_level:$('sfServiceLevel').value,expected_delivery:$('sfExpected').value||null,status:'booked',created_by:me.id};
-  const {error}=await sb.from('logistics_shipments').insert(row);if(error)return alert('Could not create waybill: '+error.message);draw();
+  if(waybill.length>100||tracking.length>100)return alert('Waybill and tracking numbers must be 100 characters or fewer.');
+  if(sender.length>160||recipient.length>160||phone.length>60)return alert('Sender, recipient and phone fields exceed their allowed length.');
+  if(origin.length>1000||destination.length>1000)return alert('Address fields must be 1,000 characters or fewer.');
+  if(parcel.length>500)return alert('Parcel description must be 500 characters or fewer.');
+  if(weight!==null&&(!Number.isFinite(weight)||weight<0||weight>100000))return alert('Weight must be a valid value between 0 and 100,000 kg.');
+  if(!Number.isInteger(packages)||packages<1||packages>500)return alert('Package count must be a whole number between 1 and 500.');
+  if(!['standard','express','overnight','same_day'].includes(service))return alert('Choose a valid service level.');
+  const duplicate=await sb.from('logistics_shipments').select('id').eq('company_id',me.company_id).eq('site_id',site).eq('waybill_no',waybill).limit(1);
+  if(duplicate.error)return alert('Could not verify waybill number: '+duplicate.error.message);
+  if(duplicate.data&&duplicate.data.length)return alert('This waybill number already exists at this site. Use a unique waybill number.');
+  const row={company_id:me.company_id,site_id:site,waybill_no:waybill,tracking_no:tracking||waybill,sender_name:sender||null,recipient_name:recipient,recipient_phone:phone||null,origin_address:origin,destination_address:destination,parcel_description:parcel||null,package_count:packages,weight_kg:weight,service_level:service,expected_delivery:expected,status:'booked',created_by:me.id};
+  const {error}=await sb.from('logistics_shipments').insert(row).select('id').single();if(error)return alert('Could not create waybill: '+error.message);
+  // The database trigger logistics_record_status_event creates the initial event.
+  // Keep this insert free of duplicate tracking rows.
+  draw();
+}
+const SF_SHIPMENT_TRANSITIONS={
+  booked:['collected','exception'],
+  collected:['in_transit','exception'],
+  in_transit:['at_depot','out_for_delivery','exception'],
+  at_depot:['in_transit','out_for_delivery','exception'],
+  out_for_delivery:['delivered','exception'],
+  exception:['collected','in_transit','at_depot','out_for_delivery','delivered','returned'],
+  delivered:[],
+  returned:[]
+};
+function sfShipmentTransitionAllowed(current,next){
+  return !!SF_SHIPMENT_TRANSITIONS[current]&&SF_SHIPMENT_TRANSITIONS[current].includes(next);
 }
 async function sfUpdateShipmentStatus(id,status){
   if(!SF_SHIPMENT_STATUSES.includes(status))return;
+  const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
+  if(shipment.status===status)return;
+  if(!sfShipmentTransitionAllowed(shipment.status,status)){
+    alert('Invalid shipment transition: '+shipment.status.replace(/_/g,' ')+' → '+status.replace(/_/g,' ')+'. Use the correct next step or record an exception.');
+    return;
+  }
   if(status==='delivered'){sfCapturePOD(id);return;}
-  const {error}=await sb.from('logistics_shipments').update({status,delivered_at:status==='delivered'?new Date().toISOString():null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
-  if(error)alert('Could not update shipment: '+error.message);else draw();
+  let eventNotes=null;
+  if(status==='exception'||status==='returned'){
+    const promptLabel=status==='exception'?'Describe the delivery exception and next action:':'Describe the return reason and next action:';
+    const raw=prompt(promptLabel);if(raw===null)return;
+    eventNotes=raw.trim();if(!eventNotes)return alert('A reason is required to record this status.');
+    if(eventNotes.length>2000)return alert('Reason must be 2,000 characters or fewer.');
+  }
+  const {error}=await sb.rpc('logistics_update_status_with_reason',{p_shipment_id:id,p_status:status,p_reason:eventNotes});
+  if(error){alert('Could not update shipment status and reason: '+error.message);return;}
+  // Status history and exception/return reason are committed atomically by the RPC.
+  draw();
 }
 async function sfAddShipmentScan(id){
+  const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;if(['delivered','returned'].includes(shipment.status))return alert('Tracking scans are closed for delivered or returned consignments.');
   const location=prompt('Depot, town or scan location:');if(location===null)return;
-  const notes=prompt('Scan notes (optional):')||null;
-  const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
-  const {error}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'scan',status:shipment.status,location:location.trim()||null,notes,created_by:me.id});
+  const scanLocation=location.trim();if(!scanLocation)return alert('Enter the scan location so the tracking event is meaningful.');
+  if(scanLocation.length>200)return alert('Scan location must be 200 characters or fewer.');
+  const rawNotes=prompt('Scan notes (optional):');if(rawNotes===null)return;
+  const notes=rawNotes.trim()||null;if(notes&&notes.length>2000)return alert('Scan notes must be 2,000 characters or fewer.');
+  const {error}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'scan',status:shipment.status,location:scanLocation,notes,created_by:me.id});
   if(error)alert('Could not save tracking scan: '+error.message);else draw();
 }
-function sfCapturePOD(id){SF_POD_SHIPMENT_ID=id;cur='logistics_pod';draw()}
+function sfCapturePOD(id){const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;if(shipment.status!=='delivered'&&!sfShipmentTransitionAllowed(shipment.status,'delivered'))return alert('Proof of delivery is available when a consignment is out for delivery or in exception status.');SF_POD_SHIPMENT_ID=id;cur='logistics_pod';draw()}
 let SF_POD_SHIPMENT_ID=null;
 async function sfLogisticsPODPage(){
   const id=SF_POD_SHIPMENT_ID;if(!id)return '<h2>Proof of delivery</h2><div class="p">Choose a consignment first.</div>';
@@ -323,8 +380,9 @@ async function sfDeleteShipment(id){
 async function sfPrintWaybill(id){
   const x=SF_LOGISTICS_SHIPMENTS.find(s=>s.id===id);if(!x)return;
   const pod=await sb.from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('site_id',site).maybeSingle();const signed=pod.data;
+  const brandColor=/^#[0-9a-f]{6}$/i.test(CS.doc_color||'')?CS.doc_color:'#1B2831';
   const row=(l,v)=>'<tr><th style="width:32%">'+l+'</th><td>'+esc(v==null||v===''?'-':String(v))+'</td></tr>';
-  sheetPrint(ph('Transport waybill')+'<br><table class="pt">'+row('Waybill number',x.waybill_no)+row('Tracking number',x.tracking_no)+row('Service level',cap(x.service_level))+row('Status',cap(x.status))+row('Sender',x.sender_name)+row('Recipient',x.recipient_name)+row('Recipient phone',x.recipient_phone)+row('Origin',x.origin_address)+row('Destination',x.destination_address)+row('Contents',x.parcel_description)+row('Packages',x.package_count)+row('Weight (kg)',x.weight_kg)+row('Expected delivery',x.expected_delivery)+'</table>'+(signed?'<h3>Electronic proof of delivery</h3><p>Received by: '+esc(signed.receiver_name)+' · '+esc(new Date(signed.signed_at).toLocaleString('en-ZA'))+'</p>'+sfSignatureSvg(signed.signature_points)+'<p>'+esc(signed.notes||'')+'</p>':'')+'<p><b>Driver / collection signature</b> ___________________________</p><p><b>Receiver signature / name</b> ___________________________ Date: __________</p>');
+  sheetPrint(ph('Transport waybill')+'<br><table class="pt" style="border-top:4px solid '+brandColor+';border-bottom:2px solid '+brandColor+'">'+row('Waybill number',x.waybill_no)+row('Tracking number',x.tracking_no)+row('Service level',cap(x.service_level))+row('Status',cap(x.status))+row('Sender',x.sender_name)+row('Recipient',x.recipient_name)+row('Recipient phone',x.recipient_phone)+row('Origin',x.origin_address)+row('Destination',x.destination_address)+row('Contents',x.parcel_description)+row('Packages',x.package_count)+row('Weight (kg)',x.weight_kg)+row('Expected delivery',x.expected_delivery)+'</table>'+(signed?'<h3>Electronic proof of delivery</h3><p>Received by: '+esc(signed.receiver_name)+' · '+esc(new Date(signed.signed_at).toLocaleString('en-ZA'))+'</p>'+sfSignatureSvg(signed.signature_points)+'<p>'+esc(signed.notes||'')+'</p>':'')+'<p><b>Driver / collection signature</b> ___________________________</p><p><b>Receiver signature / name</b> ___________________________ Date: __________</p>');
 }
 
 // Extend the existing navigation without creating a second app or changing shared base records.

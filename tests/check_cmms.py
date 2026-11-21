@@ -143,13 +143,33 @@ for marker in [
 login_html = (root / "maintdesk_login.html").read_text(encoding="utf-8")
 for marker in [
     "min-height:100svh",
-    "align-items:flex-start",
-    "app.classList.add('company-home')",
-    "app.classList.remove('company-home')",
-    ".box.company-home{max-width:820px;width:100%",
+    "align-items:center",
+    "Create a new company, or join one with an invite code.",
+    "window.location.replace('maintdesk_app.html')",
 ]:
     if marker not in login_html:
-        raise SystemExit(f"Missing responsive company-screen layout: {marker}")
+        raise SystemExit(f"Missing streamlined login flow: {marker}")
+if "Your sites</b>" in login_html or "Open the app →" in login_html:
+    raise SystemExit("Intermediate post-login company landing screen remains")
+
+# Public landing page bypass: returning authenticated users go to CMMS entry.
+landing = (root / "index.html").read_text(encoding="utf-8")
+sdk_marker = 'supabase-js@2/dist/umd/supabase.min.js'
+redirect_marker = "window.location.replace('maintdesk_login.html')"
+if sdk_marker not in landing or redirect_marker not in landing:
+    raise SystemExit("Missing authenticated landing-page bypass")
+if landing.index(sdk_marker) > landing.index("Returning authenticated users bypass the public landing page."):
+    raise SystemExit("Supabase SDK must load before landing-page session check")
+if "<script>\n<script" in landing:
+    raise SystemExit("Malformed nested script tag in landing-page bypass")
+
+# Startup intro/splash is deliberately removed; login/invite should route directly to setup or app.
+for marker in ["#intro", "function intro()", "introgo", "sf_intro"]:
+    if marker in login_html:
+        raise SystemExit(f"Removed login intro popup was reintroduced: {marker}")
+for marker in ["#intro", "introgo"]:
+    if marker in html:
+        raise SystemExit(f"Removed CMMS startup intro popup styles were reintroduced: {marker}")
 
 # Company industry profiles: catalog, tenant-scoped profile UI, onboarding and audit migration.
 industry_migration = next((root / "supabase" / "migrations").glob("*_company_industry_profiles.sql"))
@@ -380,11 +400,13 @@ for marker in [
     "receiver confirmation is required",
     "a receiver signature is required",
     "status='delivered'",
+    "for update;",
 ]:
     if marker.lower() not in pod_sql:
         raise SystemExit(f"Missing signed logistics POD safeguard: {marker}")
 for marker in [
     "sfLogisticsPODPage",
+    'async function sfLogisticsPODPage',
     "sfInitPODSignaturePad",
     "sfSaveLogisticsPOD",
     "record_logistics_pod_signoff",
@@ -393,4 +415,331 @@ for marker in [
     if marker not in workspace_code:
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
+if "async async function sfLogisticsPODPage" in workspace_code:
+    raise SystemExit("POD loader has duplicate async declaration")
+if "function sfLogisticsWorkspace(){" in transition_ui:
+    raise SystemExit("Logistics workspace loader is missing async declaration")
+
+
+# Logistics shipment lifecycle: UI and database guard must remain in agreement.
+transition_ui = industry_workspaces.read_text(encoding="utf-8")
+logistics_workspace_ui = transition_ui[transition_ui.index("async function sfLogisticsWorkspace"):transition_ui.index("const SF_SHIPMENT_TRANSITIONS")]
+for marker in [
+    "const pageSize=1000,shipments=[],events=[];let shipmentOffset=0,eventOffset=0",
+    "while(true){const sr=await sb.from('logistics_shipments')",
+    ".range(shipmentOffset,shipmentOffset+pageSize-1)",
+    "shipments.push(...(sr.data||[]))",
+    ".range(eventOffset,eventOffset+pageSize-1)",
+    ".order('event_at',{ascending:false}).order('id',{ascending:true})",
+    "eventOffset+=pageSize",
+    "SF_LOGISTICS_SHIPMENTS=shipments",
+]:
+    if marker not in logistics_workspace_ui:
+        raise SystemExit(f"Missing Logistics scan pagination safeguard: {marker}")
+# Logistics vehicle list is shared with the assignment handler (global scope).
+if "let SF_LOGISTICS_SHIPMENTS=[],sfLogisticsVehicles=[];" not in transition_ui or "const allVehicles=vr.data||[];" not in transition_ui or "sfLogisticsVehicles=allVehicles.filter(v=>v.status!=='in_service'||shipments.some(s=>s.vehicle_id===v.id));" not in transition_ui:
+    raise SystemExit("Logistics vehicle list is not available to the assignment handler")
+# Fleet vehicle assignment is site/company scoped, visible on waybills, and audited.
+fleet_logistics_ui = transition_ui[transition_ui.index("async function sfLogisticsWorkspace"):transition_ui.index("async function sfCreateShipment")]
+for marker in [
+    "const vr=await sb.from('vehicles').select('id,name,make_model,reg_no,status')",
+    ".eq('company_id',me.company_id).eq('site_id',site)",
+    "Assign Fleet vehicle",
+    "sfLogisticsVehicles.map(v=>",
+    "Assigned vehicle",
+]:
+    if marker not in fleet_logistics_ui:
+        raise SystemExit(f"Missing Fleet/Logistics vehicle integration: {marker}")
+assignment_handler = transition_ui[transition_ui.index("async function sfAssignLogisticsVehicle"):transition_ui.index("async function sfCreateShipment")]
+for marker in [
+    "delivered','returned",
+    "sfLogisticsVehicles.some(v=>v.id===vehicleId)",
+    "update({vehicle_id:vehicleId})",
+    ".eq('company_id',me.company_id).eq('site_id',site)",
+]:
+    if marker not in assignment_handler:
+        raise SystemExit(f"Missing assignment UI validation: {marker}")
+fleet_assignment_migration = next((root / "supabase" / "migrations").glob("*_logistics_fleet_vehicle_assignments.sql"))
+fleet_assignment_sql = fleet_assignment_migration.read_text(encoding="utf-8").lower()
+if "for update;" not in fleet_assignment_sql:
+    raise SystemExit("Vehicle assignment must lock the fleet vehicle against concurrent status changes")
+for marker in [
+    "add column if not exists vehicle_id uuid references public.vehicles(id)",
+    "validate_logistics_vehicle_assignment",
+    "assigned vehicle must belong to the same company and site",
+    "vehicles in service cannot be assigned to consignments",
+    "if v_status = 'in_service' then",
+    "logistics_tracking_events_event_type_check",
+    "vehicle_assignment",
+    "exception_note",
+    "return_note",
+    "logistics_record_vehicle_assignment_event",
+    "delivered or returned consignments cannot change vehicle assignment",
+]:
+    if marker not in fleet_assignment_sql:
+        raise SystemExit(f"Missing Fleet/Logistics assignment database safeguard: {marker}")
+
+pod_handler = transition_ui[transition_ui.index("function sfCapturePOD"):transition_ui.index("let SF_POD_SHIPMENT_ID")]
+for marker in [
+    "SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id)",
+    "shipment.status!==\'delivered\'",
+    "sfShipmentTransitionAllowed(shipment.status,\'delivered\')",
+]:
+    if marker not in pod_handler:
+        raise SystemExit(f"Missing proof-of-delivery transition UI guard: {marker}")
+
+# POD must only open after the UI validates the shipment's legal transition.
+status_handler = transition_ui[transition_ui.index("async function sfUpdateShipmentStatus"):transition_ui.index("async function sfAddShipmentScan")]
+if status_handler.index("sfShipmentTransitionAllowed") == -1 or status_handler.index("sfCapturePOD(id)") == -1 or status_handler.index("sfShipmentTransitionAllowed") > status_handler.index("sfCapturePOD(id)"):
+    raise SystemExit("POD UI bypasses shipment transition validation")
+scan_handler = transition_ui[transition_ui.index("async function sfAddShipmentScan"):transition_ui.index("function sfCapturePOD")]
+for marker in ["if(scanLocation.length>200)", "if(notes&&notes.length>2000)", "notes=rawNotes.trim()||null"]:
+    if marker not in scan_handler:
+        raise SystemExit(f"Missing scan input validation: {marker}")
+
+for marker in [
+    "const SF_SHIPMENT_TRANSITIONS=",
+    "booked:['collected','exception']",
+    "out_for_delivery:['delivered','exception']",
+    "if(status==='delivered'){sfCapturePOD(id);return;}",
+    "exception:['collected','in_transit','at_depot','out_for_delivery','delivered','returned']",
+    "async function sfUpdateShipmentStatus(id,status)",
+    "if(shipment.status===status)return;",
+    "if(!sfShipmentTransitionAllowed(shipment.status,status)",
+    "const next=SF_SHIPMENT_TRANSITIONS[x.status]||[],available=[x.status,...next]",
+    "while(true){const ev=await sb.from('logistics_tracking_events')",
+]:
+    if marker not in transition_ui:
+        raise SystemExit(f"Missing logistics UI lifecycle safeguard: {marker}")
+
+status_guard = next((root / "supabase" / "migrations").glob("*_logistics_status_transition_guard.sql"))
+status_guard_sql = status_guard.read_text(encoding="utf-8").lower()
+for marker in [
+    "logistics_validate_status_transition",
+    "new.status is not distinct from old.status",
+    "old.status = 'booked' and new.status in ('collected','exception')",
+    "old.status = 'out_for_delivery' and new.status in ('delivered','exception')",
+    "old.status = 'exception' and new.status in ('collected','in_transit','at_depot','out_for_delivery','delivered','returned')",
+    "delivered shipments require delivery timestamp and receiver name",
+    "shipments may only be returned from exception status",
+    "for each row execute function public.logistics_validate_status_transition",
+]:
+    if marker not in status_guard_sql:
+        raise SystemExit(f"Missing logistics database lifecycle safeguard: {marker}")
+
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+
+# Fleet client-side GPS validation must reject corrupt or future telemetry.
+app_html = html
+
+# Quotes and invoices: validate workflow transitions and company/site-scoped mutations.
+quote_card_actions = app_html[app_html.index("const cards=D.map"):app_html.index("const pb=")]
+if "DOCS.some(x=>x.kind==='invoice'&&x.converted_from===d.id)" not in quote_card_actions:
+    raise SystemExit("Quote list still offers invoice conversion after conversion")
+conversion_guard_migration = root / "supabase" / "migrations" / "20261120230000_document_quote_conversion_unique.sql"
+if not conversion_guard_migration.exists():
+    raise SystemExit("Missing unique quote-conversion migration")
+conversion_guard_sql = conversion_guard_migration.read_text(encoding="utf-8").lower()
+for marker in ["documents_one_invoice_per_quote_idx", "on public.documents(company_id,converted_from)", "group by company_id,converted_from", "kind='invoice' and converted_from is not null", "having count(*)>1", "reconcile them before applying"]:
+    if marker not in conversion_guard_sql:
+        raise SystemExit(f"Missing duplicate quote-conversion database safeguard: {marker}")
+
+document_workflow = app_html[app_html.index("async function setDoc"):app_html.index("// ---------- accounting export")]
+for marker in [
+    "const d=DOCS.find(x=>x.id===id);if(!d)return;",
+    "const allowed=d.kind==='invoice'?['sent','paid','cancelled']:['sent','accepted','declined','cancelled']",
+    "Only issued invoices can be marked paid.",
+    ".eq('id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    "Only managers can delete company documents.",
+    "Only sent or accepted quotes can be converted.",
+    "This quote already has an invoice.",
+    "Create an invoice from this quote?",
+    "const{error:quoteUpdateError}",
+    "documents_one_invoice_per_quote_idx",
+    "This quote already has an invoice. Refresh the list to open it.",
+    "Invoice '+r.data.number+' was created, but the quote status could not be updated",
+]:
+    if marker not in document_workflow:
+        raise SystemExit(f"Missing Quotes/Invoices workflow safeguard: {marker}")
+for marker in [
+    "const validPos=r=>",
+    "r.lat!=null&&r.lat!==''",
+    "r.lng!=null&&r.lng!==''",
+    "r.speed_kmh!=null&&r.speed_kmh!==''",
+    "t<=nowMs+120000",
+    "Math.abs(+r.lat)<=90",
+    "Math.abs(+r.lng)<=180",
+    "+r.speed_kmh<=300",
+    "age>=0&&age<864e5",
+    "seen<=nowMs+120000",
+]:
+    if marker not in app_html:
+        raise SystemExit(f"Missing Fleet telemetry validation: {marker}")
+
+# Fleet GPS integrity migration regression markers.
+fleet_guard = next((root / "supabase" / "migrations").glob("*_fleet_gps_integrity_guards.sql"))
+fleet_guard_sql = fleet_guard.read_text(encoding="utf-8").lower()
+for marker in [
+    "validate_vehicle_position_integrity",
+    "invalid gps coordinates",
+    "invalid gps speed",
+    "invalid gps heading",
+    "gps timestamp is invalid or too far in the future",
+    "vehicle must belong to the same company",
+    "vehicle_positions_company_recent_idx",
+    "vehicles_company_last_seen_idx",
+]:
+    if marker not in fleet_guard_sql:
+        raise SystemExit(f"Missing Fleet GPS integrity safeguard: {marker}")
+
+
+# Fleet GPS history must paginate instead of silently capping analytics at 5,000 rows.
+fleet_fn = app_html[app_html.index("async function fleetData()"):app_html.index("async function fleetOverview()", app_html.index("async function fleetData()"))]
+for marker in [
+    "const pageSize=1000,positions=[]",
+    "while(true)",
+    ".range(offset,offset+pageSize-1)",
+    "offset+=pageSize",
+    "rows.length<pageSize",
+    ".lte('recorded_at',until)",
+    ".order('vehicle_id',{ascending:true}).order('id',{ascending:true})",
+    "String(a.vehicle_id).localeCompare(String(b.vehicle_id))",
+    "String(a.id).localeCompare(String(b.id))",
+]:
+    if marker not in fleet_fn:
+        raise SystemExit(f"Missing Fleet GPS pagination safeguard: {marker}")
+if ".limit(5000)" in fleet_fn:
+    raise SystemExit("Fleet GPS history still silently caps at 5,000 records")
+
+# Tracker launch URLs must never contain the device bearer key.
+tracker_page = (root / "tracker.html").read_text(encoding="utf-8")
+if "$('key').value=q.get('key')" in tracker_page or "tracker.html?key=" in app_html:
+    raise SystemExit("Tracker device key is being exposed through URL query parameters")
+if "Never accept tracker credentials from URL query strings" not in tracker_page:
+    raise SystemExit("Missing tracker URL credential guard")
+
+# Fleet keys stay masked in the UI while preserving manager copy access.
+if '<b>${s.device_key}</b>' in app_html or 'Device key: <b>••••••••</b>' not in app_html or 'copyTxt(\'dk${s.id}\')' not in app_html:
+    raise SystemExit("Fleet device key must be masked with a working copy-key action")
+
+# Fleet sample commands must use a placeholder, never render real vehicle bearer keys.
+fleet_track_fn = app_html[app_html.index("async function fleetTrack()"):]
+if '"p_key":"${x.device_key}"' in fleet_track_fn or '<TRACKER_KEY>' not in fleet_track_fn:
+    raise SystemExit("Fleet sample curl command must redact the tracker key")
+
+# Smart sensor curl examples must not embed actual device keys.
+if 'p_key":"${s.device_key}' in app_html:
+    raise SystemExit("Smart sensor sample curl command exposes a real device key")
+if '<DEVICE_KEY>' not in app_html:
+    raise SystemExit("Smart sensor sample curl command must use a redacted key placeholder")
+
+# Tracker credentials are discarded when a driver stops sharing location.
+stop_fn = tracker_page[tracker_page.index('function stop()'):tracker_page.index("$('go').onclick")]
+if "$('key').value=''" not in stop_fn or 'Tracker key cleared' not in stop_fn:
+    raise SystemExit('Stopping GPS must clear the tracker credential from the phone page')
+
+# Fleet tracker concurrency and stale-position regression guards.
+ordered_positions = root / "supabase" / "migrations" / "20261120213000_fleet_out_of_order_position_guard.sql"
+if not ordered_positions.exists():
+    raise SystemExit("Missing Fleet out-of-order telemetry migration")
+ordered_sql = ordered_positions.read_text(encoding="utf-8").lower()
+for marker in [
+    "for update",
+    "v.last_seen is null or t > v.last_seen",
+    "only newer telemetry may update",
+    "current_updated",
+    "odometer cannot move backwards",
+    "grant execute on function public.ingest_position",
+]:
+    if marker not in ordered_sql:
+        raise SystemExit(f"Missing Fleet concurrent telemetry safeguard: {marker}")
+
+
+# The unnecessary company/worker invite startup popup must remain removed.
+if "function intro()" in app_html or "\nintro();\n" in app_html:
+    raise SystemExit("Unnecessary startup intro popup has been reintroduced")
+# Logistics waybill creation validation and site-scoped duplicate check.
+create_handler = transition_ui[transition_ui.index("async function sfCreateShipment"):transition_ui.index("const SF_SHIPMENT_TRANSITIONS")]
+for marker in [
+    "waybill.length>100||tracking.length>100",
+    "origin.length>1000||destination.length>1000",
+    "Number.isInteger(packages)||packages<1||packages>500",
+    "This waybill number already exists at this site",
+    ".eq('company_id',me.company_id).eq('site_id',site).eq('waybill_no',waybill)",
+    "if(duplicate.error)",
+]:
+    if marker not in create_handler:
+        raise SystemExit(f"Missing waybill creation validation: {marker}")
+# Waybill printouts must inherit the company logo/details and saved document colour.
+waybill_print = transition_ui[transition_ui.index("async function sfPrintWaybill"):transition_ui.index("// Extend the existing navigation")]
+for marker in [
+    "async function sfPrintWaybill",
+    "ph('Transport waybill')",
+    "CS.doc_color",
+    "border-top:4px solid ",
+]:
+    if marker not in waybill_print:
+        raise SystemExit(f"Missing company branding on waybill: {marker}")
+# Logistics exception/return status and reason must commit atomically through the RPC.
+status_handler = transition_ui[transition_ui.index("async function sfUpdateShipmentStatus"):transition_ui.index("async function sfAddShipmentScan")]
+for marker in [
+    "status==='exception'||status==='returned'",
+    "Describe the delivery exception and next action",
+    "Describe the return reason and next action",
+    "A reason is required to record this status",
+    "eventNotes.length>2000",
+    "sb.rpc('logistics_update_status_with_reason'",
+    "Status history and exception/return reason are committed atomically by the RPC",
+]:
+    if marker not in status_handler:
+        raise SystemExit(f"Missing Logistics atomic status/reason workflow: {marker}")
+if ".from('logistics_shipments').update({status,delivered_at:null})" in status_handler or ".from('logistics_tracking_events').insert({" in status_handler:
+    raise SystemExit("Logistics status and reason are still written in separate client requests")
+atomic_status_migration = next((root / "supabase" / "migrations").glob("*_logistics_atomic_status_reason.sql"))
+atomic_sql = atomic_status_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "logistics_update_status_with_reason",
+    "if p_status is null or p_status not in",
+    "'collected','in_transit','at_depot','out_for_delivery','exception','returned'",
+    "security invoker",
+    "for update",
+    "auth_company()",
+    "auth_site_ok(site_id)",
+    "status=p_status",
+    "exception_note",
+    "return_note",
+    "a reason is required",
+    "grant execute on function public.logistics_update_status_with_reason(uuid,text,text) to authenticated",
+]:
+    if marker not in atomic_sql:
+        raise SystemExit(f"Missing Logistics atomic RPC database safeguard: {marker}")
+
+# Logistics tracking scans must stop once a consignment reaches a terminal state.
+scan_handler = transition_ui[transition_ui.index("async function sfAddShipmentScan"):transition_ui.index("function sfCapturePOD")]
+if "['delivered','returned'].includes(shipment.status)" not in scan_handler:
+    raise SystemExit("Logistics UI still allows scans after delivery or return")
+terminal_scan_migration = next((root / "supabase" / "migrations").glob("*_logistics_terminal_scan_guard.sql"))
+terminal_scan_sql = terminal_scan_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "logistics_validate_scan_terminal_status",
+    "new.event_type <> 'scan'",
+    "select status into v_status",
+    "for update;",
+    "delivered','returned",
+    "tracking scans are closed for delivered or returned consignments",
+    "before insert on public.logistics_tracking_events",
+]:
+    if marker not in terminal_scan_sql:
+        raise SystemExit(f"Missing terminal Logistics scan database safeguard: {marker}")
+
+# A fresh visit to the login URL must present login first, even if a stale/incomplete session exists.
+login_page = (root / "maintdesk_login.html").read_text(encoding="utf-8")
+for marker in [
+    "async function route(initialLoad=false)",
+    "if(initialLoad)return auth();",
+    "return setup();",
+    "route(true);",
+]:
+    if marker not in login_page:
+        raise SystemExit(f"Missing fresh-login routing safeguard: {marker}")

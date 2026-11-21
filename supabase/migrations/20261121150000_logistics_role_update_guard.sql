@@ -58,7 +58,8 @@ begin
         or new.pod_reference is distinct from old.pod_reference
         or new.pod_notes is distinct from old.pod_notes)
       and not (
-        new.status='delivered'
+        old.status is distinct from 'delivered'
+        and new.status='delivered'
         and exists (
           select 1 from public.logistics_pod_signoffs p
           where p.shipment_id=new.id
@@ -66,6 +67,10 @@ begin
             and p.site_id=new.site_id
             and p.receiver_consent=true
             and length(btrim(p.receiver_name))>=2
+            and p.signed_at=new.delivered_at
+            and btrim(p.receiver_name)=btrim(new.pod_recipient_name)
+            and p.reference is not distinct from nullif(btrim(new.pod_reference),'')
+            and p.notes is not distinct from nullif(btrim(new.pod_notes),'')
         )
       )
     )

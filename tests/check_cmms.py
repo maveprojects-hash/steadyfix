@@ -529,3 +529,6 @@ for marker in [
 # Assistant memory read failures must not masquerade as an empty saved-memory list.
 if "async function aiMem(){const r=await sb.from('assistant_memory').select('id,note').order('created_at',{ascending:false});if(r.error){AI.mem=null;aiRender();alert('Could not load assistant memory: '+r.error.message);return}AI.mem=r.data||[];aiRender()}" not in html:
     raise SystemExit("Assistant memory read error handling regression")
+# Support history list is explicitly limited to the current user's tickets.
+if "from('support_tickets').select('*').eq('user_id',me.id).order('created_at',{ascending:false)" not in html:
+    raise SystemExit("Support tickets query missing current-user filter")

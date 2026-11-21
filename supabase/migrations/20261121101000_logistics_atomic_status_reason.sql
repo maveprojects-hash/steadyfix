@@ -19,7 +19,7 @@ begin
   if auth.uid() is null then
     raise exception 'Authentication required';
   end if;
-  if p_status not in ('collected','in_transit','at_depot','out_for_delivery','exception','returned') then
+  if p_status is null or p_status not in ('collected,'in_transit','at_depot','out_for_delivery','exception','returned') then
     raise exception 'Unsupported shipment status';
   end if;
   if p_status in ('exception','returned') then

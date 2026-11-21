@@ -447,6 +447,14 @@ for guard in [".eq('company_id',me.company_id)", ".eq('site_id',site)"]:
     if guard not in contract_delete:
         raise SystemExit(f"Service-contract delete missing tenant/site guard: {guard}")
 
+# Checklist template and run reads must be tenant/site scoped, not just template IDs.
+for marker in [
+    "select('*').eq('company_id',me.company_id).eq('site_id',site).order('created_at'",
+    "select('results').eq('company_id',me.company_id).eq('site_id',site).eq('template_id',t.id).eq('run_date',key)",
+    "select('results').eq('company_id',me.company_id).eq('site_id',site).eq('template_id',tid).eq('run_date',key)"]:
+    if marker not in html:
+        raise SystemExit(f"Checklist run tenant/site guard missing: {marker}")
+
 print("CMMS syntax, notifications, industry profiles, quick access, Automation operations, logistics and tenant safeguards: PASS")
 
 # Service-contract actions must independently enforce manager permissions, not rely only on view rendering.

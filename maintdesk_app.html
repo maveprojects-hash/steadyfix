@@ -429,9 +429,11 @@ async function savePrimaryIndustry(slug){
 async function saveIndustryProfile(){
  if(!isMgr())return;
  const primary=$('industryPrimary').value;
- const secondary=[...$('industrySecondary').selectedOptions].map(o=>o.value).filter(x=>x!==primary);
+ const secondary=[...new Set([...$('industrySecondary').selectedOptions].map(o=>o.value).filter(x=>x!==primary))];
  const description=$('industryDescription').value.trim();
  if(!INDUSTRIES.some(x=>x.slug===primary)){alert('Choose a valid primary industry.');return}
+ if(secondary.length>8){alert('Choose no more than 8 secondary industries. Remove some selections before saving.');return}
+ if(secondary.some(x=>!INDUSTRIES.some(ind=>ind.slug===x))){alert('One or more secondary industries are invalid. Please refresh and choose from the list.');return}
  const{error}=await sb.from('company_industry_profiles').update({primary_industry_slug:primary,secondary_industry_slugs:secondary,business_description:description}).eq('company_id',me.company_id);
  if(error){alert('Could not save the company profile: '+error.message);return}
  await loadIndustryProfile();renderIndustrySelector();await draw();

@@ -32,7 +32,7 @@ begin
   if new.service_level not in ('standard','express','overnight','same_day') then
     raise exception 'Invalid shipment service level';
   end if;
-  if new.status='delivered' and (new.delivered_at is null or nullif(btrim(new.pod_recipient_name),'") is null) then
+    if new.status='delivered' and (new.delivered_at is null or nullif(btrim(new.pod_recipient_name),'') is null) then
     raise exception 'Proof of delivery must include the receiver name before marking delivered';
   end if;
   new.updated_at:=now();

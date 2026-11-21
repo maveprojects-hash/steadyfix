@@ -468,8 +468,9 @@ if "vat_rate:CS&&CS.tax_rate!=null?CS.tax_rate:15" not in contract_save:
 
 
 # Staff roster edits and deletes enforce manager permission and tenant/site ownership.
-ren_staff = workspace_code[workspace_code.index("async function renStaff"):workspace_code.index("async function delStaff")]
-del_staff = workspace_code[workspace_code.index("async function delStaff"):workspace_code.index("async function copyPrev")]
+staff_code = "\\n".join(scripts)
+ren_staff = staff_code[staff_code.index("async function renStaff"):staff_code.index("async function delStaff")]
+del_staff = staff_code[staff_code.index("async function delStaff"):staff_code.index("async function copyPrev")]
 for block, action in [(ren_staff, "update"), (del_staff, "delete")]:
     for guard in ["if(!isMgr())", ".eq('company_id',me.company_id)", "if(site)q=q.eq('site_id',site)"]:
         if guard not in block:

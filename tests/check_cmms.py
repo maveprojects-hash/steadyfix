@@ -416,3 +416,15 @@ for marker in [
 ]:
     if marker not in fleet_assignment_sql:
         raise SystemExit(f"Missing fleet assignment safeguard: {marker}")
+
+# Fleet assignment controls are exposed in the Fleet workspace and use the protected RPCs.
+for marker in [
+    "['assign','Assignments']",
+    "async function fleetAssignments()",
+    "async function fleetAssignVehicle()",
+    "async function fleetReleaseAssignment(id)",
+    "sb.rpc('assign_fleet_vehicle'",
+    "sb.rpc('release_fleet_vehicle_assignment'",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing Fleet assignment UI workflow: {marker}")

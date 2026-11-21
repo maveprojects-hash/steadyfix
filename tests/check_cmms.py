@@ -394,3 +394,25 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+# Fleet assignment lifecycle regression safeguards.
+fleet_assignment_migration = root / "supabase" / "migrations" / "20261121090000_fleet_vehicle_assignments.sql"
+if not fleet_assignment_migration.exists():
+    raise SystemExit("Missing fleet vehicle assignment migration")
+fleet_assignment_sql = fleet_assignment_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "create table if not exists public.fleet_vehicle_assignments", "enable row level security",
+    "fleet_vehicle_assignments_read", "auth_company()", "auth_site_ok(site_id)",
+    "fleet_vehicle_assignment_one_active_vehicle_uidx", "where status='active'",
+    "create or replace function public.assign_fleet_vehicle", "for update",
+    "only company owners or managers may assign vehicles", "vehicle is not available for assignment",
+    "driver is not authorized for this site", "create or replace function public.release_fleet_vehicle_assignment",
+    "assignment is already closed", "status='released'", "status='in_use'", "status='available'",
+    "revoke all on public.fleet_vehicle_assignments from anon,authenticated",
+    "grant execute on function public.assign_fleet_vehicle(uuid,uuid,text) to authenticated",
+    "grant execute on function public.release_fleet_vehicle_assignment(uuid,text) to authenticated",
+    "assignment vehicle must belong to the same company and site",
+    "assigned driver must be an active member of this company",
+]:
+    if marker not in fleet_assignment_sql:
+        raise SystemExit(f"Missing fleet assignment safeguard: {marker}")

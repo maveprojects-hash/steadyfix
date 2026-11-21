@@ -475,3 +475,10 @@ for block, action in [(ren_staff, "update"), (del_staff, "delete")]:
     for guard in ["if(!isMgr())", ".eq('company_id',me.company_id)", "if(site)q=q.eq('site_id',site)"]:
         if guard not in block:
             raise SystemExit(f"Staff {action} missing tenant/site or permission guard: {guard}")
+
+# Checklist template reads, writes and deletes enforce company/site and manager scope.
+checklist_code = "\\n".join(scripts)
+list_scope = checklist_code[checklist_code.index("const listScope=q=>"):checklist_code.index("function meta(tid")]
+for marker in ["eq('company_id',me.company_id)", "eq('site_id',site)", "if(!isMgr())", "maybeSingle()"]:
+    if marker not in list_scope:
+        raise SystemExit(f"Checklist tenant/site/permission guard missing: {marker}")

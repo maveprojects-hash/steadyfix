@@ -18,7 +18,24 @@ async function chooseIndustryWorkspace(slug){
   cur='industry_workspace';draw();
 }
 
-\n// Header industry quick access: load the live catalog and switch without opening the full hub.\nasync function toggleIndustryQuickAccess(){\n const btn=document.getElementById('industryQuickAccessBtn'),menu=document.getElementById('industryQuickAccessMenu');if(!btn||!menu)return;\n if(!menu.hidden){menu.hidden=true;btn.setAttribute('aria-expanded','false');return}\n menu.innerHTML='<div class="sf-industry-quick-error">Loading industries…</div>';menu.hidden=false;btn.setAttribute('aria-expanded','true');\n try{if(!INDUSTRIES||!INDUSTRIES.length)await loadIndustryProfile();const active=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug;\n menu.innerHTML=(INDUSTRIES||[]).filter(x=>x.slug).map(x=>'<button class="sf-industry-quick-option" type="button" role="option" aria-selected="'+(x.slug===active)+'" onclick="sfIndustryQuickPick(\\''+esc(x.slug)+'\\')"><span>'+esc(x.name)+'</span>'+(x.slug===active?'<small>Current</small>':'')+'</button>').join('')||'<div class="sf-industry-quick-error">No industries are available.</div>';\n }catch(err){menu.innerHTML='<div class="sf-industry-quick-error">Industries could not be loaded. Please try again.</div>';console.error('Industry quick access load failed',err)}\n}\nasync function sfIndustryQuickPick(slug){const menu=document.getElementById('industryQuickAccessMenu'),btn=document.getElementById('industryQuickAccessBtn');if(menu)menu.hidden=true;if(btn)btn.setAttribute('aria-expanded','false');await chooseIndustryWorkspace(slug)}\nasync function sfIndustryHub(){
+\n// Header industry quick access: load the live catalog and switch without opening the full hub.\nasync function toggleIndustryQuickAccess(){
+ const btn=document.getElementById('industryQuickAccessBtn'),menu=document.getElementById('industryQuickAccessMenu');if(!btn||!menu)return;
+ if(!menu.hidden){menu.hidden=true;btn.setAttribute('aria-expanded','false');return}
+ menu.textContent='Loading industries…';menu.hidden=false;btn.setAttribute('aria-expanded','true');
+ try{
+  if(!INDUSTRIES||!INDUSTRIES.length)await loadIndustryProfile();
+  const active=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug;
+  menu.replaceChildren();
+  (INDUSTRIES||[]).filter(x=>x.slug).forEach(x=>{
+   const option=document.createElement('button');option.type='button';option.className='sf-industry-quick-option';option.setAttribute('role','option');option.setAttribute('aria-selected',String(x.slug===active));option.textContent=x.name;
+   if(x.slug===active){const current=document.createElement('small');current.textContent='Current';option.appendChild(current)}
+   option.addEventListener('click',()=>sfIndustryQuickPick(x.slug));menu.appendChild(option);
+  });
+  if(!menu.childElementCount)menu.textContent='No industries are available.';
+ }catch(err){menu.textContent='Industries could not be loaded. Please try again.';console.error('Industry quick access load failed',err)}
+}
+async function sfIndustryQuickPick(slug){const menu=document.getElementById('industryQuickAccessMenu'),btn=document.getElementById('industryQuickAccessBtn');if(menu)menu.hidden=true;if(btn)btn.setAttribute('aria-expanded','false');await chooseIndustryWorkspace(slug)}
+async function sfIndustryHub(){
   if(!INDUSTRIES||!INDUSTRIES.length)await loadIndustryProfile();
   const current=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug;
   let html='<h2>Choose your industry workspace</h2><div class="p"><b>One STEADYFIX CMMS. Different industry setups.</b><div class="note">Choose the type of business you operate. STEADYFIX keeps one secure base application and organises its departments, terminology and day-to-day tools around that industry. Owners and managers can change the company primary workspace.</div></div><div class="dg">';

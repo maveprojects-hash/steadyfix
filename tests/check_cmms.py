@@ -524,3 +524,13 @@ for marker in [
 ]:
     if marker not in identity_guard_sql:
         raise SystemExit(f"Missing shipment identity safeguard: {marker}")
+
+
+# Logistics tracking-history pagination regression: history must not be capped at 500 rows.
+industry_text = (root / "industry_workspaces.js").read_text(encoding="utf-8")
+logistics_workspace = industry_text[industry_text.index("async function sfLogisticsWorkspace()"):industry_text.index("const SF_SHIPMENT_CREATE_LOCK")]
+for marker in ["eventPageSize=500", ".range(eventOffset,eventOffset+eventPageSize-1)", "while(true)"]:
+    if marker not in logistics_workspace:
+        raise SystemExit(f"Logistics tracking pagination missing: {marker}")
+if ".limit(500)" in logistics_workspace:
+    raise SystemExit("Logistics tracking history still uses a fixed 500-row limit")

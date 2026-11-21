@@ -200,6 +200,20 @@ for marker in [
     if marker not in assistant_code:
         raise SystemExit(f"Missing server-side company industry context safeguard: {marker}")
 
+# AI-approved record edits must be tenant/site-scoped, not ID-only updates.
+# Inline item-list edits must be scoped to the active company and site.
+for marker in [
+    "update(u).eq('id',c.rid).eq('company_id',me.company_id)",
+    "if(site)q=q.eq('site_id',site)"]:
+    if marker not in html:
+        raise SystemExit(f"Missing inline item tenant/site guard: {marker}")
+
+for marker in [
+    "update(ch).eq('id',p.rowId).eq('company_id',me.company_id)",
+    "if(sc.site)q=q.eq('site_id',site)"]:
+    if marker not in html:
+        raise SystemExit(f"Missing AI record update tenant/site guard: {marker}")
+
 industry_priority_migration = next((root / "supabase" / "migrations").glob("*_industry_dashboard_priorities.sql"))
 priority_sql = industry_priority_migration.read_text(encoding="utf-8").lower()
 if "dashboard_priority_tabs" not in priority_sql or "property-management-facilities" not in priority_sql:
@@ -214,7 +228,8 @@ if not industry_workspaces.exists():
     raise SystemExit("Missing industry workspace client module")
 subprocess.run(["node", "--check", str(industry_workspaces)], check=True)
 for marker in [
-    'onclick="openIndustryHub()"',
+    'id="industryQuickAccessBtn"',
+    'id="industryQuickAccessMenu"',
     'industry_workspaces.js',
     'hidden aria-hidden="true"',
 ]:
@@ -393,4 +408,127 @@ for marker in [
     if marker not in workspace_code:
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
-print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+# Industry workspace customization must include the workshop job-card shortcut.
+if "'workshop_jobs'" not in workspace_code[workspace_code.index('const SF_CONFIGURABLE_MODULES'):workspace_code.index('function sfIndustryModuleOverrides')]:
+    raise SystemExit('Workshop job cards are not available for workspace customization')
+
+# Industry workspace shortcuts must declare configurable modules.
+# AI workspace customization fallback must include workshop job cards even if module registry is unavailable.
+if "'workshop_jobs'" not in html[html.index("const allowed=SF_CONFIGURABLE_MODULES"):html.index("const changes=p.changes")]:
+    raise SystemExit('AI industry customization fallback omits workshop job cards')
+
+if "SF_CONFIGURABLE_MODULES" not in workspace_code:
+    raise SystemExit('Missing configurable industry workspace modules')
+
+# Industry profile save must enforce the same 8-secondary-industry cap as switching.
+if "secondary.length>8" not in html or "no more than 8 secondary industries" not in html:
+    raise SystemExit('Industry profile save does not enforce the 8-secondary-industry cap')
+
+# Industry switching must reject, not persist, a secondary-industry overflow.
+if "if(secondary.length>8)" not in workspace_code or "would exceed the maximum of 8 secondary industries" not in workspace_code:
+    raise SystemExit('Industry workspace switching lacks secondary-industry overflow guard')
+
+
+# Industry quick-access dropdown must have real rendering, interaction, and dismissal behavior.
+for marker in ['toggleIndustryQuickAccess','sfIndustryQuickPick','sfCloseIndustryQuickAccess','sfBindIndustryQuickAccessDismiss','data-industry-slug','aria-selected','role="listbox"','event.key===\'Escape\'','btn.focus()','btn.contains(event.target)','menu.contains(event.target)','event.key===\'ArrowDown\'','event.key===\'ArrowUp\'','event.key===\'Home\'','event.key===\'End\'','options[targetIndex]?.focus()']:
+    if marker not in html and marker not in workspace_code:
+        raise SystemExit(f"Missing industry quick-access behavior: {marker}")
+if "['🔧','Workshop & job cards','Workshop bookings, vehicle job cards and repair progress','workshop_jobs']" not in workspace_code:
+    raise SystemExit("Workshop job-card quick access does not route to workshop_jobs")
+
+# Service-contract update/delete queries must be explicitly company- and site-scoped,
+# in addition to relying on database RLS policies.
+contract_save = workspace_code[workspace_code.index("async function sfSaveServiceContract"):workspace_code.index("function sfEditServiceContract")]
+contract_delete = workspace_code[workspace_code.index("async function sfDeleteServiceContract"):workspace_code.index("function sfPrintServiceContract")]
+for guard in [".eq('company_id',me.company_id)", ".eq('site_id',site)"]:
+    if guard not in contract_save:
+        raise SystemExit(f"Service-contract update missing tenant/site guard: {guard}")
+    if guard not in contract_delete:
+        raise SystemExit(f"Service-contract delete missing tenant/site guard: {guard}")
+
+# Checklist template and run reads must be tenant/site scoped, not just template IDs.
+for marker in [
+    "select('*').eq('company_id',me.company_id).eq('site_id',site).order('created_at'",
+    "select('results').eq('company_id',me.company_id).eq('site_id',site).eq('template_id',t.id).eq('run_date',key)",
+    "select('results').eq('company_id',me.company_id).eq('site_id',site).eq('template_id',tid).eq('run_date',key)"]:
+    if marker not in html:
+        raise SystemExit(f"Checklist run tenant/site guard missing: {marker}")
+
+# Sensor update/delete must be tenant-scoped to the active company.
+for marker in [
+    "update({[f]:val(t,v)}).eq('id',id).eq('company_id',me.company_id)",
+    "delete().eq('id',id).eq('company_id',me.company_id)"]:
+    if marker not in html:
+        raise SystemExit(f"Sensor tenant guard missing: {marker}")
+
+print("CMMS syntax, notifications, industry profiles, quick access, Automation operations, logistics and tenant safeguards: PASS")
+
+# Service-contract actions must independently enforce manager permissions, not rely only on view rendering.
+contract_edit = workspace_code[workspace_code.index("function sfEditServiceContract"):workspace_code.index("function sfResetServiceContract")]
+for function_code, guard_name in [(contract_save, "save"), (contract_edit, "edit"), (contract_delete, "delete")]:
+    if "if(!isMgr())" not in function_code:
+        raise SystemExit(f"Service-contract {guard_name} action lacks its own manager permission guard")
+
+
+# Service contract numeric input validation is enforced (including precision constraints).
+contract_save = workspace_code[workspace_code.index("async function sfSaveServiceContract"):workspace_code.index("function sfEditServiceContract")]
+for validation in ["Number.isFinite(fee)", "fee<0", "responseHours*2!==Math.round(responseHours*2)", "!Number.isInteger(includedPages)", "Math.abs(overageRate*10000-Math.round(overageRate*10000))>1e-8"]:
+    if validation not in contract_save:
+        raise SystemExit(f"Service-contract numeric validation missing: {validation}")
+
+# Service contracts must preserve an explicit zero company VAT rate (tax-exempt configuration).
+if "vat_rate:CS&&CS.tax_rate!=null?CS.tax_rate:15" not in contract_save:
+    raise SystemExit("Service-contract save incorrectly replaces zero VAT with the default rate")
+
+
+# Staff roster edits and deletes enforce manager permission and tenant/site ownership.
+# Roster shift deletion must scope the delete to the active company and site.
+roster_code = "\\n".join(scripts)
+roster_cycle = roster_code[roster_code.index("async function rcyc"):roster_code.index("async function addStaff")]
+if "delete().eq('company_id',me.company_id).eq('site_id',site).eq('staff_id',sid).eq('shift_date',ds)" not in roster_cycle:
+    raise SystemExit("Roster shift delete missing company/site isolation guards")
+staff_code = "\\n".join(scripts)
+ren_staff = staff_code[staff_code.index("async function renStaff"):staff_code.index("async function delStaff")]
+del_staff = staff_code[staff_code.index("async function delStaff"):staff_code.index("async function copyPrev")]
+for block, action in [(ren_staff, "update"), (del_staff, "delete")]:
+    for guard in ["if(!isMgr())", ".eq('company_id',me.company_id)", "if(site)q=q.eq('site_id',site)"]:
+        if guard not in block:
+            raise SystemExit(f"Staff {action} missing tenant/site or permission guard: {guard}")
+
+# Checklist template reads, writes and deletes enforce company/site and manager scope.
+checklist_code = "\\n".join(scripts)
+list_scope = checklist_code[checklist_code.index("const listScope=q=>"):checklist_code.index("function meta(tid")]
+for marker in ["eq('company_id',me.company_id)", "eq('site_id',site)", "if(!isMgr())", "maybeSingle()"]:
+    if marker not in list_scope:
+        raise SystemExit(f"Checklist tenant/site/permission guard missing: {marker}")
+
+# Document listing, numbering, updates, quote conversion, and deletes are tenant/site scoped.
+for marker in [
+    "select('number').eq('company_id',me.company_id).eq('site_id',site).eq('kind',kind)",
+    "select('*').eq('company_id',me.company_id).eq('site_id',site).eq('kind',kind)",
+    "update(row).eq('id',e.id).eq('company_id',me.company_id).eq('site_id',site)",
+    "update({status:'accepted'}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    "update(u).eq('id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    "delete().eq('id',id).eq('company_id',me.company_id).eq('site_id',site)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Document tenant/site guard missing: {marker}")
+# Assistant memory delete: report DB failures and keep local memory until delete succeeds.
+if "async function aiForget(id){const{error}=await sb.from('assistant_memory').delete().eq('id',id);if(error){alert('Could not forget this memory: '+error.message);return}AI.mem=AI.mem.filter(m=>m.id!=id);aiRender()}" not in html:
+    raise SystemExit("Assistant memory deletion error handling regression")
+# Accounting exports and reports must filter by active company and site.
+for marker in [
+    "select('*').eq('company_id',me.company_id).eq('site_id',site).eq('kind',kind).gte('issue_date',AX.from)",
+    "select('*').eq('company_id',me.company_id).order('name')",
+    "select('*').eq('company_id',me.company_id).eq('site_id',site).gte('spent_on',AX.from)",
+    "select('*').eq('company_id',me.company_id).eq('site_id',site).eq('kind','invoice').gte('issue_date',AX.from)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Accounting export/report scope missing: {marker}")
+# Assistant memory read failures must not masquerade as an empty saved-memory list.
+if "async function aiMem(){const r=await sb.from('assistant_memory').select('id,note').order('created_at',{ascending:false});if(r.error){AI.mem=null;aiRender();alert('Could not load assistant memory: '+r.error.message);return}AI.mem=r.data||[];aiRender()}" not in html:
+    raise SystemExit("Assistant memory read error handling regression")
+# Support history list is explicitly limited to the current user's tickets.
+if "from('support_tickets').select('*').eq('user_id',me.id).order('created_at',{ascending:false})" not in html:
+    raise SystemExit("Support tickets query missing current-user filter")

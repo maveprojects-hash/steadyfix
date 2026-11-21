@@ -206,7 +206,7 @@ for marker in [
     "update(u).eq('id',c.rid).eq('company_id',me.company_id)",
     "if(site)q=q.eq('site_id',site)"]:
     if marker not in html:
-        raise SystemExit(f"Missing inline item tenant/site guard: {marker")
+        raise SystemExit(f"Missing inline item tenant/site guard: {marker}")
 
 for marker in [
     "update(ch).eq('id',p.rowId).eq('company_id',me.company_id)",

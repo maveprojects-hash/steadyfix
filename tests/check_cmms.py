@@ -413,7 +413,7 @@ if "if(secondary.length>8)" not in workspace_code or "would exceed the maximum o
 
 
 # Industry quick-access dropdown must have real rendering, interaction, and dismissal behavior.
-for marker in ['toggleIndustryQuickAccess','sfIndustryQuickPick','sfCloseIndustryQuickAccess','sfBindIndustryQuickAccessDismiss','data-industry-slug','aria-selected','role="listbox"','event.key===\'Escape\'','btn.focus()','btn.contains(event.target)','menu.contains(event.target)']:
+for marker in ['toggleIndustryQuickAccess','sfIndustryQuickPick','sfCloseIndustryQuickAccess','sfBindIndustryQuickAccessDismiss','data-industry-slug','aria-selected','role="listbox"','event.key===\'Escape\'','btn.focus()','btn.contains(event.target)','menu.contains(event.target)','event.key===\'ArrowDown\'','event.key===\'ArrowUp\'','event.key===\'Home\'','event.key===\'End\'','options[targetIndex]?.focus()']:
     if marker not in html and marker not in workspace_code:
         raise SystemExit(f"Missing industry quick-access behavior: {marker}")
 if "['🔧','Workshop & job cards','Workshop bookings, vehicle job cards and repair progress','workshop_jobs']" not in workspace_code:

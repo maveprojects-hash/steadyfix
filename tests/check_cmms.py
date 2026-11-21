@@ -455,6 +455,13 @@ for marker in [
     if marker not in html:
         raise SystemExit(f"Checklist run tenant/site guard missing: {marker}")
 
+# Sensor update/delete must be tenant-scoped to the active company.
+for marker in [
+    "update({[f]:val(t,v)}).eq('id',id).eq('company_id',me.company_id)",
+    "delete().eq('id',id).eq('company_id',me.company_id)"]:
+    if marker not in html:
+        raise SystemExit(f"Sensor tenant guard missing: {marker}")
+
 print("CMMS syntax, notifications, industry profiles, quick access, Automation operations, logistics and tenant safeguards: PASS")
 
 # Service-contract actions must independently enforce manager permissions, not rely only on view rendering.

@@ -691,6 +691,7 @@ atomic_status_migration = next((root / "supabase" / "migrations").glob("*_logist
 atomic_sql = atomic_status_migration.read_text(encoding="utf-8").lower()
 for marker in [
     "logistics_update_status_with_reason",
+    "if p_status is null or p_status not in",
     "security invoker",
     "for update",
     "auth_company()",

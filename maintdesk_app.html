@@ -806,8 +806,8 @@ async function mon(){
  return`${ph('Monitoring status')}<h2>Monitoring</h2><div class="tabs noprint">${[['day','Last 24 hours'],['week','Last 7 days'],['month','Last 30 days']].map(([k,l])=>`<button class="${k==MPD?'on':''}" onclick="MPD='${k}';draw()">${l}</button>`).join('')}</div>${bar()}<div class="g"><div class="k"><b>${on}</b><span>Online</span></div><div class="k"><b class="${off?'bad':''}">${off}</b><span>Offline</span></div><div class="k"><b class="${al?'bad':''}">${al}</b><span>Alerts</span></div><div class="k"><b>${ss.length}${co.max_devices!=null?' / '+co.max_devices:''}</b><span>Devices${co.max_devices==null?' (unlimited)':' used'}</span></div></div>${gw}${add}${cards}${help}${foot('','','')}`}
 async function addS(){const n=$('sn').value.trim();if(!n)return alert('Type a name first.');const k=$('sk').value,r={company_id:me.company_id,site_id:site,name:n,kind:k,unit:$('su').value||null,alert_min:$('smin').value===''?null:+$('smin').value,alert_max:$('smax').value===''?null:+$('smax').value};
  const{error}=await sb.from('sensors').insert(r);error?alert(error.message):draw()}
-async function updS(id,f,v,t){const{error}=await sb.from('sensors').update({[f]:val(t,v)}).eq('id',id);if(error)alert(error.message)}
-async function delS(id){if(!confirm('Delete this device and its readings?'))return;const{error}=await sb.from('sensors').delete().eq('id',id);error?alert(error.message):draw()}
+async function updS(id,f,v,t){const{error}=await sb.from('sensors').update({[f]:val(t,v)}).eq('id',id).eq('company_id',me.company_id);if(error)alert(error.message)}
+async function delS(id){if(!confirm('Delete this device and its readings?'))return;const{error}=await sb.from('sensors').delete().eq('id',id).eq('company_id',me.company_id);error?alert(error.message):draw()}
 
 const PER={};let MPD='day',RP='weekly',RD='',RS={},RC={staff:[],days:[]};
 const bin=(a,n)=>{if(a.length<=n)return a;const k=a.length/n,o=[];for(let i=0;i<n;i++){const x=a.slice(Math.floor(i*k),Math.floor((i+1)*k));o.push(x.reduce((u,v)=>u+v,0)/x.length)}return o};

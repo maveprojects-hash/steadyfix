@@ -405,6 +405,13 @@ for marker in [
     if marker not in workspace_code:
         raise SystemExit(f"Missing shipment scan safeguard: {marker}")
 
+
+# Tracking history should not silently truncate to only eight events per shipment.
+if "const history=events.filter(e=>e.shipment_id===x.id).slice(0,8);" in workspace_code:
+    raise SystemExit("Shipment tracking history is truncated to eight events")
+if "const history=events.filter(e=>e.shipment_id===x.id);" not in workspace_code:
+    raise SystemExit("Shipment tracking history must display all loaded events")
+
 # Shipment tracking status-transition guard coverage.
 for marker in [
     "const SF_SHIPMENT_TRANSITIONS={booked:['collected','exception']",

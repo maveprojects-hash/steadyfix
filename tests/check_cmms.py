@@ -403,6 +403,10 @@ if "'workshop_jobs'" not in workspace_code[workspace_code.index('const SF_CONFIG
 if "secondary.length>8" not in html or "no more than 8 secondary industries" not in html:
     raise SystemExit('Industry profile save does not enforce the 8-secondary-industry cap')
 
+# Industry switching must reject, not persist, a secondary-industry overflow.
+if "if(secondary.length>8)" not in workspace_code or "would exceed the maximum of 8 secondary industries" not in workspace_code:
+    raise SystemExit('Industry workspace switching lacks secondary-industry overflow guard')
+
 
 # Industry quick-access dropdown must render catalog choices and route workshop job cards correctly.
 if "already has 8 secondary industries" not in workspace_code or "if(secondary.length>=8)" not in workspace_code:

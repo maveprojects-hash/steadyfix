@@ -506,3 +506,21 @@ for marker in [
         raise SystemExit(f"Missing logistics tracking scan insert restriction: {marker}")
 if "event_type = 'status_change'" in scan_guard_sql or "event_type = 'pod'" in scan_guard_sql:
     raise SystemExit("User tracking event policy must not allow status-change or POD inserts")
+
+
+# Shipment identity guard: immutable booking/company/site attribution and waybill.
+identity_guard_migration = next((root / "supabase" / "migrations").glob("*_logistics_shipment_identity_guard.sql"))
+identity_guard_sql = identity_guard_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "create or replace function public.guard_logistics_shipment_identity",
+    "new.id is distinct from old.id",
+    "new.company_id is distinct from old.company_id",
+    "new.site_id is distinct from old.site_id",
+    "new.waybill_no is distinct from old.waybill_no",
+    "new.created_by is distinct from old.created_by",
+    "new.created_at is distinct from old.created_at",
+    "shipment identity and waybill cannot be changed after booking",
+    "before update on public.logistics_shipments",
+]:
+    if marker not in identity_guard_sql:
+        raise SystemExit(f"Missing shipment identity safeguard: {marker}")

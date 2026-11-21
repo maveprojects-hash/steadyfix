@@ -405,6 +405,7 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD safeguard: {marker}")
 for marker in [
     "sfLogisticsPODPage",
+    'async function sfLogisticsPODPage',
     "sfInitPODSignaturePad",
     "sfSaveLogisticsPOD",
     "record_logistics_pod_signoff",

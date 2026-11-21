@@ -262,11 +262,11 @@ async function sfLogisticsWorkspace(){
   const count=s=>SF_LOGISTICS_SHIPMENTS.filter(x=>x.status===s).length;
   const cards=SF_LOGISTICS_SHIPMENTS.map(x=>{
     const history=events.filter(e=>e.shipment_id===x.id);
-    const opts=SF_SHIPMENT_STATUSES.map(s=>'<option value="'+s+'" '+(s===x.status?'selected':'')+'>'+esc(cap(s))+'</option>').join('');
+    const allowed=[x.status,...(SF_SHIPMENT_TRANSITIONS[x.status]||[])];const opts=allowed.map(s=>'<option value="'+s+'" '+ (s===x.status?'selected':'')+'>'+esc(cap(s))+'</option>').join('');
     return '<div class="card"><div class="ct"><div>'+esc(x.waybill_no)+' · '+esc(x.recipient_name)+'</div><div class="chips">'+chip(x.status,cap(x.status))+'</div></div>'+
       '<div class="kv"><span>Tracking number</span><b>'+esc(x.tracking_no||x.waybill_no)+'</b><span>From</span><b>'+esc(x.origin_address)+'</b><span>To</span><b>'+esc(x.destination_address)+'</b><span>Parcel</span><b>'+esc(x.package_count)+' package(s) · '+esc(x.parcel_description||'-')+'</b><span>Expected delivery</span><b>'+esc(x.expected_delivery||'-')+'</b></div>'+
       (x.status==='delivered'?'<div class="p"><b>Proof of delivery</b><div class="kv"><span>Received by</span><b>'+esc(x.pod_recipient_name||'-')+'</b><span>Delivered at</span><b>'+esc(x.delivered_at?new Date(x.delivered_at).toLocaleString('en-ZA'):'-')+'</b><span>Reference</span><b>'+esc(x.pod_reference||'-')+'</b><span>Notes</span><b>'+esc(x.pod_notes||'-')+'</b></div></div>':'')+
-      '<div class="ca noprint"><button onclick="sfPrintWaybill(\''+x.id+'\')">Print waybill</button><button onclick="sfAddShipmentScan(\''+x.id+'\')">Add tracking scan</button><button onclick="sfCapturePOD(\''+x.id+'\')">Proof of delivery</button>'+ (isMgr()?'<button class="x2" onclick="sfDeleteShipment(\''+x.id+'\')">Delete</button>':'')+'</div>'+
+      '<div class="ca noprint"><button onclick="sfPrintWaybill(\''+x.id+'\')">Print waybill</button>'+ (['delivered','returned'].includes(x.status)?'':'<button onclick="sfAddShipmentScan(\''+x.id+'\')">Add tracking scan</button><button onclick="sfCapturePOD(\''+x.id+'\')">Proof of delivery</button>')+ (isMgr()?'<button class="x2" onclick="sfDeleteShipment(\''+x.id+'\')">Delete</button>':'')+'</div>'+
       '<label class="el noprint">Update shipment status<select onchange="sfUpdateShipmentStatus(\''+x.id+'\',this.value)">'+opts+'</select></label>'+
       '<div class="rl"><b>Tracking history</b></div>'+ (history.map(e=>'<div class="rl">'+esc(new Date(e.event_at).toLocaleString('en-ZA'))+' · <b>'+esc(cap(e.status||e.event_type))+'</b>'+(e.location?' · '+esc(e.location):'')+(e.notes?'<div class="note">'+esc(e.notes)+'</div>':'')+'</div>').join('')||'<div class="note">No scans recorded yet.</div>')+
       '</div>';

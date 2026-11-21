@@ -955,7 +955,7 @@ async function aiSend(t){if(AI.busy)return;t=String(t||$('aiin').value).trim();i
 async function aiApply(p){
  if(p.kind==='industry_config'){
   if(!isMgr())throw new Error('Only a company owner or manager can approve workspace customizations.');
-  const allowed=SF_CONFIGURABLE_MODULES||new Set(['work_orders','assets','service_contracts','stock_items','purchase_orders','customers','inv','suppliers','pm_schedules','chk','fleet','rep','ohs','damage_reports','shutdowns','logistics_ops']);
+  const allowed=SF_CONFIGURABLE_MODULES||new Set(['work_orders','assets','service_contracts','stock_items','purchase_orders','customers','inv','suppliers','pm_schedules','chk','fleet','rep','ohs','damage_reports','shutdowns','logistics_ops','workshop_jobs']);
   const changes=p.changes||{},current=INDUSTRY_PROFILE?.configuration_overrides||{};
   const disabled=Array.isArray(changes.disabled_modules)?[...new Set(changes.disabled_modules)]:Array.isArray(current.disabled_modules)?current.disabled_modules:[];
   if(disabled.length>30||disabled.some(x=>!allowed.has(x)))throw new Error('The proposed hidden modules include an unsupported section.');

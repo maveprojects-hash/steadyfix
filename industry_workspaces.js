@@ -91,6 +91,7 @@ async function sfServiceContracts(){
 async function sfResetIndustryCustomizations(){if(!isMgr()||!confirm('Restore the default industry workspace shortcuts and labels?'))return;const{error}=await sb.from('company_industry_profiles').update({configuration_overrides:{}}).eq('company_id',me.company_id);if(error)return alert('Could not reset customizations: '+error.message);await loadIndustryProfile();await draw()}
 
 async function sfSaveServiceContract(){
+  if(!isMgr())return alert('Only company owners and managers can save service contracts.');
   const customerId=$('sfContractCustomer').value,customer=SF_SERVICE_CUSTOMERS.find(c=>c.id===customerId);
   const number=$('sfContractNumber').value.trim(),startDate=$('sfContractStart').value,endDate=$('sfContractEnd').value||null;
   if(!customer||!number||!startDate)return alert('Choose a customer and enter a contract number and start date.');
@@ -102,6 +103,7 @@ async function sfSaveServiceContract(){
   SF_EDITING_CONTRACT_ID=null;draw();
 }
 function sfEditServiceContract(id){
+  if(!isMgr())return alert('Only company owners and managers can edit service contracts.');
   const c=SF_SERVICE_CONTRACTS.find(x=>x.id===id);if(!c)return;SF_EDITING_CONTRACT_ID=id;
   $('sfContractNumber').value=c.number||'';$('sfContractCustomer').value=c.customer_id||'';$('sfContractType').value=c.contract_type||'full_service';
   $('sfContractStart').value=c.start_date||c.issue_date||'';$('sfContractEnd').value=c.end_date||c.due_date||'';$('sfContractStatus').value=c.status||'draft';
@@ -115,6 +117,7 @@ function sfResetServiceContract(){
   $('sfContractStatus').value='draft';$('sfContractType').value='full_service';$('sfContractCycle').value='monthly';$('sfContractSummary').textContent='＋ Create service contract';
 }
 async function sfDeleteServiceContract(id){
+  if(!isMgr())return alert('Only company owners and managers can delete service contracts.');
   if(!confirm('Delete this service contract?'))return;
   const {error}=await sb.from('documents').delete().eq('id',id).eq('company_id',me.company_id).eq('site_id',site).eq('kind','service_contract');if(error)alert(error.message);else draw();
 }

@@ -406,6 +406,14 @@ for marker in [
         raise SystemExit(f"Missing shipment scan safeguard: {marker}")
 
 
+# Status changes must also be persisted as tracking history events.
+for marker in [
+    "event_type:'status_change',status,notes:'Status changed from '+shipment.status+' to '+status",
+    "if(historyError)alert('Shipment status was updated, but tracking history could not be record:",
+]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Missing shipment status history event safeguard: {marker}")
+
 # Tracking history should not silently truncate to only eight events per shipment.
 if "const history=events.filter(e=>e.shipment_id===x.id).slice(0,8);" in workspace_code:
     raise SystemExit("Shipment tracking history is truncated to eight events")

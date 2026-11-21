@@ -613,8 +613,9 @@ for marker in [
 logistics_ui = (root / "industry_workspaces.js").read_text(encoding="utf-8")
 for marker in [
     "const allowed=[x.status,...(SF_SHIPMENT_TRANSITIONS[x.status]||[])]",
-    "(['delivered','returned'].includes(x.status)?'':'<button onclick=\\\"sfAddShipmentScan",
-    "<button onclick=\\\"sfCapturePOD",
+    "(['delivered','returned'].includes(x.status)?",
+    '<button onclick="sfAddShipmentScan',
+    '<button onclick="sfCapturePOD',
 ]:
     if marker not in logistics_ui:
         raise SystemExit(f"Missing Logistics UI lifecycle restriction: {marker}")

@@ -289,12 +289,19 @@ async function sfUpdateShipmentStatus(id,status){
   const {error}=await sb.from('logistics_shipments').update({status,delivered_at:status==='delivered'?new Date().toISOString():null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
   if(error)alert('Could not update shipment: '+error.message);else draw();
 }
+const SF_SCAN_SUBMISSIONS=new Set();
 async function sfAddShipmentScan(id){
-  const location=prompt('Depot, town or scan location:');if(location===null)return;
-  const notes=prompt('Scan notes (optional):')||null;
+  if(SF_SCAN_SUBMISSIONS.has(id))return;
   const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
-  const {error}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'scan',status:shipment.status,location:location.trim()||null,notes,created_by:me.id});
-  if(error)alert('Could not save tracking scan: '+error.message);else draw();
+  SF_SCAN_SUBMISSIONS.add(id);
+  try{
+    const locationInput=prompt('Depot, town or scan location:');if(locationInput===null)return;
+    const location=locationInput.trim();if(!location){alert('Enter a scan location before saving.');return;}
+    const notesInput=prompt('Scan notes (optional):');if(notesInput===null)return;
+    const notes=notesInput.trim()||null;
+    const {error}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'scan',status:shipment.status,location,notes,created_by:me.id});
+    if(error)alert('Could not save tracking scan: '+error.message);else draw();
+  }finally{SF_SCAN_SUBMISSIONS.delete(id);}
 }
 function sfCapturePOD(id){SF_POD_SHIPMENT_ID=id;cur='logistics_pod';draw()}
 let SF_POD_SHIPMENT_ID=null;

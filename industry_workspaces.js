@@ -300,10 +300,7 @@ async function sfUpdateShipmentStatus(id,status){
   if(!(SF_SHIPMENT_TRANSITIONS[shipment.status]||[]).includes(status)){alert('Invalid shipment status transition: '+shipment.status+' → '+status);return;}
   if(status==='delivered'){sfCapturePOD(id);return;}
   const {error}=await sb.from('logistics_shipments').update({status,delivered_at:null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
-  if(error){alert('Could not update shipment: '+error.message);return;}
-  const {error:historyError}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'status_change',status,notes:'Status changed from '+shipment.status+' to '+status,created_by:me.id});
-  if(historyError)alert('Shipment status was updated, but tracking history could not be record: '+historyError.message);
-  draw();
+  if(error)alert('Could not update shipment: '+error.message);else draw();
 }
 const SF_SCAN_SUBMISSIONS=new Set();
 async function sfAddShipmentScan(id){

@@ -514,3 +514,6 @@ for marker in [
 ]:
     if marker not in html:
         raise SystemExit(f"Document tenant/site guard missing: {marker}")
+# Assistant memory delete: report DB failures and keep local memory until delete succeeds.
+if "async function aiForget(id){const{error}=await sb.from('assistant_memory').delete().eq('id',id);if(error){alert('Could not forget this memory: '+error.message);return}AI.mem=AI.mem.filter(m=>m.id!=id);aiRender()}" not in html:
+    raise SystemExit("Assistant memory deletion error handling regression")

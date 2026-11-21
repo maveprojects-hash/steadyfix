@@ -409,7 +409,9 @@ for marker in [
 # Shipment status history is recorded by the database trigger, not a second UI insert.
 if "event_type:'status_change',status,notes:'Status changed from '+shipment.status+' to '+status" in workspace_code:
     raise SystemExit("Shipment status history is duplicated by the UI")
-if "logistics_record_status_event" not in pod_sql:
+logistics_migration = next((root / "supabase" / "migrations").glob("*_industry_operations_logistics.sql"))
+logistics_sql = logistics_migration.read_text(encoding="utf-8").lower()
+if "logistics_record_status_event" not in logistics_sql or "logistics_shipments_status_event" not in logistics_sql:
     raise SystemExit("Database shipment status-event trigger is missing")
 
 # Tracking history should not silently truncate to only eight events per shipment.

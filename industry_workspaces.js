@@ -355,7 +355,7 @@ async function sfAddShipmentScan(id){
 }
 function sfCapturePOD(id){const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;if(shipment.status!=='delivered'&&!sfShipmentTransitionAllowed(shipment.status,'delivered'))return alert('Proof of delivery is available when a consignment is out for delivery or in exception status.');SF_POD_SHIPMENT_ID=id;cur='logistics_pod';draw()}
 let SF_POD_SHIPMENT_ID=null;
-async function sfLogisticsPODPage(){
+async async function sfLogisticsPODPage(){
   const id=SF_POD_SHIPMENT_ID;if(!id)return '<h2>Proof of delivery</h2><div class="p">Choose a consignment first.</div>';
   const [sr,pr]=await Promise.all([
     sb.from('logistics_shipments').select('*').eq('id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle(),

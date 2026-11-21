@@ -1063,13 +1063,14 @@ async function chk(){
  return head+sel+`${ph(t.name+' ('+cap(cf)+' checklist)')}`+bar()+(ced?'':`<div class="noprint" style="margin-bottom:10px"><button class="b" onclick="ced=true;draw()">Edit tasks</button> ${newf?'':''}</div>`)+body+sheet+(ced?'':newf)}
 async function seed(){await sb.from('checklist_templates').insert(Object.entries(STARTER).map(([f,items])=>({company_id:me.company_id,site_id:site,name:cap(f)+' checks',frequency:f,items})));draw()}
 async function newList(){const n=$('ncn').value.trim();if(!n)return alert('Type a name for the checklist first.');const{data,error}=await sb.from('checklist_templates').insert({company_id:me.company_id,site_id:site,name:n,frequency:cf,items:[]}).select('id').single();if(error)return alert(error.message);ct=data.id;ced=true;draw()}
-const getT=async id=>(await sb.from('checklist_templates').select('items').eq('id',id).single()).data.items||[];
-const setItems=async(id,items)=>{const{error}=await sb.from('checklist_templates').update({items}).eq('id',id);if(error)alert(error.message)};
-async function addTask(id){const v=$('nt').value.trim();if(!v)return;const it=await getT(id);it.push(v);await setItems(id,it);draw()}
-async function delTask(id,i){const it=await getT(id);it.splice(i,1);await setItems(id,it);draw()}
-async function editTask(id,i,v){const it=await getT(id);it[i]=v;await setItems(id,it)}
-async function renList(id,v){const{error}=await sb.from('checklist_templates').update({name:v}).eq('id',id);if(error)alert(error.message)}
-async function delList(id){if(!confirm('Delete this checklist and its history?'))return;await sb.from('checklist_templates').delete().eq('id',id);ct=null;ced=false;draw()}
+const listScope=q=>q.eq('company_id',me.company_id).eq('site_id',site);
+const getT=async id=>{const{data,error}=await listScope(sb.from('checklist_templates').select('items').eq('id',id)).maybeSingle();if(error){alert(error.message);return null}return data?.items||[]};
+const setItems=async(id,items)=>{if(!isMgr())return alert('Manager access required.');const{error}=await listScope(sb.from('checklist_templates').update({items}).eq('id',id));if(error)alert(error.message)};
+async function addTask(id){if(!isMgr())return alert('Manager access required.');const v=$('nt').value.trim();if(!v)return;const it=await getT(id);if(!it)return;it.push(v);await setItems(id,it);draw()}
+async function delTask(id,i){if(!isMgr())return alert('Manager access required.');const it=await getT(id);if(!it)return;it.splice(i,1);await setItems(id,it);draw()}
+async function editTask(id,i,v){if(!isMgr())return alert('Manager access required.');const it=await getT(id);if(!it)return;it[i]=v;await setItems(id,it)}
+async function renList(id,v){if(!isMgr())return alert('Manager access required.');const{error}=await listScope(sb.from('checklist_templates').update({name:v}).eq('id',id));if(error)alert(error.message)}
+async function delList(id){if(!isMgr())return alert('Manager access required.');if(!confirm('Delete this checklist and its history?'))return;const{error}=await listScope(sb.from('checklist_templates').delete().eq('id',id));if(error)return alert(error.message);ct=null;ced=false;draw()}
 function meta(tid,key,f,v){MP=(async()=>{const{data}=await sb.from('checklist_runs').select('results').eq('template_id',tid).eq('run_date',key).maybeSingle();const results={...(data?.results||{})};results._meta={...(results._meta||{}),[f]:v};await sb.from('checklist_runs').upsert({company_id:me.company_id,site_id:site,template_id:tid,run_date:key,results,completed_by:me.id,completed_at:new Date().toISOString()},{onConflict:'template_id,run_date'})})()}
 async function tick(tid,key,i,on){await MP;const{data}=await sb.from('checklist_runs').select('results').eq('template_id',tid).eq('run_date',key).maybeSingle();
  const results={...(data?.results||{}),[i]:on};await sb.from('checklist_runs').upsert({company_id:me.company_id,site_id:site,template_id:tid,run_date:key,results,completed_by:me.id,completed_at:new Date().toISOString()},{onConflict:'template_id,run_date'});draw()}

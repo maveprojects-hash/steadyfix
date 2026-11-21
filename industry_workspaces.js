@@ -19,10 +19,26 @@ async function chooseIndustryWorkspace(slug){
 }
 
 
+// Dismiss the header menu on outside click or Escape; restore focus for keyboard users.
+function sfBindIndustryQuickAccessDismiss(){
+ if(window.__sfIndustryQuickAccessDismissBound)return; window.__sfIndustryQuickAccessDismissBound=true; document.addEventListener('click',event=>{
+  const btn=document.getElementById('industryQuickAccessBtn'),menu=document.getElementById('industryQuickAccessMenu');
+  if(!btn||!menu||menu.hidden)return;
+  if(btn.contains(event.target)||menu.contains(event.target))return;
+  menu.hidden=true;btn.setAttribute('aria-expanded','false');
+ });
+ document.addEventListener('keydown',event=>{
+  if(event.key!=='Escape')return;
+  const btn=document.getElementById('industryQuickAccessBtn'),menu=document.getElementById('industryQuickAccessMenu');
+  if(!btn||!menu||menu.hidden)return;
+  menu.hidden=true;btn.setAttribute('aria-expanded','false');btn.focus();
+ });
+}
 // Header industry quick access: load the live catalog and switch without opening the full hub.
 async function toggleIndustryQuickAccess(){
  const btn=document.getElementById('industryQuickAccessBtn'),menu=document.getElementById('industryQuickAccessMenu');if(!btn||!menu)return;
  if(!menu.hidden){menu.hidden=true;btn.setAttribute('aria-expanded','false');return}
+ sfBindIndustryQuickAccessDismiss();
  menu.textContent='Loading industries…';menu.hidden=false;btn.setAttribute('aria-expanded','true');
  try{
   if(!INDUSTRIES||!INDUSTRIES.length)await loadIndustryProfile();

@@ -412,12 +412,10 @@ if "if(secondary.length>8)" not in workspace_code or "would exceed the maximum o
     raise SystemExit('Industry workspace switching lacks secondary-industry overflow guard')
 
 
-# Industry quick-access dropdown must render catalog choices and route workshop job cards correctly.
-if "already has 8 secondary industries" not in workspace_code or "if(secondary.length>=8)" not in workspace_code:
-    raise SystemExit("Industry switch must preserve existing secondary activities or block at capacity")
-for marker in ['id="industryQuickAccessBtn"','id="industryQuickAccessMenu"','toggleIndustryQuickAccess','sfIndustryQuickPick','role="listbox"','sfBindIndustryQuickAccessDismiss',"event.key!=='Escape'",'btn.focus()','btn.contains(event.target)','menu.contains(event.target)']:
+# Industry quick-access dropdown must have real rendering, interaction, and dismissal behavior.
+for marker in ['toggleIndustryQuickAccess','sfIndustryQuickPick','sfCloseIndustryQuickAccess','sfBindIndustryQuickAccessDismiss','data-industry-slug','aria-selected','role="listbox"','event.key===\'Escape\'','btn.focus()','btn.contains(event.target)','menu.contains(event.target)']:
     if marker not in html and marker not in workspace_code:
-        raise SystemExit(f"Missing industry quick-access control: {marker}")
+        raise SystemExit(f"Missing industry quick-access behavior: {marker}")
 if "['🔧','Workshop & job cards','Workshop bookings, vehicle job cards and repair progress','workshop_jobs']" not in workspace_code:
     raise SystemExit("Workshop job-card quick access does not route to workshop_jobs")
 

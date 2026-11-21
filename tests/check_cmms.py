@@ -430,7 +430,7 @@ for marker in [
     if marker not in logistics_workspace_ui:
         raise SystemExit(f"Missing Logistics scan pagination safeguard: {marker}")
 # Logistics vehicle list is shared with the assignment handler (global scope).
-if "let SF_LOGISTICS_SHIPMENTS=[],sfLogisticsVehicles=[];" not in transition_ui or "sfLogisticsVehicles=(vr.data||[]).filter(v=>v.status!=='in_service');" not in transition_ui:
+if "let SF_LOGISTICS_SHIPMENTS=[],sfLogisticsVehicles=[];" not in transition_ui or "const allVehicles=vr.data||[];" not in transition_ui or "sfLogisticsVehicles=allVehicles.filter(v=>v.status!=='in_service'||shipments.some(s=>s.vehicle_id===v.id));" not in transition_ui:
     raise SystemExit("Logistics vehicle list is not available to the assignment handler")
 # Fleet vehicle assignment is site/company scoped, visible on waybills, and audited.
 fleet_logistics_ui = transition_ui[transition_ui.index("async function sfLogisticsWorkspace"):transition_ui.index("async function sfCreateShipment")]

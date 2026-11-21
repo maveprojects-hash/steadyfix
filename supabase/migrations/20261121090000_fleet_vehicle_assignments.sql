@@ -69,7 +69,7 @@ begin
  if not found then raise exception 'Assignment not found in this company'; end if;
  if not public.auth_site_ok(v_site) then raise exception 'You do not have access to this site'; end if;
  if v_status<>'active' then raise exception 'Assignment is already closed'; end if;
- update public.fleet_vehicle_assignments set status='released',released_at=now(),notes=case when nullif(btrim(p_notes),'") is null then notes else concat_ws(E'\n',notes,'Release: '||btrim(p_notes)) end where id=p_assignment_id and company_id=v_company and status='active';
+ update public.fleet_vehicle_assignments set status='released',released_at=now(),notes=case when nullif(btrim(p_notes),'') is null then notes else concat_ws(E'\n',notes,'Release: '||btrim(p_notes)) end where id=p_assignment_id and company_id=v_company and status='active';
  update public.vehicles set status='available' where id=v_vehicle and company_id=v_company and site_id=v_site and status='in_use';
  if not found then raise exception 'Vehicle could not be returned to available status'; end if;
  return jsonb_build_object('ok',true,'vehicle_id',v_vehicle,'released_at',now());

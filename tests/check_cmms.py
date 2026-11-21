@@ -454,6 +454,10 @@ for marker in [
     "shipment delivery requires a valid signed proof of delivery",
     "from public.logistics_pod_signoffs p",
     "p.receiver_consent=true",
+    "p.signed_at=new.delivered_at",
+    "btrim(p.receiver_name)=btrim(new.pod_recipient_name)",
+    "p.reference is not distinct from nullif(btrim(new.pod_reference),'')",
+    "p.notes is not distinct from nullif(btrim(new.pod_notes),'')",
 ]:
     if marker not in transition_sql:
         raise SystemExit(f"Missing database shipment transition safeguard: {marker}")

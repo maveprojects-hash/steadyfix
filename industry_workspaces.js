@@ -252,7 +252,7 @@ async function sfIssueJobStock(id){
 // ---------- Logistics parcel, waybill and proof-of-delivery workspace ----------
 let SF_LOGISTICS_SHIPMENTS=[],sfLogisticsVehicles=[];
 const SF_SHIPMENT_STATUSES=['booked','collected','in_transit','at_depot','out_for_delivery','delivered','exception','returned'];
-async function sfLogisticsWorkspace(){
+async async function sfLogisticsWorkspace(){
   const pageSize=1000,shipments=[],events=[];let shipmentOffset=0,eventOffset=0;
   const vr=await sb.from('vehicles').select('id,name,make_model,reg_no,status').eq('company_id',me.company_id).eq('site_id',site).order('name');if(vr.error)throw vr.error;const allVehicles=vr.data||[];
   while(true){const sr=await sb.from('logistics_shipments').select('*').eq('company_id',me.company_id).eq('site_id',site).order('created_at',{ascending:false}).range(shipmentOffset,shipmentOffset+pageSize-1);if(sr.error)throw sr.error;shipments.push(...(sr.data||[]));if(!sr.data||sr.data.length<pageSize)break;shipmentOffset+=pageSize;}
@@ -355,7 +355,7 @@ async function sfAddShipmentScan(id){
 }
 function sfCapturePOD(id){const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;if(shipment.status!=='delivered'&&!sfShipmentTransitionAllowed(shipment.status,'delivered'))return alert('Proof of delivery is available when a consignment is out for delivery or in exception status.');SF_POD_SHIPMENT_ID=id;cur='logistics_pod';draw()}
 let SF_POD_SHIPMENT_ID=null;
-async async function sfLogisticsPODPage(){
+async function sfLogisticsPODPage(){
   const id=SF_POD_SHIPMENT_ID;if(!id)return '<h2>Proof of delivery</h2><div class="p">Choose a consignment first.</div>';
   const [sr,pr]=await Promise.all([
     sb.from('logistics_shipments').select('*').eq('id',id).eq('company_id',me.company_id).eq('site_id',site).maybeSingle(),

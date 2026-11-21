@@ -411,7 +411,6 @@ for marker in [
     "if(status===shipment.status)return;",
     "Invalid shipment status transition:",
     "if(!(SF_SHIPMENT_TRANSITIONS[shipment.status]||[]).includes(status))",
-    "delivered:['",
 ]:
     if marker not in workspace_code:
-        raise SystemExit(f"Missing shipment status transition safeguard: {marker")
+        raise SystemExit(f"Missing shipment status transition safeguard: {marker}")

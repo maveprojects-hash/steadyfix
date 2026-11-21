@@ -690,3 +690,8 @@ for marker in [
         raise SystemExit(f"Logistics event grouping missing: {marker}")
 if "events.filter(e=>e.shipment_id===x.id)" in shipment_workspace:
     raise SystemExit("Logistics history still rescans all events per shipment")
+
+# Latest scan insert policy must retain the terminal-shipment restriction after later policy replacements.
+latest_scan_policy = (root / "supabase" / "migrations" / "20261121220000_logistics_scan_location_length_guard.sql").read_text(encoding="utf-8").lower()
+if "s.status not in ('delivered','returned')" not in latest_scan_policy:
+    raise SystemExit("Latest Logistics scan insert policy allows terminal shipments")

@@ -722,3 +722,14 @@ for marker in [
 ]:
     if marker not in terminal_scan_sql:
         raise SystemExit(f"Missing terminal Logistics scan database safeguard: {marker}")
+
+# A fresh visit to the login URL must present login first, even if a stale/incomplete session exists.
+login_page = (root / "maintdesk_login.html").read_text(encoding="utf-8")
+for marker in [
+    "async function route(initialLoad=false)",
+    "if(initialLoad)return auth();",
+    "return setup();",
+    "route(true);",
+]:
+    if marker not in login_page:
+        raise SystemExit(f"Missing fresh-login routing safeguard: {marker}")

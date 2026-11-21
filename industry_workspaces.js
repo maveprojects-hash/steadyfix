@@ -19,7 +19,8 @@ async function chooseIndustryWorkspace(slug){
 }
 
 
-// Header industry quick access: load the live catalog and switch without opening the full hub.\nasync function toggleIndustryQuickAccess(){
+// Header industry quick access: load the live catalog and switch without opening the full hub.
+async function toggleIndustryQuickAccess(){
  const btn=document.getElementById('industryQuickAccessBtn'),menu=document.getElementById('industryQuickAccessMenu');if(!btn||!menu)return;
  if(!menu.hidden){menu.hidden=true;btn.setAttribute('aria-expanded','false');return}
  menu.textContent='Loading industries…';menu.hidden=false;btn.setAttribute('aria-expanded','true');

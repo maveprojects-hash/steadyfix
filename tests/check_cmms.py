@@ -703,3 +703,20 @@ for marker in [
 ]:
     if marker not in atomic_sql:
         raise SystemExit(f"Missing Logistics atomic RPC database safeguard: {marker}")
+
+# Logistics tracking scans must stop once a consignment reaches a terminal state.
+scan_handler = transition_ui[transition_ui.index("async function sfAddShipmentScan"):transition_ui.index("function sfCapturePOD")]
+if "['delivered','returned'].includes(shipment.status)" not in scan_handler:
+    raise SystemExit("Logistics UI still allows scans after delivery or return")
+terminal_scan_migration = next((root / "supabase" / "migrations").glob("*_logistics_terminal_scan_guard.sql"))
+terminal_scan_sql = terminal_scan_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "logistics_validate_scan_terminal_status",
+    "new.event_type <> 'scan'",
+    "select status into v_status",
+    "delivered','returned",
+    "tracking scans are closed for delivered or returned consignments",
+    "before insert on public.logistics_tracking_events",
+]:
+    if marker not in terminal_scan_sql:
+        raise SystemExit(f"Missing terminal Logistics scan database safeguard: {marker}")

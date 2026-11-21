@@ -419,4 +419,14 @@ for marker in ['toggleIndustryQuickAccess','sfIndustryQuickPick','sfCloseIndustr
 if "['🔧','Workshop & job cards','Workshop bookings, vehicle job cards and repair progress','workshop_jobs']" not in workspace_code:
     raise SystemExit("Workshop job-card quick access does not route to workshop_jobs")
 
+# Service-contract update/delete queries must be explicitly company- and site-scoped,
+# in addition to relying on database RLS policies.
+contract_save = workspace_code[workspace_code.index("async function sfSaveServiceContract"):workspace_code.index("function sfEditServiceContract")]
+contract_delete = workspace_code[workspace_code.index("async function sfDeleteServiceContract"):workspace_code.index("function sfPrintServiceContract")]
+for guard in [".eq('company_id',me.company_id)", ".eq('site_id',site)"]:
+    if guard not in contract_save:
+        raise SystemExit(f"Service-contract update missing tenant/site guard: {guard}")
+    if guard not in contract_delete:
+        raise SystemExit(f"Service-contract delete missing tenant/site guard: {guard}")
+
 print("CMMS syntax, notifications, industry profiles, quick access, Automation operations, logistics and tenant safeguards: PASS")

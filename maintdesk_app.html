@@ -405,13 +405,20 @@ async function fleetAssignments(){
  ]);
  for(const r of [vr,ar,pr,ur])if(r.error)throw r.error;
  const vehicles=vr.data||[],assignments=ar.data||[],siteUsers=new Set((ur.data||[]).map(x=>x.user_id));
- const drivers=(pr.data||[]).filter(p=>siteUsers.has(p.id));
- const active=assignments.filter(a=>a.status==='active'),vmap=Object.fromEntries(vehicles.map(v=>[v.id,v])),pmap=Object.fromEntries(drivers.map(p=>[p.id,p]));
- const vopts=vehicles.filter(v=>v.status==='available').map(v=>'<option value="'+esc(v.id)+'">'+esc(v.name+(v.reg_no?' · '+v.reg_no:''))+'</option>').join('');
+ const drivers=(pr.data||[]).filter(p=>siteUsers.has(p.id)),active=assignments.filter(a=>a.status==='active');
+ const vmap=Object.fromEntries(vehicles.map(v=>[v.id,v])),pmap=Object.fromEntries(drivers.map(p=>[p.id,p]));
+ const available=vehicles.filter(v=>v.status==='available');
+ const vopts=available.map(v=>'<option value="'+esc(v.id)+'">'+esc(v.name+(v.reg_no?' · '+v.reg_no:''))+'</option>').join('');
  const popts=drivers.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.full_name||p.id)+' · '+esc(p.role)+'</option>').join('');
- const controls=isMgr()&&vopts&&popts?'<div class="p"><b>Assign an available vehicle</b><div class="note">Assignments are restricted to vehicles and drivers authorized for this site.</div><div class="g"><label>Vehicle<select id="fleetAssignVehicle">'+vopts+'</select></label><label>Driver<select id="fleetAssignDriver">'+popts+'</select></label><label>Notes<input id="fleetAssignNotes" placeholder="Optional assignment details"></label></div><button class="b" onclick="fleetAssignVehicle()">Assign vehicle</button></div>':'';
- const list=active.length?active.map(a=>{const v=vmap[a.vehicle_id],p=pmap[a.assigned_user_id];return '<div class="card"><div class="ct"><b>'+esc(v?.name||'Vehicle record unavailable')+(v?.reg_no?' · '+esc(v.reg_no):'')+'</b><span class="chips">'+chip('running','Assigned')+'</span></div><div class="kv"><span>Driver</span><b>'+esc(p?.full_name||'User unavailable')+'</b><span>Assigned</span><b>'+esc(new Date(a.assigned_at).toLocaleString())+'</b><span>Notes</span><b>'+esc(a.notes||'-')+'</b></div>'+(isMgr()?'<div class="ca"><button onclick="fleetReleaseAssignment(\''+esc(a.id)+'\')">Release vehicle</button></div>':'')+'</div>'}).join(''):'<div class="p note">No active vehicle assignments for this site.</div>';
- return '<h2>Fleet and workshop</h2>'+ftabs()+'<div class="note">Assignment controls are manager-only. The database prevents duplicate active assignments and re-checks vehicle and driver availability at commit time.</div>'+controls+'<h3>Active assignments ('+active.length+')</h3>'+list+'<h3>Assignment history</h3>'+assignments.filter(a=>a.status!=='active').slice(0,25).map(a=>'<div class="rl">'+esc(vmap[a.vehicle_id]?.name||'Vehicle')+' · '+esc(a.status)+' · '+esc(a.released_at?new Date(a.released_at).toLocaleString():'')+'</div>').join('');
+ const controls=isMgr()&&available.length&&drivers.length
+  ?'<div class="p"><b>Assign an available vehicle</b><div class="note">Only site-authorized active company drivers are selectable.</div><div class="g"><label>Vehicle<select id="fleetAssignVehicle">'+vopts+'</select></label><label>Driver<select id="fleetAssignDriver">'+popts+'</select></label><label>Notes<input id="fleetAssignNotes" placeholder="Optional assignment details"></label></div><button class="b" onclick="fleetAssignVehicle()">Assign vehicle</button></div>'
+  :isMgr()?'<div class="p note">Assignment unavailable: this site needs at least one available vehicle and one active site-authorized driver.</div>':'';
+ const list=active.length?active.map(a=>{
+  const v=vmap[a.vehicle_id],p=pmap[a.assigned_user_id];
+  return '<div class="card"><div class="ct"><b>'+esc(v?.name||'Vehicle record unavailable')+(v?.reg_no?' · '+esc(v.reg_no):'')+'</b><span class="chips">'+chip('running','Assigned')+'</span></div><div class="kv"><span>Driver</span><b>'+esc(p?.full_name||'User unavailable')+'</b><span>Assigned</span><b>'+esc(new Date(a.assigned_at).toLocaleString())+'</b><span>Notes</span><b>'+esc(a.notes||'-')+'</b></div>'+(isMgr()?'<div class="ca"><button onclick="fleetReleaseAssignment(\''+esc(a.id)+'\')">Release vehicle</button></div>':'')+'</div>';
+ }).join(''):'<div class="p note">No active vehicle assignments for this site.</div>';
+ const history=assignments.filter(a=>a.status!=='active').slice(0,25).map(a=>'<div class="rl">'+esc(vmap[a.vehicle_id]?.name||'Vehicle')+' · '+esc(a.status)+' · '+esc(a.released_at?new Date(a.released_at).toLocaleString():'')+'</div>').join('');
+ return '<h2>Fleet and workshop</h2>'+ftabs()+'<div class="note">The database prevents duplicate active assignments and checks vehicle availability and driver/site access inside the transaction.</div>'+controls+'<h3>Active assignments ('+active.length+')</h3>'+list+'<h3>Assignment history</h3>'+history;
 }
 async function fleetAssignVehicle(){
  const vehicle=$('fleetAssignVehicle')?.value,driver=$('fleetAssignDriver')?.value,notes=$('fleetAssignNotes')?.value||'';

@@ -482,3 +482,15 @@ list_scope = checklist_code[checklist_code.index("const listScope=q=>"):checklis
 for marker in ["eq('company_id',me.company_id)", "eq('site_id',site)", "if(!isMgr())", "maybeSingle()"]:
     if marker not in list_scope:
         raise SystemExit(f"Checklist tenant/site/permission guard missing: {marker}")
+
+# Document listing, numbering, updates, quote conversion, and deletes are tenant/site scoped.
+for marker in [
+    "select('number').eq('company_id',me.company_id).eq('site_id',site).eq('kind',kind)",
+    "select('*').eq('company_id',me.company_id).eq('site_id',site).eq('kind',kind)",
+    "update(row).eq('id',e.id).eq('company_id',me.company_id).eq('site_id',site)",
+    "update({status:'accepted'}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    "update(u).eq('id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    "delete().eq('id',id).eq('company_id',me.company_id).eq('site_id',site)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Document tenant/site guard missing: {marker}")

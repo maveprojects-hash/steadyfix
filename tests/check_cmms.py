@@ -715,6 +715,7 @@ for marker in [
     "logistics_validate_scan_terminal_status",
     "new.event_type <> 'scan'",
     "select status into v_status",
+    "for update;",
     "delivered','returned",
     "tracking scans are closed for delivered or returned consignments",
     "before insert on public.logistics_tracking_events",

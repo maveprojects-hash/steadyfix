@@ -200,6 +200,13 @@ for marker in [
     if marker not in assistant_code:
         raise SystemExit(f"Missing server-side company industry context safeguard: {marker}")
 
+# AI-approved record edits must be tenant/site-scoped, not ID-only updates.
+for marker in [
+    "update(ch).eq('id',p.rowId).eq('company_id',me.company_id)",
+    "if(sc.site)q=q.eq('site_id',site)"]:
+    if marker not in html:
+        raise SystemExit(f"Missing AI record update tenant/site guard: {marker")
+
 industry_priority_migration = next((root / "supabase" / "migrations").glob("*_industry_dashboard_priorities.sql"))
 priority_sql = industry_priority_migration.read_text(encoding="utf-8").lower()
 if "dashboard_priority_tabs" not in priority_sql or "property-management-facilities" not in priority_sql:

@@ -472,3 +472,38 @@ lock_select = pod_lock_sql.find("from public.logistics_shipments s")
 signoff_insert = pod_lock_sql.find("insert into public.logistics_pod_signoffs")
 if lock_select < 0 or signoff_insert < 0 or lock_select > signoff_insert:
     raise SystemExit("POD shipment row must be locked before signoff insert")
+
+
+# Logistics database safeguards: POD row-lock syntax and scan-only user event writes.
+pod_lock_migration = next((root / "supabase" / "migrations").glob("*_logistics_pod_submission_lock.sql"))
+pod_lock_sql = pod_lock_migration.read_text(encoding="utf-8").lower()
+lock_select_start = pod_lock_sql.find("from public.logistics_shipments s")
+lock_select_end = pod_lock_sql.find("for update;", lock_select_start)
+if lock_select_start < 0 or lock_select_end < 0:
+    raise SystemExit("POD submission must lock the shipment row with SELECT ... FOR UPDATE")
+lock_statement = pod_lock_sql[lock_select_start:lock_select_end]
+if ";" in lock_statement:
+    raise SystemExit("POD shipment SELECT must not terminate before FOR UPDATE")
+if "where s.id=p_shipment_id and s.company_id=v_company" not in lock_statement.replace(" ", ""):
+    compact_lock = re.sub(r"\\s+", "", lock_statement)
+    if "where s.id=p_shipment_id and s.company_id=v_company" not in compact_lock:
+        raise SystemExit("POD row lock must scope the shipment to its company")
+if "for update;" not in pod_lock_sql:
+    raise SystemExit("POD shipment row lock missing statement terminator")
+
+scan_guard_migration = next((root / "supabase" / "migrations").glob("*_logistics_tracking_scan_insert_guard.sql"))
+scan_guard_sql = scan_guard_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "event_type = 'scan'",
+    "location is not null",
+    "length(btrim(location)) > 0",
+    "length(notes) <= 2000",
+    "logistics_tracking_events.shipment_id",
+    "logistics_tracking_events.company_id",
+    "logistics_tracking_events.site_id",
+    "logistics_tracking_events.status",
+]:
+    if marker not in scan_guard_sql:
+        raise SystemExit(f"Missing logistics tracking scan insert restriction: {marker}")
+if "event_type = 'status_change'" in scan_guard_sql or "event_type = 'pod'" in scan_guard_sql:
+    raise SystemExit("User tracking event policy must not allow status-change or POD inserts")

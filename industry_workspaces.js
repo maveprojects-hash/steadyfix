@@ -265,9 +265,11 @@ async function sfLogisticsWorkspace(){
     eventOffset+=eventPageSize;
   }
   SF_LOGISTICS_SHIPMENTS=shipments;
+  const eventsByShipment=new Map();
+  for(const event of events){const key=event.shipment_id;if(!eventsByShipment.has(key))eventsByShipment.set(key,[]);eventsByShipment.get(key).push(event)}
   const count=s=>SF_LOGISTICS_SHIPMENTS.filter(x=>x.status===s).length;
   const cards=SF_LOGISTICS_SHIPMENTS.map(x=>{
-    const history=events.filter(e=>e.shipment_id===x.id);
+    const history=eventsByShipment.get(x.id)||[];
     const allowed=[x.status,...(SF_SHIPMENT_TRANSITIONS[x.status]||[])];const opts=allowed.map(s=>'<option value="'+s+'" '+ (s===x.status?'selected':'')+'>'+esc(cap(s))+'</option>').join('');
     return '<div class="card"><div class="ct"><div>'+esc(x.waybill_no)+' · '+esc(x.recipient_name)+'</div><div class="chips">'+chip(x.status,cap(x.status))+'</div></div>'+
       '<div class="kv"><span>Tracking number</span><b>'+esc(x.tracking_no||x.waybill_no)+'</b><span>From</span><b>'+esc(x.origin_address)+'</b><span>To</span><b>'+esc(x.destination_address)+'</b><span>Parcel</span><b>'+esc(x.package_count)+' package(s) · '+esc(x.parcel_description||'-')+'</b><span>Expected delivery</span><b>'+esc(x.expected_delivery||'-')+'</b></div>'+

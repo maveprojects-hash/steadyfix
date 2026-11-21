@@ -393,7 +393,8 @@ for marker in [
     if marker not in workspace_code:
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
-\n# Industry quick-access dropdown must render catalog choices and route workshop job cards correctly.
+
+# Industry quick-access dropdown must render catalog choices and route workshop job cards correctly.
 for marker in ['id="industryQuickAccessBtn"','id="industryQuickAccessMenu"','toggleIndustryQuickAccess','sfIndustryQuickPick','role="listbox"']:
     if marker not in html and marker not in workspace_code:
         raise SystemExit(f"Missing industry quick-access control: {marker}")

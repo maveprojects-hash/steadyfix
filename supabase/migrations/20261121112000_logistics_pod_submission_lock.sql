@@ -54,7 +54,7 @@ begin
   end loop;
   if v_total_points<3 then raise exception 'Signature is too short'; end if;
   select s.site_id,s.status into v_site,v_status
-  from public.logistics_shipments s where s.id=p_shipment_id and s.company_id=v_company;
+  from public.logistics_shipments s where s.id=p_shipment_id and s.company_id=v_company
   for update;
   if not found then raise exception 'Consignment not found in this company'; end if;
   if not public.auth_site_ok(v_site) then raise exception 'You do not have access to this site'; end if;

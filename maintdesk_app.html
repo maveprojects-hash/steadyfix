@@ -838,7 +838,7 @@ async function ros(){
 function rtot(){const W=['day','night','standby'];RC.staff.forEach(id=>{let n=0;RC.days.forEach(d=>{if(W.includes(RS[id+'|'+d]))n++});const e=$('tt_'+id);if(e)e.textContent=n});RC.days.forEach(d=>{let n=0;RC.staff.forEach(id=>{if(W.includes(RS[id+'|'+d]))n++});const e=$('on_'+d);if(e)e.textContent=n})}
 async function rcyc(sid,ds){const k=sid+'|'+ds,i=SHK.indexOf(RS[k]),nx=i+1<SHK.length?SHK[i+1]:null,el=$('c_'+sid+'_'+ds);
  if(nx){RS[k]=nx;el.textContent=SHT[nx][0];el.style.background=SHT[nx][2]}else{delete RS[k];el.textContent='';el.style.background=''}rtot();
- const r=nx?await sb.from('roster_shifts').upsert({company_id:me.company_id,site_id:site,staff_id:sid,shift_date:ds,shift_type:nx},{onConflict:'staff_id,shift_date'}):await sb.from('roster_shifts').delete().eq('staff_id',sid).eq('shift_date',ds);
+ const r=nx?await sb.from('roster_shifts').upsert({company_id:me.company_id,site_id:site,staff_id:sid,shift_date:ds,shift_type:nx},{onConflict:'staff_id,shift_date'}):await sb.from('roster_shifts').delete().eq('company_id',me.company_id).eq('site_id',site).eq('staff_id',sid).eq('shift_date',ds);
  if(r.error)alert(r.error.message)}
 async function addStaff(){const n=$('stn').value.trim();if(!n)return alert('Type a name first.');const{error}=await sb.from('staff_members').insert({company_id:me.company_id,site_id:site,name:n,role:$('str').value.trim()||null});error?alert(error.message):draw()}
 async function renStaff(id,f,v){if(!isMgr())return alert('Manager access required.');let q=sb.from('staff_members').update({[f]:v||null}).eq('id',id).eq('company_id',me.company_id);if(site)q=q.eq('site_id',site);const{error}=await q;if(error)alert(error.message)}

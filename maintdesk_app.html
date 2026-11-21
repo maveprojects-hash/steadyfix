@@ -365,6 +365,8 @@ function sfBindIndustryQuickAccessDismiss(){
   document.addEventListener('keydown',event=>{if(event.key==='Escape'){const btn=$('industryQuickAccessBtn'),menu=$('industryQuickAccessMenu');if(btn&&menu&&!menu.hidden){sfCloseIndustryQuickAccess();btn.focus()}}});
 }
 
+sfBindIndustryQuickAccessDismiss();
+
 
 function notificationTime(v){try{return new Date(v).toLocaleString('en-ZA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}catch(e){return''}}
 let UNREAD_NOTIFICATION_COUNT=0, notificationAudioContext=null;

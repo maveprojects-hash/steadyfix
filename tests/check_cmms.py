@@ -461,3 +461,14 @@ for marker in [
 pod_impl = pod_sql[pod_sql.find("record_logistics_pod_signoff_impl"):]
 if pod_impl.find("insert into public.logistics_pod_signoffs") < 0 or pod_impl.find("update public.logistics_shipments") < 0 or pod_impl.find("insert into public.logistics_pod_signoffs") > pod_impl.find("update public.logistics_shipments"):
     raise SystemExit("POD must persist receiver signoff before delivery status update")
+
+
+# Concurrent POD submissions are serialized by locking the shipment row before status checks.
+pod_lock_migration = next((root / "supabase" / "migrations").glob("*_logistics_pod_submission_lock.sql"))
+pod_lock_sql = pod_lock_migration.read_text(encoding="utf-8").lower()
+if "for update;" not in pod_lock_sql:
+    raise SystemExit("Concurrent POD submission must lock its shipment row")
+lock_select = pod_lock_sql.find("from public.logistics_shipments s")
+signoff_insert = pod_lock_sql.find("insert into public.logistics_pod_signoffs")
+if lock_select < 0 or signoff_insert < 0 or lock_select > signoff_insert:
+    raise SystemExit("POD shipment row must be locked before signoff insert")

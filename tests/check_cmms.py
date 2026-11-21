@@ -406,7 +406,6 @@ for marker in [
 for marker in [
     "sfLogisticsPODPage",
     'async function sfLogisticsPODPage',
-    "async async function sfLogisticsPODPage",
     "sfInitPODSignaturePad",
     "sfSaveLogisticsPOD",
     "record_logistics_pod_signoff",
@@ -414,6 +413,11 @@ for marker in [
 ]:
     if marker not in workspace_code:
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
+
+if "async async function sfLogisticsPODPage" in workspace_code:
+    raise SystemExit("POD loader has duplicate async declaration")
+if "function sfLogisticsWorkspace(){" in transition_ui:
+    raise SystemExit("Logistics workspace loader is missing async declaration")
 
 
 # Logistics shipment lifecycle: UI and database guard must remain in agreement.

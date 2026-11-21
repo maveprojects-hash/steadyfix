@@ -406,6 +406,22 @@ for marker in [
         raise SystemExit(f"Missing shipment scan safeguard: {marker}")
 
 
+# POD signatures reject null/NaN and out-of-range coordinates in a DB trigger.
+signature_coordinate_guard = root / "supabase" / "migrations" / "20261121210000_logistics_pod_signature_coordinate_guard.sql"
+if not signature_coordinate_guard.exists():
+    raise SystemExit("Missing POD signature coordinate guard migration")
+signature_coordinate_sql = signature_coordinate_guard.read_text(encoding="utf-8").lower()
+for marker in [
+    "guard_logistics_pod_signature_coordinates",
+    "v_x is null or v_y is null",
+    "v_x = 'nan'::numeric",
+    "v_y = 'nan'::numeric",
+    "signature coordinates must be finite values between 0 and 1",
+    "before insert on public.logistics_pod_signoffs",
+]:
+    if marker not in signature_coordinate_sql:
+        raise SystemExit(f"Missing POD signature coordinate safeguard: {marker}")
+
 # Newly inserted logistics shipments must start booked; lifecycle transitions are guarded separately.
 initial_status_guard = root / "supabase" / "migrations" / "20261121200000_logistics_booking_initial_status_guard.sql"
 if not initial_status_guard.exists():

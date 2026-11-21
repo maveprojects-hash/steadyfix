@@ -568,6 +568,8 @@ for marker in ["eventPageSize=500", ".range(eventOffset,eventOffset+eventPageSiz
         raise SystemExit(f"Logistics tracking pagination missing: {marker}")
 if ".limit(500)" in logistics_workspace:
     raise SystemExit("Logistics tracking history still uses a fixed 500-row limit")
+if ".order('event_at',{ascending:false}).order('id',{ascending:false}).range(eventOffset,eventOffset+eventPageSize-1)" not in logistics_workspace:
+    raise SystemExit("Logistics event pagination requires a deterministic secondary sort key")
 
 
 # Logistics shipment edit-role guard: technicians/storemen cannot mutate booking fields.

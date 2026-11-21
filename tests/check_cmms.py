@@ -443,3 +443,7 @@ contract_save = workspace_code[workspace_code.index("async function sfSaveServic
 for validation in ["Number.isFinite(fee)", "fee<0", "responseHours*2!==Math.round(responseHours*2)", "!Number.isInteger(includedPages)", "Math.abs(overageRate*10000-Math.round(overageRate*10000))>1e-8"]:
     if validation not in contract_save:
         raise SystemExit(f"Service-contract numeric validation missing: {validation}")
+
+# Service contracts must preserve an explicit zero company VAT rate (tax-exempt configuration).
+if "vat_rate:CS&&CS.tax_rate!=null?CS.tax_rate:15" not in contract_save:
+    raise SystemExit("Service-contract save incorrectly replaces zero VAT with the default rate")

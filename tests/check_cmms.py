@@ -447,7 +447,7 @@ if "logistics_record_status_event" not in logistics_sql or "logistics_shipments_
 # Tracking history should not silently truncate to only eight events per shipment.
 if "const history=events.filter(e=>e.shipment_id===x.id).slice(0,8);" in workspace_code:
     raise SystemExit("Shipment tracking history is truncated to eight events")
-if "const history=events.filter(e=>e.shipment_id===x.id);" not in workspace_code:
+if "const history=eventsByShipment.get(x.id)||[];" not in workspace_code:
     raise SystemExit("Shipment tracking history must display all loaded events")
 
 # Shipment tracking status-transition guard coverage.

@@ -430,3 +430,9 @@ for guard in [".eq('company_id',me.company_id)", ".eq('site_id',site)"]:
         raise SystemExit(f"Service-contract delete missing tenant/site guard: {guard}")
 
 print("CMMS syntax, notifications, industry profiles, quick access, Automation operations, logistics and tenant safeguards: PASS")
+
+# Service-contract actions must independently enforce manager permissions, not rely only on view rendering.
+contract_edit = workspace_code[workspace_code.index("function sfEditServiceContract"):workspace_code.index("function sfResetServiceContract")]
+for function_code, guard_name in [(contract_save, "save"), (contract_edit, "edit"), (contract_delete, "delete")]:
+    if "if(!isMgr())" not in function_code:
+        raise SystemExit(f"Service-contract {guard_name} action lacks its own manager permission guard")

@@ -16,10 +16,10 @@ create policy logistics_tracking_events_insert on public.logistics_tracking_even
     and exists (
       select 1
       from public.logistics_shipments s
-      where s.id = shipment_id
-        and s.company_id = company_id
-        and s.site_id = site_id
-        and s.status is not distinct from status
+      where s.id = logistics_tracking_events.shipment_id
+        and s.company_id = logistics_tracking_events.company_id
+        and s.site_id = logistics_tracking_events.site_id
+        and s.status is not distinct from logistics_tracking_events.status
     )
   );
 

@@ -483,6 +483,11 @@ if "vat_rate:CS&&CS.tax_rate!=null?CS.tax_rate:15" not in contract_save:
 
 
 # Staff roster edits and deletes enforce manager permission and tenant/site ownership.
+# Roster shift deletion must scope the delete to the active company and site.
+roster_code = "\\n".join(scripts)
+roster_cycle = roster_code[roster_code.index("async function rcyc"):roster_code.index("async function addStaff")]
+if "delete().eq('company_id',me.company_id).eq('site_id',site).eq('staff_id',sid).eq('shift_date',ds)" not in roster_cycle:
+    raise SystemExit("Roster shift delete missing company/site isolation guards")
 staff_code = "\\n".join(scripts)
 ren_staff = staff_code[staff_code.index("async function renStaff"):staff_code.index("async function delStaff")]
 del_staff = staff_code[staff_code.index("async function delStaff"):staff_code.index("async function copyPrev")]

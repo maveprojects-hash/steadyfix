@@ -394,3 +394,13 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+# Shipment tracking scan submission validation and duplicate-click protection.
+for marker in [
+    "const SF_SCAN_SUBMISSIONS=new Set()",
+    "if(SF_SCAN_SUBMISSIONS.has(id))return;",
+    "SF_SCAN_SUBMISSIONS.add(id)",
+    "const location=locationInput.trim();if(!location)",
+    "finally{SF_SCAN_SUBMISSIONS.delete(id);}"]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Missing shipment scan safeguard: {marker}")

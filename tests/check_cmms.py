@@ -534,3 +534,21 @@ for marker in ["eventPageSize=500", ".range(eventOffset,eventOffset+eventPageSiz
         raise SystemExit(f"Logistics tracking pagination missing: {marker}")
 if ".limit(500)" in logistics_workspace:
     raise SystemExit("Logistics tracking history still uses a fixed 500-row limit")
+
+
+# Logistics shipment edit-role guard: technicians/storemen cannot mutate booking fields.
+role_guard_migration = next((root / "supabase" / "migrations").glob("*_logistics_role_update_guard.sql"))
+role_guard_sql = role_guard_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "guard_logistics_shipment_role_updates",
+    "v_role in ('owner','manager')",
+    "v_role not in ('technician','storeman')",
+    "new.recipient_name is distinct from old.recipient_name",
+    "new.origin_address is distinct from old.origin_address",
+    "new.destination_address is distinct from old.destination_address",
+    "new.package_count is distinct from old.package_count",
+    "only owners and managers may edit shipment booking details",
+    "before update on public.logistics_shipments",
+]:
+    if marker not in role_guard_sql:
+        raise SystemExit(f"Missing shipment edit-role safeguard: {marker}")

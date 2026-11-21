@@ -201,6 +201,13 @@ for marker in [
         raise SystemExit(f"Missing server-side company industry context safeguard: {marker}")
 
 # AI-approved record edits must be tenant/site-scoped, not ID-only updates.
+# Inline item-list edits must be scoped to the active company and site.
+for marker in [
+    "update(u).eq('id',c.rid).eq('company_id',me.company_id)",
+    "if(site)q=q.eq('site_id',site)"]:
+    if marker not in html:
+        raise SystemExit(f"Missing inline item tenant/site guard: {marker")
+
 for marker in [
     "update(ch).eq('id',p.rowId).eq('company_id',me.company_id)",
     "if(sc.site)q=q.eq('site_id',site)"]:

@@ -395,6 +395,11 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
 
+# Industry workspace customization must include the workshop job-card shortcut.
+if "'workshop_jobs'" not in workspace_code[workspace_code.index('const SF_CONFIGURABLE_MODULES'):workspace_code.index('function sfIndustryModuleOverrides')]:
+    raise SystemExit('Workshop job cards are not available for workspace customization')
+
+
 # Industry quick-access dropdown must render catalog choices and route workshop job cards correctly.
 if "already has 8 secondary industries" not in workspace_code or "if(secondary.length>=8)" not in workspace_code:
     raise SystemExit("Industry switch must preserve existing secondary activities or block at capacity")

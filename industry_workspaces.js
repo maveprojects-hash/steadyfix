@@ -314,7 +314,7 @@ async function sfAddShipmentScan(id){
   SF_SCAN_SUBMISSIONS.add(id);
   try{
     const locationInput=prompt('Depot, town or scan location:');if(locationInput===null)return;
-    const location=locationInput.trim();if(!location){alert('Enter a scan location before saving.');return;}
+    const location=locationInput.trim();if(!location){alert('Enter a scan location before saving.');return;}if(location.length>200){alert('Scan location must be 200 characters or fewer.');return;}
     const notesInput=prompt('Scan notes (optional):');if(notesInput===null)return;
     const notes=notesInput.trim()||null;
     const {error}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'scan',status:shipment.status,location,notes,created_by:me.id});

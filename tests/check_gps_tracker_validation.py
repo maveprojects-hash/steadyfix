@@ -4,7 +4,6 @@ root = Path(__file__).resolve().parents[1]
 migration = next(root.glob("supabase/migrations/*_validate_gps_tracker_inputs.sql"))
 sql = migration.read_text(encoding="utf-8").lower()
 checks = {
-    "coordinate bounds also reject NaN and infinity": "abs(p_lat) > 90 or abs(p_lng) > 180",
     "latitude and longitude bounds": "abs(p_lat) > 90 or abs(p_lng) > 180",
     "speed bounds": "p_speed < 0 or p_speed > 300",
     "heading bounds": "p_heading < 0 or p_heading > 360",

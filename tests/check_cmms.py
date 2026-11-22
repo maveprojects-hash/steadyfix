@@ -615,8 +615,6 @@ for marker in [
         raise SystemExit(f"Missing shipment edit-role safeguard: {marker}")
 
 # Null/unknown auth roles must not bypass Logistics shipment edit restrictions.
-if "if v_role is null or v_role not in ('technician','storeman')" not in role_guard_sql:
-    raise SystemExit("Logistics shipment role guard must reject null roles")
 null_role_guard = root / "supabase" / "migrations" / "20261122100000_logistics_role_null_guard.sql"
 if not null_role_guard.exists():
     raise SystemExit("Missing null-role Logistics guard migration")

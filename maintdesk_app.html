@@ -373,7 +373,7 @@ function sfBindIndustryQuickAccessKeyboard(){
   btn.addEventListener('keydown',event=>{
     if(event.key==='ArrowDown'){event.preventDefault();if($('industryQuickAccessMenu')?.hidden)toggleIndustryQuickAccess();else $('industryQuickAccessMenu')?.querySelector('[data-industry-slug]')?.focus()}
   });
-}
+}\nsfBindIndustryQuickAccessKeyboard();
 function sfCloseIndustryQuickAccess(){
   const btn=$('industryQuickAccessBtn'),menu=$('industryQuickAccessMenu');if(!btn||!menu)return;
   menu.hidden=true;btn.setAttribute('aria-expanded','false');

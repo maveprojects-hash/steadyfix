@@ -33,3 +33,5 @@ jobs:
           node-version: "22"
       - name: Check CMMS JavaScript and notification safeguards
         run: python3 tests/check_cmms.py
+      - name: Check sensor telemetry validation
+        run: python3 tests/check_sensor_reading_validation.py

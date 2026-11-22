@@ -394,3 +394,15 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+
+# Stock catalogue creation must not leave an item behind without its opening balance.
+stock_insert_source = html.split("async function ins(id){", 1)[1].split("async function del(", 1)[0]
+for marker in [
+    "error:balanceError",
+    "if(balanceError)",
+    "stock_items').delete()",
+    "Stock item was not saved because its opening balance could not be created.",
+]:
+    if marker not in stock_insert_source:
+        raise SystemExit(f"Missing stock-item opening-balance rollback: {marker}")

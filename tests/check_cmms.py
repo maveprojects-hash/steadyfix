@@ -722,6 +722,16 @@ if ".limit(500)" in shipment_workspace or "SF_LOGISTICS_SHIPMENTS=sr.data||[]" i
 
 
 # Logistics tracking history is lazy-loaded by shipment, never fetched globally.
+
+# AI assistant memory reads and deletes must remain company-scoped.
+assistant_backend = (root / "supabase" / "functions" / "smart-endpoint" / "index.ts").read_text(encoding="utf-8")
+for marker in [
+    'from("assistant_memory").delete().eq("id", String(input.id)).eq("company_id", ctx.company_id)',
+    'from("assistant_memory").select("id,note").eq("company_id", company_id).order("created_at", { ascending: true }).limit(60)',
+]:
+    if marker not in assistant_backend:
+        raise SystemExit(f"Assistant memory company isolation missing: {marker}")
+
 for marker in [
     "async function sfLoadShipmentHistory",
     "sfShipmentHistory_",

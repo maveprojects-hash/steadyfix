@@ -394,3 +394,15 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+
+# Stock count +/- buttons use the database-atomic delta RPC, not stale client-side absolute balances.
+stock_adjust_source = html.split("async function adjStock(", 1)[1].split("\\n\\nasync function mod(", 1)[0]
+for marker in ["sb.rpc('adjust_stock_level'", "p_item_id:rid", "p_site_id:site", "p_delta:d"]:
+    if marker not in stock_adjust_source:
+        raise SystemExit(f"Stock adjustment must use atomic delta RPC: missing {marker}")
+atomic_stock_migration = next((root / "supabase" / "migrations").glob("*_atomic_stock_adjustments.sql"))
+atomic_stock_sql = atomic_stock_migration.read_text(encoding="utf-8").lower()
+for marker in ["for update", "auth_role()", "auth_site_ok", "stock_levels", "on conflict(item_id,site_id)", "stock adjustment would make inventory negative"]:
+    if marker not in atomic_stock_sql:
+        raise SystemExit(f"Missing atomic stock adjustment safeguard: {marker}")

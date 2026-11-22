@@ -199,6 +199,9 @@ for marker in [
 ]:
     if marker not in assistant_code:
         raise SystemExit(f"Missing server-side company industry context safeguard: {marker}")
+for marker in ["active_department:cur", "Current department: ${ctx.active_department || \"not specified\"}"]:
+    if marker not in html and marker not in assistant_code:
+        raise SystemExit(f"Assistant missing active department context: {marker}")
 
 industry_priority_migration = next((root / "supabase" / "migrations").glob("*_industry_dashboard_priorities.sql"))
 priority_sql = industry_priority_migration.read_text(encoding="utf-8").lower()

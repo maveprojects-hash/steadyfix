@@ -203,6 +203,10 @@ for marker in ["active_department:cur", "Current department: ${ctx.active_depart
     if marker not in html and marker not in assistant_code:
         raise SystemExit(f"Assistant missing active department context: {marker}")
 
+for marker in ["retrieval_cap_reached", "Only the newest 200 records were retrieved before filtering"]:
+    if marker not in assistant_code:
+        raise SystemExit(f"Assistant record-search cap disclosure missing: {marker}")
+
 industry_priority_migration = next((root / "supabase" / "migrations").glob("*_industry_dashboard_priorities.sql"))
 priority_sql = industry_priority_migration.read_text(encoding="utf-8").lower()
 if "dashboard_priority_tabs" not in priority_sql or "property-management-facilities" not in priority_sql:

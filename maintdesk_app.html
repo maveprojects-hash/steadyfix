@@ -361,12 +361,18 @@ function sfIndustryQuickPick(){
       event.preventDefault();options[targetIndex]?.focus();
     });
   });
-  if(options.length)options.find(option=>option.dataset.industrySlug===current)?.focus();
 }
 function toggleIndustryQuickAccess(){
   const btn=$('industryQuickAccessBtn'),menu=$('industryQuickAccessMenu');if(!btn||!menu)return;
   if(!menu.hidden){sfCloseIndustryQuickAccess();return}
   sfIndustryQuickPick();menu.hidden=false;btn.setAttribute('aria-expanded','true');
+  menu.querySelector('[data-industry-slug]')?.focus();
+}
+function sfBindIndustryQuickAccessKeyboard(){
+  const btn=$('industryQuickAccessBtn');if(!btn||btn.__sfKeyboardBound)return;btn.__sfKeyboardBound=true;
+  btn.addEventListener('keydown',event=>{
+    if(event.key==='ArrowDown'){event.preventDefault();if($('industryQuickAccessMenu')?.hidden)toggleIndustryQuickAccess();else $('industryQuickAccessMenu')?.querySelector('[data-industry-slug]')?.focus()}
+  });
 }
 function sfCloseIndustryQuickAccess(){
   const btn=$('industryQuickAccessBtn'),menu=$('industryQuickAccessMenu');if(!btn||!menu)return;

@@ -299,6 +299,26 @@ for marker in [
         raise SystemExit(f"Missing industry operations UI capability: {marker}")
 
 
+# Tracking history is lazy-loaded per shipment, with bounded pages and tenant/site filters.
+logistics_workspace = workspace_code[workspace_code.index("async function sfLogisticsWorkspace"):workspace_code.index("const SF_SHIPMENT_CREATE_LOCK")]
+if "logistics_tracking_events').select('*').eq('company_id',me.company_id).eq('site_id',site).order('event_at'" in logistics_workspace:
+    raise SystemExit("Logistics workspace must not eagerly fetch the full tracking event history")
+lazy_history = workspace_code[workspace_code.index("async function sfLoadShipmentHistory"):workspace_code.index("async function sfLogisticsWorkspace")]
+for marker in [
+    "sfShipmentHistory_",
+    "eq('company_id',me.company_id)",
+    "eq('site_id',site)",
+    "eq('shipment_id',id)",
+    "pageSize=50",
+    "range(offset,offset+pageSize-1)",
+    "Load tracking history",
+]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Missing lazy tracking history safeguard: {marker}")
+if "data-offset" not in logistics_workspace or "Load more scans" not in lazy_history:
+    raise SystemExit("Tracking history must support bounded paging")
+
+
 time_guard_migration = next((root / "supabase" / "migrations").glob("*_restrict_technician_job_time_entries.sql"))
 time_guard_sql = time_guard_migration.read_text(encoding="utf-8").lower()
 if "technicians may only record labour against job cards assigned to them" not in time_guard_sql:

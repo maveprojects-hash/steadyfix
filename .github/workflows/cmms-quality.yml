@@ -33,3 +33,5 @@ jobs:
           node-version: "22"
       - name: Check CMMS JavaScript and notification safeguards
         run: python3 tests/check_cmms.py
+      - name: Check location parent integrity
+        run: python3 tests/check_location_parent_integrity.py

@@ -381,7 +381,7 @@ for marker in [
 module_start = workspace_code.index("function sfIndustryModules")
 module_end = workspace_code.index("async function sfIndustryWorkspace", module_start)
 module_source = workspace_code[module_start:module_end]
-industry_routes = set(re.findall(r"\['[^']*','[^']*','[^']*','([a-z_]+)'\]", module_source))
+industry_routes = set(re.findall(r"\['[^']*','[^']*','[^']*','([a-z0-9_-]+)'\]", module_source))
 mod_source = html.split("const MOD={", 1)[1].split("};\nconst TABS=", 1)[0]
 base_modules = set(re.findall(r"^\s*([a-z_]+):\{", mod_source, re.MULTILINE))
 custom_views = {"service_contracts", "logistics_ops", "ohs", "fleet", "inv", "chk", "rep"}

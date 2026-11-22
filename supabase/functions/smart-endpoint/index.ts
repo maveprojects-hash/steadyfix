@@ -114,7 +114,7 @@ async function runTool(name, input, st) {
     if (input.contains) { const w = String(input.contains).toLowerCase(); rows = rows.filter((x) => Object.values(x).some((v) => typeof v === "string" && v.toLowerCase().includes(w))); }
     const keep = ["id", ...(sch.fields || []).map((f) => f.k)];
     rows = rows.slice(0, Math.min(Number(input.limit) || 15, 25)).map((x) => Object.fromEntries(keep.filter((k) => x[k] !== undefined && x[k] !== null && x[k] !== "").map((k) => [k, typeof x[k] === "string" ? x[k].slice(0, 300) : x[k]])));
-    return JSON.stringify({ count: rows.length, rows });
+    return JSON.stringify({ count: rows.length, rows, retrieval_cap_reached: (r.data || []).length >= 200, note: (r.data || []).length >= 200 ? "Only the newest 200 records were retrieved before filtering; results may be incomplete. Refine filters or search again." : undefined });
   }
   if (name === "propose_create") {
     const { fields, errors } = checkFields(sch, input.fields, table);

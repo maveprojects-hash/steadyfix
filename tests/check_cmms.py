@@ -259,6 +259,12 @@ for marker in [
         raise SystemExit(f"Missing Automation service schema safeguard: {marker}")
 
 
+# Waybill printing must surface POD lookup errors rather than silently omit the signature.
+waybill_print = workspace_code[workspace_code.index("async function sfPrintWaybill"):workspace_code.index("// Extend the existing navigation")]
+if "if(pod.error){alert('Could not load proof of delivery for this waybill: '+pod.error.message);return;}" not in waybill_print:
+    raise SystemExit("Waybill print must surface POD lookup errors instead of silently omitting signature")
+
+
 # Integrated industry operations: labour ledger, transactional stock issue, logistics waybills and POD.
 operations_migration = next((root / "supabase" / "migrations").glob("*_industry_operations_logistics.sql"))
 operations_sql = operations_migration.read_text(encoding="utf-8").lower()

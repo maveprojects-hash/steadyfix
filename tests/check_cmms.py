@@ -394,3 +394,18 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+
+# Inventory direct-write permissions are role-limited at the database layer.
+inventory_role_migration = next((root / "supabase" / "migrations").glob("*_inventory_write_role_guards.sql"))
+inventory_role_sql = inventory_role_migration.read_text(encoding="utf-8").lower()
+for table in ["stock_items", "stock_levels"]:
+    for action in ["insert", "update", "delete"]:
+        marker = f"{table}_inventory_{action}_role_guard"
+        if marker not in inventory_role_sql:
+            raise SystemExit(f"Missing inventory write-role policy: {marker}")
+for role in ["owner", "manager", "storeman"]:
+    if role not in inventory_role_sql:
+        raise SystemExit(f"Missing authorized inventory role: {role}")
+if "as restrictive" not in inventory_role_sql or "public.auth_role()" not in inventory_role_sql:
+    raise SystemExit("Inventory role checks must be restrictive database policies using auth_role()")

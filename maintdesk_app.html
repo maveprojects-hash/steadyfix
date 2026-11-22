@@ -512,7 +512,7 @@ function show(f,v,refs){if(v===null||v===undefined||v==='')return'-';
  if(f.t=='dt')return new Date(v).toLocaleString('en-ZA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
  if(f.t=='n')return MONEY.test(f.k)?R(v):f.k=='wear_pct'?v+'%':String(v);return String(v)}
 function tg(r){const c=$('c'+r),e=c.querySelector('.ed');if(e.style.display!='none')return draw();e.style.display='block';c.querySelector('.vw').style.display='none';c.querySelector('.eb').textContent='Done'}
-async function adjStock(rid,d){const nv=Math.max(0,(+(LAST.oh[rid]||0))+d),{error}=await sb.from('stock_levels').upsert({item_id:rid,site_id:site,company_id:me.company_id,on_hand:nv});error?alert(error.message):draw()}
+async function adjStock(rid,d){const{error}=await sb.rpc('adjust_stock_level',{p_item_id:rid,p_site_id:site,p_delta:d,p_notes:null});error?alert(error.message):draw()}
 
 async function mod(id){
  const m=MOD[id], refs={};

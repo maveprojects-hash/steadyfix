@@ -714,17 +714,22 @@ if ".limit(500)" in shipment_workspace or "SF_LOGISTICS_SHIPMENTS=sr.data||[]" i
     raise SystemExit("Logistics shipment list still has a capped/unpaginated fetch")
 
 
-# Logistics tracking events are grouped once; avoid rescanning all events for each shipment.
+# Logistics tracking history is lazy-loaded by shipment, never fetched globally.
 for marker in [
-    "const eventsByShipment=new Map();",
-    "for(const event of events){const key=event.shipment_id;",
-    "eventsByShipment.get(key).push(event)",
-    "const history=eventsByShipment.get(x.id)||[];",
+    "async function sfLoadShipmentHistory",
+    "sfShipmentHistory_",
+    "eq('company_id',me.company_id)",
+    "eq('site_id',site)",
+    "eq('shipment_id',id)",
+    "pageSize=50",
+    ".range(offset,offset+pageSize-1)",
+    "Load tracking history",
+    "Load more scans",
 ]:
-    if marker not in shipment_workspace:
-        raise SystemExit(f"Logistics event grouping missing: {marker}")
-if "events.filter(e=>e.shipment_id===x.id)" in shipment_workspace:
-    raise SystemExit("Logistics history still rescans all events per shipment")
+    if marker not in industry_text:
+        raise SystemExit(f"Missing lazy Logistics history safeguard: {marker}")
+if "logistics_tracking_events').select('*')" in shipment_workspace:
+    raise SystemExit("Logistics workspace must not load all tracking events on open")
 
 # Latest scan insert policy must retain the terminal-shipment restriction after later policy replacements.
 latest_scan_policy = (root / "supabase" / "migrations" / "20261121220000_logistics_scan_location_length_guard.sql").read_text(encoding="utf-8").lower()

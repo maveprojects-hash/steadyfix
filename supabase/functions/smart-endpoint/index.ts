@@ -39,6 +39,7 @@ const TOOLS = [
 function buildPrompt(ctx, memory, schema) {
   return `You are the STEADYFIX assistant, a practical maintenance and OHS (occupational health and safety) helper built into the STEADYFIX CMMS app. You help owners, managers and staff run their sites.
 Today is ${ctx.today}. The user is ${ctx.user_name || "the user"} (${ctx.role || "staff"}), working on the site "${ctx.site_name || "their site"}".
+Current department: ${ctx.active_department || "not specified"}. Use this context to tailor the response and suggested records, but do not assume department-specific data unless you retrieve it with tools.
 
 Verified company industry profile (loaded server-side from the authenticated company record):
 ${JSON.stringify(ctx.industry_profile || {})}
@@ -243,7 +244,7 @@ Deno.serve(async (req) => {
       configuration_overrides: industryProfileRow.configuration_overrides || {},
       config_version: industryProfileRow.config_version,
     } : null;
-    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: body.site_id || null, site_name: String(body.site_name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
+    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: body.site_id || null, site_name: String(body.site_name || "").slice(0, 80), active_department: String(body.active_department || "").slice(0, 60), company_id, user_id: user.id, industry_profile: industryProfile };
     const st = { sb, schema, ctx, memory: mem.data || [], proposals: [], remembered: [] };
 
     const convo = messages.map((m) => ({ role: m.role, content: m.content }));

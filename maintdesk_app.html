@@ -521,7 +521,7 @@ async function mod(id){
  const pr=PER[id]||{p:'all',d:''};let plabel='';
  if(m.df&&pr.p!='all'){const R=rng(pr.p,pr.d||today);q=m.dt?q.gte(m.df,R.a+'T00:00:00').lte(m.df,R.b+'T23:59:59'):q.gte(m.df,R.a).lte(m.df,R.b);plabel=pr.p=='daily'?dd(R.a):dd(R.a)+' to '+dd(R.b)}
  const{data:rows0,error}=await q;if(error)throw error;
- let oh={};if(id=='stock_items')(await sb.from('stock_levels').select('item_id,on_hand').eq('site_id',site)).data.forEach(l=>oh[l.item_id]=l.on_hand);
+ let oh={};if(id=='stock_items'){const{data:stockBalances,error:stockBalanceError}=await sb.from('stock_levels').select('item_id,on_hand').eq('site_id',site);if(stockBalanceError)throw stockBalanceError;(stockBalances||[]).forEach(l=>oh[l.item_id]=l.on_hand);}
  const qq=(Q_[id]||'').toLowerCase(),rows=qq?rows0.filter(r=>m.f.some(f=>String(show(f,f.v?oh[r.id]:r[f.k],refs)).toLowerCase().includes(qq))):rows0;
  let pre=m.note?`<div class="note">${m.note}</div>`:'',sumTxt='';
  if(false&&id=='budgets'){const ex=(await sb.from('expenses').select('category,amount,spent_on').eq('site_id',site).gte('spent_on',yr+'-01-01')).data||[],mo=new Date().getMonth()+1;

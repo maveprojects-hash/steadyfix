@@ -614,6 +614,16 @@ for marker in [
     if marker not in role_guard_sql:
         raise SystemExit(f"Missing shipment edit-role safeguard: {marker}")
 
+# Null/unknown auth roles must not bypass Logistics shipment edit restrictions.
+if "if v_role is null or v_role not in ('technician','storeman')" not in role_guard_sql:
+    raise SystemExit("Logistics shipment role guard must reject null roles")
+null_role_guard = root / "supabase" / "migrations" / "20261122100000_logistics_role_null_guard.sql"
+if not null_role_guard.exists():
+    raise SystemExit("Missing null-role Logistics guard migration")
+null_role_sql = null_role_guard.read_text(encoding="utf-8").lower()
+if "if v_role is null or v_role not in ('technician','storeman')" not in null_role_sql:
+    raise SystemExit("Null/unknown Logistics roles must be rejected")
+
 # Logistics database booking-validation guard: reject blank required fields and oversized booking inputs.
 booking_validation_migration = next((root / "supabase" / "migrations").glob("*_logistics_booking_validation_guard.sql"))
 booking_validation_sql = booking_validation_migration.read_text(encoding="utf-8").lower()

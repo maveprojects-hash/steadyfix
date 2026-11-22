@@ -33,3 +33,5 @@ jobs:
           node-version: "22"
       - name: Check CMMS JavaScript and notification safeguards
         run: python3 tests/check_cmms.py
+      - name: Check duplicate industry profile safeguards
+        run: python3 tests/check_industry_profile_duplicates.py

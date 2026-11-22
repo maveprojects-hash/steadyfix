@@ -22,7 +22,6 @@ begin
   if not found then raise exception 'Unknown tracker key'; end if;
 
   if p_lat is null or p_lng is null
-     
      or abs(p_lat) > 90 or abs(p_lng) > 180 then
     raise exception 'Bad position';
   end if;

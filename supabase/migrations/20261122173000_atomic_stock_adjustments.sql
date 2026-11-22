@@ -2,7 +2,6 @@
 create or replace function private.adjust_stock_level_impl(
   p_item_id uuid,
   p_site_id uuid,
-  p_site_id uuid,
   p_delta numeric,
   p_notes text default null
 ) returns jsonb
@@ -45,10 +44,11 @@ end;
 $$;
 revoke all on function private.adjust_stock_level_impl(uuid,uuid,numeric,text) from public, anon;
 grant usage on schema private to authenticated;
-grant execute on function private.adjust_stock_level_impl(uuid,numeric,text) to authenticated;
+grant execute on function private.adjust_stock_level_impl(uuid,uuid,numeric,text) to authenticated;
 
 create or replace function public.adjust_stock_level(
   p_item_id uuid,
+  p_site_id uuid,
   p_delta numeric,
   p_notes text default null
 ) returns jsonb
@@ -57,4 +57,4 @@ security invoker
 set search_path = pg_catalog, public, private
 as $$ select private.adjust_stock_level_impl(p_item_id,p_site_id,p_delta,p_notes); $$;
 revoke all on function public.adjust_stock_level(uuid,uuid,numeric,text) from public, anon;
-grant execute on function public.adjust_stock_level(uuid,numeric,text) to authenticated;
+grant execute on function public.adjust_stock_level(uuid,uuid,numeric,text) to authenticated;

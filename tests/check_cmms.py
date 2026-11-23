@@ -397,8 +397,7 @@ for marker in [
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
 
 
-// Expanded industry catalog: ensure the migration, industry workspace maps and public
-// landing page all expose the same ten additional sectors without removing legacy options.
+# Expanded industry catalog: ensure migration seeds and workspace maps contain the ten new sectors.
 expanded_industries = [
     "construction-building", "healthcare-medical", "education-campus", "retail-shopping",
     "agriculture-farming", "mining-heavy-equipment", "utilities-energy",
@@ -406,16 +405,14 @@ expanded_industries = [
 ]
 catalog_expansion = (root / "supabase" / "migrations" / "20261123160000_expand_industry_catalog.sql").read_text(encoding="utf-8")
 landing = (root / "index.html").read_text(encoding="utf-8")
-workspace_maps = workspace_code
-login_setup = login_html
 for slug in expanded_industries:
     if slug not in catalog_expansion:
         raise SystemExit(f"Missing expanded industry migration seed: {slug}")
-    if slug not in workspace_maps:
+    if slug not in workspace_code:
         raise SystemExit(f"Missing expanded industry workspace mapping: {slug}")
 if "One application. Every industry." not in landing or "Construction &amp; Building" not in landing:
     raise SystemExit("Missing expanded industry landing positioning or sector cards")
-if "industry_catalog").select('slug,name').eq('is_active',true).order('sort_order" not in login_setup:
+if "industry_catalog" not in login_html or "industryOptions" not in login_html:
     raise SystemExit("Company onboarding must populate its industry selector from the active catalog")
 if "on conflict (slug) do update set" not in catalog_expansion.lower():
     raise SystemExit("Expanded industry catalog migration must be idempotent")

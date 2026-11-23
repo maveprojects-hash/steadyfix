@@ -440,6 +440,11 @@ for marker in quick_access_markers:
         raise SystemExit(f"Quick Access dropdown regression marker missing: {marker}")
 print("Industry Quick Access dropdown rendering, navigation, keyboard and dismissal: PASS")
 
+# Changing a primary industry must refresh dashboard-dependent industry content.
+if "Always refresh dashboard and industry profile after a successful switch" not in html:
+    raise SystemExit("Industry switch must refresh the dashboard after saving")
+print("Industry switch dashboard refresh regression guard: PASS")
+
 # Header cleanup: only one Quick Access trigger exists, with responsive compact layout.
 if html.count('id="industryQuickAccessBtn"') != 1:
     raise SystemExit("Expected exactly one Quick Access button; remove legacy duplicate")

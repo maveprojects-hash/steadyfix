@@ -413,10 +413,10 @@ for slug in expanded_industries:
         raise SystemExit(f"Missing expanded industry migration seed: {slug}")
     if slug not in workspace_maps:
         raise SystemExit(f"Missing expanded industry workspace mapping: {slug}")
-    if slug not in landing:
-        raise SystemExit(f"Missing expanded industry landing card: {slug}")
-    if slug not in login_setup:
-        raise SystemExit(f"Missing expanded industry onboarding reference: {slug}")
+if "One application. Every industry." not in landing or "Construction &amp; Building" not in landing:
+    raise SystemExit("Missing expanded industry landing positioning or sector cards")
+if "industry_catalog").select('slug,name').eq('is_active',true).order('sort_order" not in login_setup:
+    raise SystemExit("Company onboarding must populate its industry selector from the active catalog")
 if "on conflict (slug) do update set" not in catalog_expansion.lower():
     raise SystemExit("Expanded industry catalog migration must be idempotent")
 for marker in [

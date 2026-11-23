@@ -85,6 +85,12 @@ auth_call() {
   "${PSQL[@]}" -c "set role authenticated; set test.user_id='$USER'; set test.company_id='$COMPANY'; set test.role='owner'; set test.site_id='$SITE'; select public.convert_quote_to_invoice('$quote','$number');"
 }
 
+# Missing/null role must fail closed (SQL NULL must not bypass NOT IN authorization).
+auth_call_without_role() {
+  local quote="$1" number="$2"
+  "${PSQL[@]}" -c "set role authenticated; set test.user_id='$USER'; set test.company_id='$COMPANY'; set test.site_id='$SITE'; select public.convert_quote_to_invoice('$quote','$number');"
+}
+
 # First conversion and repeat request: exactly one invoice, second response idempotent.
 first="$(auth_call "$Q1" "INV-001")"
 second="$(auth_call "$Q1" "INV-RETRY")"
@@ -120,6 +126,10 @@ count="$("${PSQL[@]}" -Atc "select count(*) from public.documents where kind='in
 [[ "$status" == "draft" && "$count" == "0" ]]
 
 # Tenant and site guards reject conversion of quotes outside the caller's scope.
+if auth_call_without_role "$Q5" "INV-NO-ROLE" >"$TMP/no-role" 2>&1; then
+  echo "Expected missing-role authorization to fail closed" >&2
+  exit 1
+fi
 if auth_call "$Q4" "INV-004" >"$TMP/tenant" 2>&1; then
   echo "Expected tenant-scoped quote lookup to fail" >&2
   exit 1
@@ -128,4 +138,4 @@ if auth_call "$Q5" "INV-005" >"$TMP/site" 2>&1; then
   echo "Expected site authorization guard to fail" >&2
   exit 1
 fi
-echo "Quote conversion PostgreSQL regression: PASS (idempotency, concurrency, rollback, tenant/site guards)"
+echo "Quote conversion PostgreSQL regression: PASS (idempotency, concurrency, rollback, missing-role, tenant/site guards)"

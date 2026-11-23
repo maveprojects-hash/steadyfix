@@ -425,12 +425,12 @@ for marker in [
         raise SystemExit(f"Missing quick industry switch persistence behavior: {marker}")
 
 # Industry workspace shortcuts must point to a real base module or an explicit custom route.
-workspace_targets = set(re.findall(r"\\['[^']*','[^']*','[^']*','([^']+)'\\]", workspace_code))
-base_module_block = html.split("MOD={", 1)[-1].split("};", 1)[0]
-base_module_keys = set(re.findall(r"^\\s*([a-z_]+):\\{l:", base_module_block, re.M))
-tabs_block = html.split("const TABS=[", 1)[-1].split("];", 1)[0]
 workspace_targets = set(re.findall(r"\['[^']*','[^']*','[^']*','([^']+)'\]", workspace_code))
-custom_workspace_routes = {"service_contracts", "logistics_ops"}
+base_module_block = html.split("MOD={", 1)[-1].split("};", 1)[0]
 base_module_keys = set(re.findall(r"^\s*([a-z_]+):\{l:", base_module_block, re.M))
-if unknown_workspace_routes:
+tabs_block = html.split("const TABS=[", 1)[-1].split("];", 1)[0]
 tab_keys = set(re.findall(r"\['([^']+)'(?:,|'\])", tabs_block))
+custom_workspace_routes = {"service_contracts", "logistics_ops"}
+unknown_workspace_routes = workspace_targets - base_module_keys - tab_keys - custom_workspace_routes
+if unknown_workspace_routes:
+    raise SystemExit(f"Industry workspace shortcuts target unknown routes: {sorted(unknown_workspace_routes)}")

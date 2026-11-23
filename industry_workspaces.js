@@ -247,23 +247,40 @@ async function sfIssueJobStock(id){
 // ---------- Logistics parcel, waybill and proof-of-delivery workspace ----------
 let SF_LOGISTICS_SHIPMENTS=[];
 const SF_SHIPMENT_STATUSES=['booked','collected','in_transit','at_depot','out_for_delivery','delivered','exception','returned'];
+async function sfLoadShipmentHistory(id){
+  const container=document.getElementById('sfShipmentHistory_'+id);if(!container)return;
+  const pageSize=50,offset=Number(container.dataset.offset||0),button=container.previousElementSibling?.querySelector('button');
+  if(container.dataset.loading==='true')return;container.dataset.loading='true';if(button)button.disabled=true;
+  try{
+    const result=await sb.from('logistics_tracking_events').select('*').eq('company_id',me.company_id).eq('site_id',site).eq('shipment_id',id).order('event_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+pageSize-1);
+    if(result.error)throw result.error;
+    const rows=result.data||[];
+    if(offset===0)container.innerHTML='';
+    const html=rows.map(e=>'<div class="rl">'+esc(new Date(e.event_at).toLocaleString('en-ZA'))+' · <b>'+esc(cap(e.status||e.event_type))+'</b>'+(e.location?' · '+esc(e.location):'')+(e.notes?'<div class="note">'+esc(e.notes)+'</div>':'')+'</div>').join('');
+    container.insertAdjacentHTML('beforeend',html|| (offset===0?'<div class="note">No scans recorded yet.</div>':''));container.dataset.offset=String(offset+rows.length);container.dataset.loaded='true';
+    if(button){button.textContent=rows.length===pageSize?'Load more scans':'History loaded';button.disabled=rows.length<pageSize;}
+  }catch(error){alert('Could not load tracking history: '+(error.message||error));if(button)button.disabled=false;}
+  finally{container.dataset.loading='false';}
+}
 async function sfLogisticsWorkspace(){
-  const [sr,ev]=await Promise.all([
-    sb.from('logistics_shipments').select('*').eq('company_id',me.company_id).eq('site_id',site).order('created_at',{ascending:false}),
-    sb.from('logistics_tracking_events').select('*').eq('company_id',me.company_id).eq('site_id',site).order('event_at',{ascending:false}).limit(500)
-  ]);
-  if(sr.error)throw sr.error;if(ev.error)throw ev.error;
-  SF_LOGISTICS_SHIPMENTS=sr.data||[];const events=ev.data||[];
+  const shipments=[];const shipmentPageSize=500;let shipmentOffset=0;
+  while(true){
+    const sr=await sb.from('logistics_shipments').select('*').eq('company_id',me.company_id).eq('site_id',site).order('created_at',{ascending:false}).order('id',{ascending:false}).range(shipmentOffset,shipmentOffset+shipmentPageSize-1);
+    if(sr.error)throw sr.error;
+    const page=sr.data||[];shipments.push(...page);
+    if(page.length<shipmentPageSize)break;
+    shipmentOffset+=shipmentPageSize;
+  }
+  SF_LOGISTICS_SHIPMENTS=shipments;
   const count=s=>SF_LOGISTICS_SHIPMENTS.filter(x=>x.status===s).length;
   const cards=SF_LOGISTICS_SHIPMENTS.map(x=>{
-    const history=events.filter(e=>e.shipment_id===x.id).slice(0,8);
-    const opts=SF_SHIPMENT_STATUSES.map(s=>'<option value="'+s+'" '+(s===x.status?'selected':'')+'>'+esc(cap(s))+'</option>').join('');
+    const allowed=[x.status,...(SF_SHIPMENT_TRANSITIONS[x.status]||[])];const opts=allowed.map(s=>'<option value="'+s+'" '+ (s===x.status?'selected':'')+'>'+esc(cap(s))+'</option>').join('');
     return '<div class="card"><div class="ct"><div>'+esc(x.waybill_no)+' · '+esc(x.recipient_name)+'</div><div class="chips">'+chip(x.status,cap(x.status))+'</div></div>'+
       '<div class="kv"><span>Tracking number</span><b>'+esc(x.tracking_no||x.waybill_no)+'</b><span>From</span><b>'+esc(x.origin_address)+'</b><span>To</span><b>'+esc(x.destination_address)+'</b><span>Parcel</span><b>'+esc(x.package_count)+' package(s) · '+esc(x.parcel_description||'-')+'</b><span>Expected delivery</span><b>'+esc(x.expected_delivery||'-')+'</b></div>'+
       (x.status==='delivered'?'<div class="p"><b>Proof of delivery</b><div class="kv"><span>Received by</span><b>'+esc(x.pod_recipient_name||'-')+'</b><span>Delivered at</span><b>'+esc(x.delivered_at?new Date(x.delivered_at).toLocaleString('en-ZA'):'-')+'</b><span>Reference</span><b>'+esc(x.pod_reference||'-')+'</b><span>Notes</span><b>'+esc(x.pod_notes||'-')+'</b></div></div>':'')+
-      '<div class="ca noprint"><button onclick="sfPrintWaybill(\''+x.id+'\')">Print waybill</button><button onclick="sfAddShipmentScan(\''+x.id+'\')">Add tracking scan</button><button onclick="sfCapturePOD(\''+x.id+'\')">Proof of delivery</button>'+ (isMgr()?'<button class="x2" onclick="sfDeleteShipment(\''+x.id+'\')">Delete</button>':'')+'</div>'+
+      '<div class="ca noprint"><button onclick="sfPrintWaybill(\''+x.id+'\')">Print waybill</button>'+ (['delivered','returned'].includes(x.status)?'':'<button onclick="sfAddShipmentScan(\''+x.id+'\')">Add tracking scan</button><button onclick="sfCapturePOD(\''+x.id+'\')">Proof of delivery</button>')+ (isMgr()?'<button class="x2" onclick="sfDeleteShipment(\''+x.id+'\')">Delete</button>':'')+'</div>'+
       '<label class="el noprint">Update shipment status<select onchange="sfUpdateShipmentStatus(\''+x.id+'\',this.value)">'+opts+'</select></label>'+
-      '<div class="rl"><b>Tracking history</b></div>'+ (history.map(e=>'<div class="rl">'+esc(new Date(e.event_at).toLocaleString('en-ZA'))+' · <b>'+esc(cap(e.status||e.event_type))+'</b>'+(e.location?' · '+esc(e.location):'')+(e.notes?'<div class="note">'+esc(e.notes)+'</div>':'')+'</div>').join('')||'<div class="note">No scans recorded yet.</div>')+
+      '<div class="rl"><b>Tracking history</b> <button class="noprint" onclick="sfLoadShipmentHistory(\''+x.id+'\')">Load tracking history</button></div><div id="sfShipmentHistory_'+x.id+'" data-offset="0" data-loaded="false"><div class="note">Tracking scans load when requested.</div></div>'+
       '</div>';
   }).join('')||'<div class="p">No consignments yet. Create your first waybill below.</div>';
   return '<div class="bar2 noprint"><button onclick="goTab(\'industry_workspace\')">← Logistics workspace</button><button onclick="goTab(\'fleet\')">Fleet & GPS</button><button onclick="goTab(\'rep\')">Reports</button></div>'+
@@ -277,24 +294,44 @@ async function sfLogisticsWorkspace(){
     '<label class="el">Service level<select id="sfServiceLevel"><option value="standard">Standard</option><option value="express">Express</option><option value="overnight">Overnight</option><option value="same_day">Same day</option></select></label><label class="el">Expected delivery<input id="sfExpected" type="date"></label></div>'+
     '<button class="b" onclick="sfCreateShipment()">Create waybill</button></details>'+cards;
 }
+const SF_SHIPMENT_CREATE_LOCK={active:false};
 async function sfCreateShipment(){
+  if(SF_SHIPMENT_CREATE_LOCK.active)return;
   const waybill=$('sfWaybill').value.trim(),recipient=$('sfRecipient').value.trim(),origin=$('sfOrigin').value.trim(),destination=$('sfDestination').value.trim();
+  const tracking=$('sfTracking').value.trim()||waybill,packageInput=$('sfPackageCount').value.trim(),packageCount=packageInput===''?1:Number(packageInput),weightInput=$('sfWeight').value.trim(),weight=weightInput===''?null:Number(weightInput),serviceLevel=$('sfServiceLevel').value;
   if(!waybill||!recipient||!origin||!destination)return alert('Waybill number, recipient, origin and destination are required.');
-  const row={company_id:me.company_id,site_id:site,waybill_no:waybill,tracking_no:$('sfTracking').value.trim()||waybill,sender_name:$('sfSender').value.trim()||null,recipient_name:recipient,recipient_phone:$('sfRecipientPhone').value.trim()||null,origin_address:origin,destination_address:destination,parcel_description:$('sfParcel').value.trim()||null,package_count:Math.max(1,parseInt($('sfPackageCount').value,10)||1),weight_kg:$('sfWeight').value===''?null:Number($('sfWeight').value),service_level:$('sfServiceLevel').value,expected_delivery:$('sfExpected').value||null,status:'booked',created_by:me.id};
-  const {error}=await sb.from('logistics_shipments').insert(row);if(error)return alert('Could not create waybill: '+error.message);draw();
+  if(!Number.isInteger(packageCount)||packageCount<1||packageCount>10000)return alert('Package count must be a whole number between 1 and 10000.');
+  if(weight!==null&&(!Number.isFinite(weight)||weight<0||weight>1000000))return alert('Weight must be a valid non-negative number.');
+  if(!['standard','express','overnight','same_day'].includes(serviceLevel))return alert('Choose a valid service level.');
+  SF_SHIPMENT_CREATE_LOCK.active=true;
+  try{
+    const row={company_id:me.company_id,site_id:site,waybill_no:waybill,tracking_no:tracking,sender_name:$('sfSender').value.trim()||null,recipient_name:recipient,recipient_phone:$('sfRecipientPhone').value.trim()||null,origin_address:origin,destination_address:destination,parcel_description:$('sfParcel').value.trim()||null,package_count:packageCount,weight_kg:weight,service_level:serviceLevel,expected_delivery:$('sfExpected').value||null,status:'booked',created_by:me.id};
+    const {error}=await sb.from('logistics_shipments').insert(row);if(error){alert('Could not create waybill: '+error.message);return;}draw();
+  }finally{SF_SHIPMENT_CREATE_LOCK.active=false;}
 }
+const SF_SHIPMENT_TRANSITIONS={booked:['collected','exception'],collected:['in_transit','exception'],in_transit:['at_depot','out_for_delivery','exception'],at_depot:['out_for_delivery','in_transit','exception'],out_for_delivery:['delivered','at_depot','exception'],exception:['booked','collected','in_transit','at_depot','out_for_delivery','returned'],delivered:[],returned:[]};
 async function sfUpdateShipmentStatus(id,status){
   if(!SF_SHIPMENT_STATUSES.includes(status))return;
+  const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
+  if(status===shipment.status)return;
+  if(!(SF_SHIPMENT_TRANSITIONS[shipment.status]||[]).includes(status)){alert('Invalid shipment status transition: '+shipment.status+' → '+status);return;}
   if(status==='delivered'){sfCapturePOD(id);return;}
-  const {error}=await sb.from('logistics_shipments').update({status,delivered_at:status==='delivered'?new Date().toISOString():null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
+  const {error}=await sb.from('logistics_shipments').update({status,delivered_at:null}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);
   if(error)alert('Could not update shipment: '+error.message);else draw();
 }
+const SF_SCAN_SUBMISSIONS=new Set();
 async function sfAddShipmentScan(id){
-  const location=prompt('Depot, town or scan location:');if(location===null)return;
-  const notes=prompt('Scan notes (optional):')||null;
+  if(SF_SCAN_SUBMISSIONS.has(id))return;
   const shipment=SF_LOGISTICS_SHIPMENTS.find(x=>x.id===id);if(!shipment)return;
-  const {error}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'scan',status:shipment.status,location:location.trim()||null,notes,created_by:me.id});
-  if(error)alert('Could not save tracking scan: '+error.message);else draw();
+  SF_SCAN_SUBMISSIONS.add(id);
+  try{
+    const locationInput=prompt('Depot, town or scan location:');if(locationInput===null)return;
+    const location=locationInput.trim();if(!location){alert('Enter a scan location before saving.');return;}if(location.length>200){alert('Scan location must be 200 characters or fewer.');return;}
+    const notesInput=prompt('Scan notes (optional):');if(notesInput===null)return;
+    const notes=notesInput.trim()||null;
+    const {error}=await sb.from('logistics_tracking_events').insert({company_id:me.company_id,site_id:site,shipment_id:id,event_type:'scan',status:shipment.status,location,notes,created_by:me.id});
+    if(error)alert('Could not save tracking scan: '+error.message);else draw();
+  }finally{SF_SCAN_SUBMISSIONS.delete(id);}
 }
 function sfCapturePOD(id){SF_POD_SHIPMENT_ID=id;cur='logistics_pod';draw()}
 let SF_POD_SHIPMENT_ID=null;
@@ -322,7 +359,7 @@ async function sfDeleteShipment(id){
 }
 async function sfPrintWaybill(id){
   const x=SF_LOGISTICS_SHIPMENTS.find(s=>s.id===id);if(!x)return;
-  const pod=await sb.from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('site_id',site).maybeSingle();const signed=pod.data;
+  const pod=await sb.from('logistics_pod_signoffs').select('*').eq('shipment_id',id).eq('site_id',site).maybeSingle();if(pod.error){alert('Could not load proof of delivery for this waybill: '+pod.error.message);return;}const signed=pod.data;
   const row=(l,v)=>'<tr><th style="width:32%">'+l+'</th><td>'+esc(v==null||v===''?'-':String(v))+'</td></tr>';
   sheetPrint(ph('Transport waybill')+'<br><table class="pt">'+row('Waybill number',x.waybill_no)+row('Tracking number',x.tracking_no)+row('Service level',cap(x.service_level))+row('Status',cap(x.status))+row('Sender',x.sender_name)+row('Recipient',x.recipient_name)+row('Recipient phone',x.recipient_phone)+row('Origin',x.origin_address)+row('Destination',x.destination_address)+row('Contents',x.parcel_description)+row('Packages',x.package_count)+row('Weight (kg)',x.weight_kg)+row('Expected delivery',x.expected_delivery)+'</table>'+(signed?'<h3>Electronic proof of delivery</h3><p>Received by: '+esc(signed.receiver_name)+' · '+esc(new Date(signed.signed_at).toLocaleString('en-ZA'))+'</p>'+sfSignatureSvg(signed.signature_points)+'<p>'+esc(signed.notes||'')+'</p>':'')+'<p><b>Driver / collection signature</b> ___________________________</p><p><b>Receiver signature / name</b> ___________________________ Date: __________</p>');
 }

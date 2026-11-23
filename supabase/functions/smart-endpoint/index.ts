@@ -39,6 +39,7 @@ const TOOLS = [
 function buildPrompt(ctx, memory, schema) {
   return `You are the STEADYFIX assistant, a practical maintenance and OHS (occupational health and safety) helper built into the STEADYFIX CMMS app. You help owners, managers and staff run their sites.
 Today is ${ctx.today}. The user is ${ctx.user_name || "the user"} (${ctx.role || "staff"}), working on the site "${ctx.site_name || "their site"}".
+Current department: ${ctx.active_department || "not specified"}. Use this context to tailor the response and suggested records, but do not assume department-specific data unless you retrieve it with tools.
 
 Verified company industry profile (loaded server-side from the authenticated company record):
 ${JSON.stringify(ctx.industry_profile || {})}
@@ -113,7 +114,7 @@ async function runTool(name, input, st) {
     if (input.contains) { const w = String(input.contains).toLowerCase(); rows = rows.filter((x) => Object.values(x).some((v) => typeof v === "string" && v.toLowerCase().includes(w))); }
     const keep = ["id", ...(sch.fields || []).map((f) => f.k)];
     rows = rows.slice(0, Math.min(Number(input.limit) || 15, 25)).map((x) => Object.fromEntries(keep.filter((k) => x[k] !== undefined && x[k] !== null && x[k] !== "").map((k) => [k, typeof x[k] === "string" ? x[k].slice(0, 300) : x[k]])));
-    return JSON.stringify({ count: rows.length, rows });
+    return JSON.stringify({ count: rows.length, rows, retrieval_cap_reached: (r.data || []).length >= 200, note: (r.data || []).length >= 200 ? "Only the newest 200 records were retrieved before filtering; results may be incomplete. Refine filters or search again." : undefined });
   }
   if (name === "propose_create") {
     const { fields, errors } = checkFields(sch, input.fields, table);
@@ -165,7 +166,7 @@ async function runTool(name, input, st) {
     return "Saved.";
   }
   if (name === "forget_memory") {
-    const { error } = await sb.from("assistant_memory").delete().eq("id", String(input.id));
+    const { error } = await sb.from("assistant_memory").delete().eq("id", String(input.id)).eq("company_id", ctx.company_id);
     if (error) return "Error: " + error.message;
     st.memory = st.memory.filter((m) => m.id !== input.id); return "Removed.";
   }
@@ -226,7 +227,7 @@ Deno.serve(async (req) => {
     const used = await sb.from("assistant_usage").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", start.toISOString());
     if ((used.count || 0) >= DAILY_LIMIT) return json({ reply: `You have used today's ${DAILY_LIMIT} assistant messages. It resets tomorrow.`, proposals: [], remembered: [] });
 
-    const mem = await sb.from("assistant_memory").select("id,note").order("created_at", { ascending: true }).limit(60);
+    const mem = await sb.from("assistant_memory").select("id,note").eq("company_id", company_id).order("created_at", { ascending: true }).limit(60);
     // Never accept industry identity from the browser: derive it from this authenticated company.
     const industryProfileResult = await sb.from("company_industry_profiles")
       .select("primary_industry_slug,secondary_industry_slugs,business_description,configuration_overrides,config_version")
@@ -243,7 +244,7 @@ Deno.serve(async (req) => {
       configuration_overrides: industryProfileRow.configuration_overrides || {},
       config_version: industryProfileRow.config_version,
     } : null;
-    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: body.site_id || null, site_name: String(body.site_name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
+    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: body.site_id || null, site_name: String(body.site_name || "").slice(0, 80), active_department: String(body.active_department || "").slice(0, 60), company_id, user_id: user.id, industry_profile: industryProfile };
     const st = { sb, schema, ctx, memory: mem.data || [], proposals: [], remembered: [] };
 
     const convo = messages.map((m) => ({ role: m.role, content: m.content }));

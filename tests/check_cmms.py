@@ -199,6 +199,13 @@ for marker in [
 ]:
     if marker not in assistant_code:
         raise SystemExit(f"Missing server-side company industry context safeguard: {marker}")
+for marker in ["active_department:cur", "Current department: ${ctx.active_department || \"not specified\"}"]:
+    if marker not in html and marker not in assistant_code:
+        raise SystemExit(f"Assistant missing active department context: {marker}")
+
+for marker in ["retrieval_cap_reached", "Only the newest 200 records were retrieved before filtering"]:
+    if marker not in assistant_code:
+        raise SystemExit(f"Assistant record-search cap disclosure missing: {marker}")
 
 industry_priority_migration = next((root / "supabase" / "migrations").glob("*_industry_dashboard_priorities.sql"))
 priority_sql = industry_priority_migration.read_text(encoding="utf-8").lower()
@@ -259,6 +266,12 @@ for marker in [
         raise SystemExit(f"Missing Automation service schema safeguard: {marker}")
 
 
+# Waybill printing must surface POD lookup errors rather than silently omit the signature.
+waybill_print = workspace_code[workspace_code.index("async function sfPrintWaybill"):workspace_code.index("// Extend the existing navigation")]
+if "if(pod.error){alert('Could not load proof of delivery for this waybill: '+pod.error.message);return;}" not in waybill_print:
+    raise SystemExit("Waybill print must surface POD lookup errors instead of silently omitting signature")
+
+
 # Integrated industry operations: labour ledger, transactional stock issue, logistics waybills and POD.
 operations_migration = next((root / "supabase" / "migrations").glob("*_industry_operations_logistics.sql"))
 operations_sql = operations_migration.read_text(encoding="utf-8").lower()
@@ -291,6 +304,39 @@ for marker in [
 ]:
     if marker not in workspace_code:
         raise SystemExit(f"Missing industry operations UI capability: {marker}")
+
+
+# Tracking event history must remain append-only for authenticated clients.
+tracking_history_immutable_migration = next((root / "supabase" / "migrations").glob("*_logistics_tracking_events_immutable_permissions.sql"))
+tracking_history_immutable_sql = tracking_history_immutable_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "revoke update, delete on table public.logistics_tracking_events from authenticated",
+    "drop policy if exists logistics_tracking_events_update",
+    "drop policy if exists logistics_tracking_events_delete",
+    "grant select, insert on table public.logistics_tracking_events to authenticated",
+]:
+    if marker not in tracking_history_immutable_sql:
+        raise SystemExit(f"Missing append-only tracking-history permission safeguard: {marker}")
+
+
+# Tracking history is lazy-loaded per shipment, with bounded pages and tenant/site filters.
+logistics_workspace = workspace_code[workspace_code.index("async function sfLogisticsWorkspace"):workspace_code.index("const SF_SHIPMENT_CREATE_LOCK")]
+if "logistics_tracking_events').select('*').eq('company_id',me.company_id).eq('site_id',site).order('event_at'" in logistics_workspace:
+    raise SystemExit("Logistics workspace must not eagerly fetch the full tracking event history")
+lazy_history = workspace_code[workspace_code.index("async function sfLoadShipmentHistory"):workspace_code.index("async function sfLogisticsWorkspace")]
+for marker in [
+    "sfShipmentHistory_",
+    "eq('company_id',me.company_id)",
+    "eq('site_id',site)",
+    "eq('shipment_id',id)",
+    "pageSize=50",
+    "range(offset,offset+pageSize-1)",
+    "Load tracking history",
+]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Missing lazy tracking history safeguard: {marker}")
+if "data-offset" not in logistics_workspace or "Load more scans" not in lazy_history:
+    raise SystemExit("Tracking history must support bounded paging")
 
 
 time_guard_migration = next((root / "supabase" / "migrations").glob("*_restrict_technician_job_time_entries.sql"))
@@ -394,3 +440,453 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+# Shipment tracking scan submission validation and duplicate-click protection.
+for marker in [
+    "const SF_SCAN_SUBMISSIONS=new Set()",
+    "if(SF_SCAN_SUBMISSIONS.has(id))return;",
+    "SF_SCAN_SUBMISSIONS.add(id)",
+    "const location=locationInput.trim();if(!location)",
+    "finally{SF_SCAN_SUBMISSIONS.delete(id);}"]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Missing shipment scan safeguard: {marker}")
+
+
+# POD signatures reject null/NaN and out-of-range coordinates in a DB trigger.
+signature_coordinate_guard = root / "supabase" / "migrations" / "20261121210000_logistics_pod_signature_coordinate_guard.sql"
+if not signature_coordinate_guard.exists():
+    raise SystemExit("Missing POD signature coordinate guard migration")
+signature_coordinate_sql = signature_coordinate_guard.read_text(encoding="utf-8").lower()
+for marker in [
+    "guard_logistics_pod_signature_coordinates",
+    "v_x is null or v_y is null",
+    "v_x = 'nan'::numeric",
+    "v_y = 'nan'::numeric",
+    "signature coordinates must be finite values between 0 and 1",
+    "before insert on public.logistics_pod_signoffs",
+]:
+    if marker not in signature_coordinate_sql:
+        raise SystemExit(f"Missing POD signature coordinate safeguard: {marker}")
+
+# Newly inserted logistics shipments must start booked; lifecycle transitions are guarded separately.
+initial_status_guard = root / "supabase" / "migrations" / "20261121200000_logistics_booking_initial_status_guard.sql"
+if not initial_status_guard.exists():
+    raise SystemExit("Missing initial Logistics booked-status guard migration")
+initial_status_sql = initial_status_guard.read_text(encoding="utf-8").lower()
+for marker in [
+    "guard_logistics_shipment_initial_status",
+    "new.status is distinct from 'booked'",
+    "new shipments must begin in booked status",
+    "before insert on public.logistics_shipments",
+]:
+    if marker not in initial_status_sql:
+        raise SystemExit(f"Missing initial shipment status safeguard: {marker}")
+
+# Shipment status history is recorded by the database trigger, not a second UI insert.
+if "event_type:'status_change',status,notes:'Status changed from '+shipment.status+' to '+status" in workspace_code:
+    raise SystemExit("Shipment status history is duplicated by the UI")
+logistics_migration = next((root / "supabase" / "migrations").glob("*_industry_operations_logistics.sql"))
+logistics_sql = logistics_migration.read_text(encoding="utf-8").lower()
+if "logistics_record_status_event" not in logistics_sql or "logistics_shipments_status_event" not in logistics_sql:
+    raise SystemExit("Database shipment status-event trigger is missing")
+
+# Tracking history should not silently truncate to only eight events per shipment.
+if "const history=events.filter(e=>e.shipment_id===x.id).slice(0,8);" in workspace_code:
+    raise SystemExit("Shipment tracking history is truncated to eight events")
+if "const history=eventsByShipment.get(x.id)||[];" in workspace_code:
+    raise SystemExit("Tracking history must not be eagerly assembled for every shipment")
+
+# Shipment tracking status-transition guard coverage.
+for marker in [
+    "const SF_SHIPMENT_TRANSITIONS={booked:['collected','exception']",
+    "if(status===shipment.status)return;",
+    "Invalid shipment status transition:",
+    "if(!(SF_SHIPMENT_TRANSITIONS[shipment.status]||[]).includes(status))",
+]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Missing shipment status transition safeguard: {marker}")
+
+# Shipment creation input validation and duplicate-submit lock.
+for marker in [
+    "const SF_SHIPMENT_CREATE_LOCK={active:false}",
+    "if(SF_SHIPMENT_CREATE_LOCK.active)return;",
+    "Number.isInteger(packageCount)",
+    "Number.isFinite(weight)",
+    "finally{SF_SHIPMENT_CREATE_LOCK.active=false;}"
+]:
+    if marker not in workspace_code:
+        raise SystemExit(f"Missing shipment creation safeguard: {marker}")
+
+
+# Database-level shipment lifecycle guard, with delivery gated by signed POD.
+transition_migration = next((root / "supabase" / "migrations").glob("*_logistics_status_transition_guard.sql"))
+transition_sql = transition_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "guard_logistics_shipment_status_transition",
+    "logistics_shipments_status_transition_guard",
+    "invalid shipment status transition",
+    "old.status='out_for_delivery' and new.status in ('delivered','at_depot','exception')",
+    "old.status='exception' and new.status in ('booked','collected','in_transit','at_depot','out_for_delivery','returned')",
+    "shipment delivery requires a valid signed proof of delivery",
+    "from public.logistics_pod_signoffs p",
+    "p.receiver_consent=true",
+    "p.signed_at=new.delivered_at",
+    "btrim(p.receiver_name)=btrim(new.pod_recipient_name)",
+    "p.reference is not distinct from nullif(btrim(new.pod_reference),'')",
+    "p.notes is not distinct from nullif(btrim(new.pod_notes),'')",
+]:
+    if marker not in transition_sql:
+        raise SystemExit(f"Missing database shipment transition safeguard: {marker}")
+# Signed POD RPC inserts signoff before setting delivered; transition guard validates that order.
+pod_impl = pod_sql[pod_sql.find("record_logistics_pod_signoff_impl"):]
+if pod_impl.find("insert into public.logistics_pod_signoffs") < 0 or pod_impl.find("update public.logistics_shipments") < 0 or pod_impl.find("insert into public.logistics_pod_signoffs") > pod_impl.find("update public.logistics_shipments"):
+    raise SystemExit("POD must persist receiver signoff before delivery status update")
+
+
+# Concurrent POD submissions are serialized by locking the shipment row before status checks.
+pod_lock_migration = next((root / "supabase" / "migrations").glob("*_logistics_pod_submission_lock.sql"))
+pod_lock_sql = pod_lock_migration.read_text(encoding="utf-8").lower()
+if "for update;" not in pod_lock_sql:
+    raise SystemExit("Concurrent POD submission must lock its shipment row")
+lock_select = pod_lock_sql.find("from public.logistics_shipments s")
+signoff_insert = pod_lock_sql.find("insert into public.logistics_pod_signoffs")
+if lock_select < 0 or signoff_insert < 0 or lock_select > signoff_insert:
+    raise SystemExit("POD shipment row must be locked before signoff insert")
+
+
+# Logistics database safeguards: POD row-lock syntax and scan-only user event writes.
+pod_lock_migration = next((root / "supabase" / "migrations").glob("*_logistics_pod_submission_lock.sql"))
+pod_lock_sql = pod_lock_migration.read_text(encoding="utf-8").lower()
+lock_select_start = pod_lock_sql.find("from public.logistics_shipments s")
+lock_select_end = pod_lock_sql.find("for update;", lock_select_start)
+if lock_select_start < 0 or lock_select_end < 0:
+    raise SystemExit("POD submission must lock the shipment row with SELECT ... FOR UPDATE")
+lock_statement = pod_lock_sql[lock_select_start:lock_select_end]
+if ";" in lock_statement:
+    raise SystemExit("POD shipment SELECT must not terminate before FOR UPDATE")
+compact_lock = re.sub(r"\s+", "", lock_statement)
+if "wheres.id=p_shipment_idands.company_id=v_company" not in compact_lock:
+    raise SystemExit("POD row lock must scope the shipment to its company")
+if "for update;" not in pod_lock_sql:
+    raise SystemExit("POD shipment row lock missing statement terminator")
+
+scan_guard_migration = next((root / "supabase" / "migrations").glob("*_logistics_tracking_scan_insert_guard.sql"))
+scan_guard_sql = scan_guard_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "event_type = 'scan'",
+    "location is not null",
+    "length(btrim(location)) > 0",
+    "length(notes) <= 2000",
+    "logistics_tracking_events.shipment_id",
+    "logistics_tracking_events.company_id",
+    "logistics_tracking_events.site_id",
+    "logistics_tracking_events.status",
+]:
+    if marker not in scan_guard_sql:
+        raise SystemExit(f"Missing logistics tracking scan insert restriction: {marker}")
+if "event_type = 'status_change'" in scan_guard_sql or "event_type = 'pod'" in scan_guard_sql:
+    raise SystemExit("User tracking event policy must not allow status-change or POD inserts")
+
+
+# Tracking scan locations are bounded at the database boundary and validated in the UI.
+scan_location_guard = root / "supabase" / "migrations" / "20261121220000_logistics_scan_location_length_guard.sql"
+if not scan_location_guard.exists():
+    raise SystemExit("Missing Logistics scan-location length guard migration")
+scan_location_sql = scan_location_guard.read_text(encoding="utf-8").lower()
+if "length(btrim(location)) between 1 and 200" not in scan_location_sql:
+    raise SystemExit("Tracking scan locations must be bounded to 200 characters")
+if "if(location.length>200)" not in workspace_code.replace(" ", ""):
+    raise SystemExit("Tracking scan UI must reject locations longer than 200 characters")
+
+# Shipment identity guard: immutable booking/company/site attribution and waybill.
+identity_guard_migration = next((root / "supabase" / "migrations").glob("*_logistics_shipment_identity_guard.sql"))
+identity_guard_sql = identity_guard_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "create or replace function public.guard_logistics_shipment_identity",
+    "new.id is distinct from old.id",
+    "new.company_id is distinct from old.company_id",
+    "new.site_id is distinct from old.site_id",
+    "new.waybill_no is distinct from old.waybill_no",
+    "new.created_by is distinct from old.created_by",
+    "new.created_at is distinct from old.created_at",
+    "shipment identity and waybill cannot be changed after booking",
+    "before update on public.logistics_shipments",
+]:
+    if marker not in identity_guard_sql:
+        raise SystemExit(f"Missing shipment identity safeguard: {marker}")
+
+
+# Logistics tracking history must be on-demand and paged per shipment.
+industry_text = (root / "industry_workspaces.js").read_text(encoding="utf-8")
+logistics_workspace = industry_text[industry_text.index("async function sfLogisticsWorkspace()"):industry_text.index("const SF_SHIPMENT_CREATE_LOCK")]
+lazy_history = industry_text[industry_text.index("async function sfLoadShipmentHistory"):industry_text.index("async function sfLogisticsWorkspace")]
+if "logistics_tracking_events').select('*')" in logistics_workspace:
+    raise SystemExit("Logistics workspace must not eagerly load all tracking events")
+for marker in ["pageSize=50", "eq('company_id',me.company_id)", "eq('site_id',site)", "eq('shipment_id',id)", ".range(offset,offset+pageSize-1)", "order('event_at',{ascending:false}).order('id',{ascending:false})"]:
+    if marker not in lazy_history:
+        raise SystemExit(f"Logistics per-shipment history paging missing: {marker}")
+if "Load tracking history" not in logistics_workspace or "Load more scans" not in lazy_history:
+    raise SystemExit("Logistics history load controls are missing")
+
+
+# Logistics shipment edit-role guard: technicians/storemen cannot mutate booking fields.
+role_guard_migration = next((root / "supabase" / "migrations").glob("*_logistics_role_update_guard.sql"))
+role_guard_sql = role_guard_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "guard_logistics_shipment_role_updates",
+    "v_role in ('owner','manager')",
+    "v_role not in ('technician','storeman')",
+    "new.recipient_name is distinct from old.recipient_name",
+    "new.origin_address is distinct from old.origin_address",
+    "new.destination_address is distinct from old.destination_address",
+    "new.delivered_at is distinct from old.delivered_at",
+    "new.status='delivered'",
+    "public.logistics_pod_signoffs p",
+    "new.pod_recipient_name is distinct from old.pod_recipient_name",
+    "old.status is distinct from 'delivered'",
+    "p.signed_at=new.delivered_at",
+    "btrim(p.receiver_name)=btrim(new.pod_recipient_name)",
+    "p.reference is not distinct from nullif(btrim(new.pod_reference),'')",
+    "p.notes is not distinct from nullif(btrim(new.pod_notes),'')",
+    "new.package_count is distinct from old.package_count",
+    "only owners and managers may edit shipment booking details",
+    "before update on public.logistics_shipments",
+]:
+    if marker not in role_guard_sql:
+        raise SystemExit(f"Missing shipment edit-role safeguard: {marker}")
+
+# Null/unknown auth roles must not bypass Logistics shipment edit restrictions.
+null_role_guard = root / "supabase" / "migrations" / "20261122100000_logistics_role_null_guard.sql"
+if not null_role_guard.exists():
+    raise SystemExit("Missing null-role Logistics guard migration")
+null_role_sql = null_role_guard.read_text(encoding="utf-8").lower()
+if "if v_role is null or v_role not in ('technician','storeman')" not in null_role_sql:
+    raise SystemExit("Null/unknown Logistics roles must be rejected")
+
+# Logistics database booking-validation guard: reject blank required fields and oversized booking inputs.
+booking_validation_migration = next((root / "supabase" / "migrations").glob("*_logistics_booking_validation_guard.sql"))
+booking_validation_sql = booking_validation_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "nullif(btrim(new.waybill_no),'') is null",
+    "nullif(btrim(new.recipient_name),'') is null",
+    "nullif(btrim(new.origin_address),'') is null",
+    "nullif(btrim(new.destination_address),'') is null",
+    "new.package_count>10000",
+    "new.weight_kg>1000000",
+    "new.updated_at:=now()",
+]:
+    if marker not in re.sub(r"\\s+", "", booking_validation_sql) and marker not in booking_validation_sql:
+        raise SystemExit(f"Missing Logistics booking validation: {marker}")
+
+
+# Unknown/null operational roles must be explicitly rejected (SQL NULL semantics).
+role_null_guard = root / "supabase" / "migrations" / "20261122100000_logistics_role_null_guard.sql"
+if not role_null_guard.exists():
+    raise SystemExit("Missing Logistics null-role guard migration")
+role_null_sql = role_null_guard.read_text(encoding="utf-8").lower()
+for marker in [
+    "if v_role is null or v_role not in ('technician','storeman')",
+    "raise exception 'you are not allowed to update this shipment'",
+]:
+    if marker not in role_null_sql:
+        raise SystemExit(f"Missing Logistics null-role rejection: {marker}")
+
+# Terminal shipments cannot receive user-created scan events.
+terminal_scan_guard = root / "supabase" / "migrations" / "20261121182000_logistics_terminal_scan_guard.sql"
+if not terminal_scan_guard.exists():
+    raise SystemExit("Missing terminal shipment scan guard migration")
+terminal_scan_sql = terminal_scan_guard.read_text(encoding="utf-8").lower()
+for marker in [
+    "drop policy if exists logistics_tracking_events_insert",
+    "create policy logistics_tracking_events_insert",
+    "s.status not in ('delivered','returned')",
+]:
+    if marker not in terminal_scan_sql:
+        raise SystemExit(f"Missing terminal scan restriction: {marker}")
+
+# Collection status must stamp dispatched_at at database level.
+dispatch_timestamp_guard = root / "supabase" / "migrations" / "20261121190000_logistics_dispatch_timestamp.sql"
+if not dispatch_timestamp_guard.exists():
+    raise SystemExit("Missing logistics dispatch timestamp migration")
+dispatch_timestamp_sql = dispatch_timestamp_guard.read_text(encoding="utf-8").lower()
+for marker in [
+    "create or replace function public.set_logistics_dispatch_timestamp",
+    "old.status is distinct from new.status and new.status='collected'",
+    "new.dispatched_at:=coalesce(new.dispatched_at,now())",
+    "before update of status on public.logistics_shipments",
+]:
+    if marker not in dispatch_timestamp_sql:
+        raise SystemExit(f"Missing dispatch timestamp safeguard: {marker}")
+
+# Terminal shipment UI actions must not offer tracking scans or POD capture.
+logistics_ui = (root / "industry_workspaces.js").read_text(encoding="utf-8")
+for marker in [
+    "const allowed=[x.status,...(SF_SHIPMENT_TRANSITIONS[x.status]||[])]",
+    "returned'].includes(x.status)?",
+    '<button onclick="sfAddShipmentScan',
+    '<button onclick="sfCapturePOD',
+]:
+    if marker not in logistics_ui:
+        raise SystemExit(f"Missing Logistics UI lifecycle restriction: {marker}")
+
+
+# Logistics shipment list must paginate beyond the Supabase default row cap.
+shipment_workspace = logistics_ui[logistics_ui.index("async function sfLogisticsWorkspace()"):logistics_ui.index("const SF_SHIPMENT_CREATE_LOCK")]
+for marker in [
+    "const shipments=[];const shipmentPageSize=500;let shipmentOffset=0",
+    "while(true){",
+    ".order('created_at',{ascending:false}).order('id',{ascending:false}).range(shipmentOffset,shipmentOffset+shipmentPageSize-1)",
+    "shipments.push(...page)",
+    "if(page.length<shipmentPageSize)break",
+    "SF_LOGISTICS_SHIPMENTS=shipments;",
+]:
+    if marker not in shipment_workspace:
+        raise SystemExit(f"Logistics shipment pagination missing: {marker}")
+if ".limit(500)" in shipment_workspace or "SF_LOGISTICS_SHIPMENTS=sr.data||[]" in shipment_workspace:
+    raise SystemExit("Logistics shipment list still has a capped/unpaginated fetch")
+
+
+# Logistics tracking history is lazy-loaded by shipment, never fetched globally.
+
+# AI assistant memory reads and deletes must remain company-scoped.
+assistant_backend = (root / "supabase" / "functions" / "smart-endpoint" / "index.ts").read_text(encoding="utf-8")
+for marker in [
+    'from("assistant_memory").delete().eq("id", String(input.id)).eq("company_id", ctx.company_id)',
+    'from("assistant_memory").select("id,note").eq("company_id", company_id).order("created_at", { ascending: true }).limit(60)',
+]:
+    if marker not in assistant_backend:
+        raise SystemExit(f"Assistant memory company isolation missing: {marker}")
+
+for marker in [
+    "async function sfLoadShipmentHistory",
+    "sfShipmentHistory_",
+    "eq('company_id',me.company_id)",
+    "eq('site_id',site)",
+    "eq('shipment_id',id)",
+    "pageSize=50",
+    ".range(offset,offset+pageSize-1)",
+    "Load tracking history",
+    "Load more scans",
+]:
+    if marker not in industry_text:
+        raise SystemExit(f"Missing lazy Logistics history safeguard: {marker}")
+if "logistics_tracking_events').select('*')" in shipment_workspace:
+    raise SystemExit("Logistics workspace must not load all tracking events on open")
+
+# First-page tracking history load replaces its initial placeholder rather than leaving stale copy beside results.
+history_loader = industry_text[industry_text.index("async function sfLoadShipmentHistory"):industry_text.index("async function sfLogisticsWorkspace")]
+if "if(offset===0)container.innerHTML=''" not in history_loader:
+    raise SystemExit("Logistics tracking history first page must clear the initial placeholder")
+
+# Latest scan insert policy must retain the terminal-shipment restriction after later policy replacements.
+latest_scan_policy = (root / "supabase" / "migrations" / "20261121220000_logistics_scan_location_length_guard.sql").read_text(encoding="utf-8").lower()
+if "s.status not in ('delivered','returned')" not in latest_scan_policy:
+    raise SystemExit("Latest Logistics scan insert policy allows terminal shipments")
+
+# POD RPC must reject a missing role (SQL NULL makes NOT IN evaluate to NULL).
+pod_lock_guard = root / "supabase" / "migrations" / "20261121112000_logistics_pod_submission_lock.sql"
+if not pod_lock_guard.exists():
+    raise SystemExit("Missing Logistics POD submission lock migration")
+pod_lock_guard_sql = pod_lock_guard.read_text(encoding="utf-8").lower()
+if "if v_role is null or v_role not in ('owner','manager','technician','storeman')" not in pod_lock_guard_sql:
+    raise SystemExit("Logistics POD RPC must reject null/unknown roles")
+
+# Serialize tracking scans against shipment status changes; reject stale/terminal scan states under row lock.
+scan_row_lock_migration = root / "supabase" / "migrations" / "20261123100000_logistics_tracking_scan_row_lock.sql"
+if not scan_row_lock_migration.exists():
+    raise SystemExit("Missing Logistics scan row-lock migration")
+scan_row_lock_sql = scan_row_lock_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "guard_logistics_tracking_scan_insert",
+    "before insert on public.logistics_tracking_events",
+    "for update",
+    "new.event_type <> 'scan'",
+    "new.created_by is distinct from auth.uid()",
+    "new.company_id is distinct from v_company",
+    "not public.auth_site_ok(new.site_id)",
+    "v_status in ('delivered','returned') or v_status is distinct from new.status",
+    "tracking scan status is stale or shipment is terminal",
+]:
+    if marker not in scan_row_lock_sql:
+        raise SystemExit(f"Missing serialized tracking scan safeguard: {marker}")
+
+# Server-side tracking scan timestamp override prevents client chronology spoofing.
+scan_timestamp_migration = root / "supabase" / "migrations" / "20261123113000_logistics_scan_server_timestamp.sql"
+if not scan_timestamp_migration.exists():
+    raise SystemExit("Missing Logistics scan server-timestamp migration")
+scan_timestamp_sql = scan_timestamp_migration.read_text(encoding="utf-8").lower()
+if "new.event_at := statement_timestamp()" not in scan_timestamp_sql:
+    raise SystemExit("Tracking scan event_at must be set from database time")
+if "ignore any client-supplied event_at" not in scan_timestamp_sql:
+    raise SystemExit("Scan timestamp guard must document overriding client event_at")
+
+
+# Direct authenticated tracking-event inserts are limited to scan events; lifecycle rows are trigger-owned.
+tracking_insert_policy_migration = root / "supabase" / "migrations" / "20261123114000_logistics_tracking_events_scan_only_insert_policy.sql"
+if not tracking_insert_policy_migration.exists():
+    raise SystemExit("Missing Logistics scan-only tracking event insert policy migration")
+tracking_insert_policy_sql = tracking_insert_policy_migration.read_text(encoding="utf-8").lower()
+if "event_type = 'scan'" not in tracking_insert_policy_sql:
+    raise SystemExit("Authenticated direct tracking-event inserts must be restricted to scan events")
+if "drop policy if exists logistics_tracking_events_insert" not in tracking_insert_policy_sql:
+    raise SystemExit("Scan-only insert migration must replace the prior permissive policy")
+
+
+# Shipment POD summary metadata cannot be forged independently of a signed POD.
+pod_metadata_migration = root / "supabase" / "migrations" / "20261123121000_logistics_pod_metadata_signoff_guard.sql"
+if not pod_metadata_migration.exists():
+    raise SystemExit("Missing Logistics POD metadata signoff guard migration")
+pod_metadata_sql = pod_metadata_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "guard_logistics_pod_metadata",
+    "before insert or update",
+    "new.delivered_at is distinct from old.delivered_at",
+    "new.pod_recipient_name is distinct from old.pod_recipient_name",
+    "new.pod_reference is distinct from old.pod_reference",
+    "new.pod_notes is distinct from old.pod_notes",
+    "public.logistics_pod_signoffs p",
+    "p.signed_at=new.delivered_at",
+    "btrim(p.receiver_name)=btrim(new.pod_recipient_name)",
+    "p.reference is not distinct from nullif(btrim(new.pod_reference),'')",
+    "p.notes is not distinct from nullif(btrim(new.pod_notes),'')",
+    "pod metadata must match a valid receiver signoff",
+]:
+    if marker not in pod_metadata_sql:
+        raise SystemExit(f"Missing POD metadata integrity safeguard: {marker}")
+
+
+# Delivered/returned shipments are terminal; delivery requires a recorded receiver signoff.
+terminal_status_migration = root / "supabase" / "migrations" / "20261123115000_logistics_terminal_status_guard.sql"
+if not terminal_status_migration.exists():
+    raise SystemExit("Missing Logistics terminal-status guard migration")
+terminal_status_sql = terminal_status_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "old.status in ('delivered','returned') and new.status is distinct from old.status",
+    "new.status='delivered'",
+    "public.logistics_pod_signoffs",
+    "before update of status on public.logistics_shipments",
+    "terminal shipment status cannot be changed",
+    "delivery status requires a receiver signoff",
+]:
+    if marker not in terminal_status_sql:
+        raise SystemExit(f"Missing Logistics terminal-status safeguard: {marker}")
+
+
+# Dispatch timestamps are server-owned and may only be set during the collection transition.
+dispatch_integrity_migration = root / "supabase" / "migrations" / "20261123130000_logistics_dispatch_timestamp_integrity.sql"
+if not dispatch_integrity_migration.exists():
+    raise SystemExit("Missing Logistics dispatch timestamp integrity migration")
+dispatch_integrity_sql = dispatch_integrity_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "guard_logistics_dispatch_timestamp",
+    "if tg_op='insert'",
+    "new.dispatched_at is not null",
+    "dispatch timestamp is database-owned",
+    "old.status is distinct from new.status and new.status='collected'",
+    "new.dispatched_at:=statement_timestamp()",
+    "new.dispatched_at is distinct from old.dispatched_at",
+    "dispatch timestamp cannot be changed outside collection transition",
+    "before insert or update on public.logistics_shipments",
+]:
+    if marker not in dispatch_integrity_sql:
+        raise SystemExit(f"Missing dispatch timestamp integrity safeguard: {marker}")

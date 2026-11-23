@@ -165,9 +165,10 @@ async function runTool(name, input, st) {
     return "Saved.";
   }
   if (name === "forget_memory") {
-    const { error } = await sb.from("assistant_memory").delete().eq("id", String(input.id)).eq("company_id", ctx.company_id);
+    const { data, error } = await sb.from("assistant_memory").delete().eq("id", String(input.id)).eq("company_id", ctx.company_id).select("id");
     if (error) return "Error: " + error.message;
-    st.memory = st.memory.filter((m) => m.id !== input.id); return "Removed.";
+    if (!data || !data.length) return "No matching memory found for this company.";
+    st.memory = st.memory.filter((m) => String(m.id) !== String(input.id)); return "Removed.";
   }
   if (name === "attention_summary") {
     const t = ctx.today, in30 = new Date(Date.parse(t) + 30 * 864e5).toISOString().slice(0, 10), out = {};

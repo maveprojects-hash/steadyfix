@@ -819,6 +819,29 @@ if "drop policy if exists logistics_tracking_events_insert" not in tracking_inse
     raise SystemExit("Scan-only insert migration must replace the prior permissive policy")
 
 
+# Shipment POD summary metadata cannot be forged independently of a signed POD.
+pod_metadata_migration = root / "supabase" / "migrations" / "20261123121000_logistics_pod_metadata_signoff_guard.sql"
+if not pod_metadata_migration.exists():
+    raise SystemExit("Missing Logistics POD metadata signoff guard migration")
+pod_metadata_sql = pod_metadata_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "guard_logistics_pod_metadata",
+    "before insert or update",
+    "new.delivered_at is distinct from old.delivered_at",
+    "new.pod_recipient_name is distinct from old.pod_recipient_name",
+    "new.pod_reference is distinct from old.pod_reference",
+    "new.pod_notes is distinct from old.pod_notes",
+    "public.logistics_pod_signoffs p",
+    "p.signed_at=new.delivered_at",
+    "btrim(p.receiver_name)=btrim(new.pod_recipient_name)",
+    "p.reference is not distinct from nullif(btrim(new.pod_reference),'')",
+    "p.notes is not distinct from nullif(btrim(new.pod_notes),'')",
+    "pod metadata must match a valid receiver signoff",
+]:
+    if marker not in pod_metadata_sql:
+        raise SystemExit(f"Missing POD metadata integrity safeguard: {marker}")
+
+
 # Delivered/returned shipments are terminal; delivery requires a recorded receiver signoff.
 terminal_status_migration = root / "supabase" / "migrations" / "20261123115000_logistics_terminal_status_guard.sql"
 if not terminal_status_migration.exists():

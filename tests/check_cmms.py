@@ -418,7 +418,7 @@ if "on conflict (slug) do update set" not in catalog_expansion.lower():
     raise SystemExit("Expanded industry catalog migration must be idempotent")
 for marker in [
     "QUICK INDUSTRY ACCESS",
-    "async function chooseIndustryWorkspace",
+    "el.onchange=async()=>{const ok=await savePrimaryIndustry(el.value);if(ok){cur='industry_workspace';draw()}}",
     "savePrimaryIndustry(el.value)",
 ]:
     if marker not in html:

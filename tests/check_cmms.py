@@ -777,3 +777,22 @@ if not pod_lock_guard.exists():
 pod_lock_guard_sql = pod_lock_guard.read_text(encoding="utf-8").lower()
 if "if v_role is null or v_role not in ('owner','manager','technician','storeman')" not in pod_lock_guard_sql:
     raise SystemExit("Logistics POD RPC must reject null/unknown roles")
+
+# Serialize tracking scans against shipment status changes; reject stale/terminal scan states under row lock.
+scan_row_lock_migration = root / "supabase" / "migrations" / "20261123100000_logistics_tracking_scan_row_lock.sql"
+if not scan_row_lock_migration.exists():
+    raise SystemExit("Missing Logistics scan row-lock migration")
+scan_row_lock_sql = scan_row_lock_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "guard_logistics_tracking_scan_insert",
+    "before insert on public.logistics_tracking_events",
+    "for update",
+    "new.event_type <> 'scan'",
+    "new.created_by is distinct from auth.uid()",
+    "new.company_id is distinct from v_company",
+    "not public.auth_site_ok(new.site_id)",
+    "v_status in ('delivered','returned') or v_status is distinct from new.status",
+    "tracking scan status is stale or shipment is terminal",
+]:
+    if marker not in scan_row_lock_sql:
+        raise SystemExit(f"Missing serialized tracking scan safeguard: {marker}")

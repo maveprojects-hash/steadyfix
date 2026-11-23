@@ -255,6 +255,7 @@ async function sfLoadShipmentHistory(id){
     const result=await sb.from('logistics_tracking_events').select('*').eq('company_id',me.company_id).eq('site_id',site).eq('shipment_id',id).order('event_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+pageSize-1);
     if(result.error)throw result.error;
     const rows=result.data||[];
+    if(offset===0)container.innerHTML='';
     const html=rows.map(e=>'<div class="rl">'+esc(new Date(e.event_at).toLocaleString('en-ZA'))+' · <b>'+esc(cap(e.status||e.event_type))+'</b>'+(e.location?' · '+esc(e.location):'')+(e.notes?'<div class="note">'+esc(e.notes)+'</div>':'')+'</div>').join('');
     container.insertAdjacentHTML('beforeend',html|| (offset===0?'<div class="note">No scans recorded yet.</div>':''));container.dataset.offset=String(offset+rows.length);container.dataset.loaded='true';
     if(button){button.textContent=rows.length===pageSize?'Load more scans':'History loaded';button.disabled=rows.length<pageSize;}

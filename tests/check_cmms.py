@@ -458,6 +458,17 @@ for marker in [
         raise SystemExit(f"Quick Access header layout regression marker missing: {marker}")
 print("Single Quick Access button, legacy Manager button removal, and mobile inline header layout: PASS")
 
+# Mobile dropdown must be portaled out of the header stacking context and remain topmost.
+for marker in [
+    "document.body.appendChild(menu)",
+    "z-index:2147483647!important",
+    "pointer-events:auto",
+    'id="site" hidden aria-hidden="true" tabindex="-1"',
+]:
+    if marker not in html:
+        raise SystemExit(f"Quick Access overlay regression marker missing: {marker}")
+print("Header site selector hidden; industry dropdown portal and top-layer overlay: PASS")
+
 # Authentication resilience: retry a transient local session read and avoid false logout on profile fetch failure.
 for marker in [
     "async function sfGetRestoredSession()",

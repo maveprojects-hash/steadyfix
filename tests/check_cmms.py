@@ -440,3 +440,16 @@ if not conversion_migration.exists(): raise SystemExit("Missing quote conversion
 conversion_sql = conversion_migration.read_text(encoding="utf-8").lower()
 for marker in ["security invoker", "for update", "public.auth_company()", "public.auth_site_ok(v_quote.site_id)", "on conflict (company_id, converted_from)", "already_converted"]:
     if marker not in conversion_sql: raise SystemExit(f"Missing transactional quote guard: {marker}")
+
+# Stock adjustment buttons must use the atomic delta RPC, never stale client-side upserts.
+stock_adjust_source = html.split("async function adjStock(", 1)[1].split("\\n\\nasync function mod(", 1)[0]
+for marker in ["sb.rpc('adjust_stock_level'", "p_item_id:rid", "p_site_id:site", "p_delta:d"]:
+    if marker not in stock_adjust_source:
+        raise SystemExit(f"Missing atomic stock adjustment behavior: {marker}")
+stock_adjust_migration = root / "supabase" / "migrations" / "20261122173000_atomic_stock_adjustments.sql"
+if not stock_adjust_migration.exists():
+    raise SystemExit("Missing atomic stock adjustment RPC migration")
+stock_adjust_sql = stock_adjust_migration.read_text(encoding="utf-8").lower()
+for marker in ["for update", "auth_role()", "auth_site_ok", "stock_levels", "on conflict(item_id,site_id)", "stock adjustment would make inventory negative"]:
+    if marker not in stock_adjust_sql:
+        raise SystemExit(f"Missing stock adjustment safeguard: {marker}")

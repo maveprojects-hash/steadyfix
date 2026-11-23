@@ -35,3 +35,5 @@ jobs:
           node-version: "22"
       - name: Check CMMS JavaScript and notification safeguards
         run: python3 tests/check_cmms.py
+      - name: Check purchase-order integrity guard
+        run: python3 tests/check_purchase_order_integrity.py

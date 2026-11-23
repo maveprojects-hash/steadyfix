@@ -52,3 +52,5 @@ jobs:
         run: python3 tests/check_cmms.py
       - name: Run transactional quote conversion PostgreSQL regression
         run: bash tests/test_quote_conversion_rpc.sh
+      - name: Run concurrent stock adjustment PostgreSQL regression
+        run: bash tests/test_stock_adjustment_rpc.sh

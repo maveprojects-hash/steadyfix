@@ -143,6 +143,14 @@ for marker in [
 
 login_html = (root / "maintdesk_login.html").read_text(encoding="utf-8")
 for marker in [
+    "async function sfGetRestoredSession()",
+    "const session=await sfGetRestoredSession()",
+    "Your session is still active",
+    "profileRetry",
+]:
+    if marker not in login_html:
+        raise SystemExit(f"Missing login session recovery marker: {marker}")
+for marker in [
     "min-height:100svh",
     "align-items:flex-start",
     "app.classList.add('company-home')",
@@ -435,10 +443,31 @@ print("Industry Quick Access dropdown rendering, navigation, keyboard and dismis
 # Header cleanup: only one Quick Access trigger exists, with responsive compact layout.
 if html.count('id="industryQuickAccessBtn"') != 1:
     raise SystemExit("Expected exactly one Quick Access button; remove legacy duplicate")
-for marker in ["sf-industry-quick{flex-direction:row", "@media(max-width:700px)", "header #site{min-width:130px;max-width:220px}"]:
+header_markup = html.split("<header>", 1)[1].split("</header>", 1)[0]
+if ('href="maintdesk_app.html"' in header_markup or "href='maintdesk_app.html'" in header_markup or "Manager CMMS application" in header_markup or "Manager application" in header_markup):
+    raise SystemExit("Legacy Manager CMMS application button is still present in the header")
+for marker in [
+    "sf-industry-quick{flex-direction:row",
+    "@media(max-width:700px)",
+    "header #site{min-width:130px;max-width:220px}",
+    ".sf-industry-quick{flex-direction:row;flex-wrap:nowrap;align-items:center",
+    ".sf-industry-quick-wrap{width:auto;flex:0 0 auto;max-width:none}",
+    ".sf-industry-quick-btn{width:auto;min-width:0;justify-content:center;gap:6px",
+]:
     if marker not in html:
         raise SystemExit(f"Quick Access header layout regression marker missing: {marker}")
-print("Single Quick Access button and responsive header layout: PASS")
+print("Single Quick Access button, legacy Manager button removal, and mobile inline header layout: PASS")
+
+# Authentication resilience: retry a transient local session read and avoid false logout on profile fetch failure.
+for marker in [
+    "async function sfGetRestoredSession()",
+    "const session=await sfGetRestoredSession()",
+    "Your session is intact",
+    "setTimeout(resolve,300)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing CMMS session recovery marker: {marker}")
+print("CMMS session restore retry and profile-load failure handling: PASS")
 
 # Atomic quote conversion regression markers and transactional migration safeguards.
 quote_conversion_start = html.find("async function toInvoice(")

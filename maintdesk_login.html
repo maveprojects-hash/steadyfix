@@ -43,7 +43,7 @@ button.l{background:none;box-shadow:none;color:var(--ac);padding:6px 0;font-weig
 
 // 1) Paste your Supabase project values (Project settings > API)
 const SUPABASE_URL='https://wqggnimaglsikdusbvuh.supabase.co', SUPABASE_ANON_KEY='sb_publishable_NhiAgVZ451DMdfwzWTSGvQ_zQlbwW8l';
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY); async function sfGetRestoredSession(){for(let attempt=0;attempt<2;attempt++){const{data,error}=await sb.auth.getSession();if(data?.session)return data.session;if(error)console.warn('Session restore attempt failed:',error.message);if(attempt===0)await new Promise(resolve=>setTimeout(resolve,300))}return null}
 const $=id=>document.getElementById(id), app=$('app');
 const head=(t,s)=>`<h1>STEADYFIX CMMS</h1><p style="margin:0;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#e59f0f">Maintain excellence.</p><p>${s||''}</p><h3>${t}</h3>`;
 const err=m=>{$('e').textContent=m||''};
@@ -102,8 +102,9 @@ async function home(me){
    error?err(error.message):$('ic').innerHTML=`Send them this code: <code>${data.token}</code><br>They sign up with <b>${$('ie').value}</b>, then choose "Join with invite".`}}}
 
 async function route(){
- const{data:{session}}=await sb.auth.getSession();if(!session)return auth();
- const{data:me}=await sb.from('profiles').select('id,company_id,full_name,role,companies(name)').eq('id',session.user.id).maybeSingle();
+ const session=await sfGetRestoredSession();if(!session)return auth();
+ const{data:me,error}=await sb.from('profiles').select('id,company_id,full_name,role,companies(name)').eq('id',session.user.id).maybeSingle();
+ if(error){app.innerHTML=head('Account temporarily unavailable','Your session is still active, but account details could not be loaded. Please retry.');app.innerHTML+='<button id="profileRetry">Retry</button>'; $('profileRetry').onclick=route;return}
  me?home(me):setup()}
 route();
 function intro(){try{if(sessionStorage.getItem('sf_intro'))return;sessionStorage.setItem('sf_intro','1')}catch(e){}

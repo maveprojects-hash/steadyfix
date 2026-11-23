@@ -440,3 +440,33 @@ if not conversion_migration.exists(): raise SystemExit("Missing quote conversion
 conversion_sql = conversion_migration.read_text(encoding="utf-8").lower()
 for marker in ["security invoker", "for update", "public.auth_company()", "public.auth_site_ok(v_quote.site_id)", "on conflict (company_id, converted_from)", "already_converted"]:
     if marker not in conversion_sql: raise SystemExit(f"Missing transactional quote guard: {marker}")
+
+# Logistics scalability: shipment list is paged and tracking history is lazy/paged per shipment.
+logistics_js = (root / "industry_workspaces.js").read_text(encoding="utf-8")
+workspace = logistics_js[logistics_js.index("async function sfLogisticsWorkspace"):logistics_js.index("async function sfCreateShipment")]
+history_loader = logistics_js[logistics_js.index("async function sfLoadShipmentHistory"):logistics_js.index("async function sfLogisticsWorkspace")]
+for marker in [
+    "const shipments=[];const shipmentPageSize=500;let shipmentOffset=0",
+    "while(true){",
+    ".range(shipmentOffset,shipmentOffset+shipmentPageSize-1)",
+    "shipments.push(...page)",
+    "if(page.length<shipmentPageSize)break",
+    "sfLoadShipmentHistory",
+    "Load tracking history",
+]:
+    if marker not in workspace:
+        raise SystemExit(f"Logistics shipment paging regression missing: {marker}")
+for marker in [
+    "pageSize=50",
+    "eq('company_id',me.company_id)",
+    "eq('site_id',site)",
+    "eq('shipment_id',id)",
+    ".range(offset,offset+pageSize-1)",
+    "if(offset===0)container.innerHTML='';",
+    "Load more scans",
+]:
+    if marker not in history_loader:
+        raise SystemExit(f"Logistics tracking-history paging regression missing: {marker}")
+if "logistics_tracking_events').select('*')" in workspace:
+    raise SystemExit("Logistics workspace must not fetch all tracking events on initial render")
+print("Logistics shipment pagination and lazy tracking history: PASS")

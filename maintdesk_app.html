@@ -325,7 +325,7 @@ async function savePrimaryIndustry(slug){
  const{error}=await sb.from('company_industry_profiles').update({primary_industry_slug:slug,secondary_industry_slugs:secondary}).eq('company_id',me.company_id);
  if(error){alert('Could not update the company industry profile: '+error.message);renderIndustrySelector();return}
  await loadIndustryProfile();renderIndustrySelector();
- if(cur==='industry')draw();
+ draw(); // Always refresh dashboard and industry profile after a successful switch.
 }
 async function saveIndustryProfile(){
  if(!isMgr())return;

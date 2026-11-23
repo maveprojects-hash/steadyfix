@@ -857,3 +857,23 @@ for marker in [
 ]:
     if marker not in terminal_status_sql:
         raise SystemExit(f"Missing Logistics terminal-status safeguard: {marker}")
+
+
+# Dispatch timestamps are server-owned and may only be set during the collection transition.
+dispatch_integrity_migration = root / "supabase" / "migrations" / "20261123130000_logistics_dispatch_timestamp_integrity.sql"
+if not dispatch_integrity_migration.exists():
+    raise SystemExit("Missing Logistics dispatch timestamp integrity migration")
+dispatch_integrity_sql = dispatch_integrity_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "guard_logistics_dispatch_timestamp",
+    "if tg_op='insert'",
+    "new.dispatched_at is not null",
+    "dispatch timestamp is database-owned",
+    "old.status is distinct from new.status and new.status='collected'",
+    "new.dispatched_at:=statement_timestamp()",
+    "new.dispatched_at is distinct from old.dispatched_at",
+    "dispatch timestamp cannot be changed outside collection transition",
+    "before insert or update on public.logistics_shipments",
+]:
+    if marker not in dispatch_integrity_sql:
+        raise SystemExit(f"Missing dispatch timestamp integrity safeguard: {marker}")

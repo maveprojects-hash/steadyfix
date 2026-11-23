@@ -143,6 +143,14 @@ for marker in [
 
 login_html = (root / "maintdesk_login.html").read_text(encoding="utf-8")
 for marker in [
+    "async function sfGetRestoredSession()",
+    "const session=await sfGetRestoredSession()",
+    "Your session is still active",
+    "profileRetry",
+]:
+    if marker not in login_html:
+        raise SystemExit(f"Missing login session recovery marker: {marker}")
+for marker in [
     "min-height:100svh",
     "align-items:flex-start",
     "app.classList.add('company-home')",
@@ -436,7 +444,7 @@ print("Industry Quick Access dropdown rendering, navigation, keyboard and dismis
 if html.count('id="industryQuickAccessBtn"') != 1:
     raise SystemExit("Expected exactly one Quick Access button; remove legacy duplicate")
 header_markup = html.split("<header>", 1)[1].split("</header>", 1)[0]
-if re.search(r'<(?:a|button)[^>]*(?:maintdesk_app\\.html|manager\\s+(?:cmms\\s+)?application)', header_markup, re.I):
+if re.search(r'<(?:a|button)[^>]*(?:maintdesk_app\.html|manager\\s+(?:cmms\\s+)?application)', header_markup, re.I):
     raise SystemExit("Legacy Manager CMMS application button is still present in the header")
 for marker in [
     "sf-industry-quick{flex-direction:row",
@@ -449,6 +457,17 @@ for marker in [
     if marker not in html:
         raise SystemExit(f"Quick Access header layout regression marker missing: {marker}")
 print("Single Quick Access button, legacy Manager button removal, and mobile inline header layout: PASS")
+
+# Authentication resilience: retry a transient local session read and avoid false logout on profile fetch failure.
+for marker in [
+    "async function sfGetRestoredSession()",
+    "const session=await sfGetRestoredSession()",
+    "Your session is intact",
+    "setTimeout(resolve,300)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing CMMS session recovery marker: {marker}")
+print("CMMS session restore retry and profile-load failure handling: PASS")
 
 # Atomic quote conversion regression markers and transactional migration safeguards.
 quote_conversion_start = html.find("async function toInvoice(")

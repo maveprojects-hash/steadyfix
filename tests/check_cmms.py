@@ -425,3 +425,18 @@ for marker in quick_access_markers:
     if marker not in html:
         raise SystemExit(f"Quick Access dropdown regression marker missing: {marker}")
 print("Industry Quick Access dropdown rendering, navigation, keyboard and dismissal: PASS")
+
+# Atomic quote conversion regression markers and transactional migration safeguards.
+quote_conversion_start = html.find("async function toInvoice(")
+quote_conversion_end = html.find("async function delDoc(", quote_conversion_start)
+quote_conversion_code = html[quote_conversion_start:quote_conversion_end]
+for marker in ["q.company_id!==me.company_id", "q.kind!=='quote'", "q.status==='cancelled'", "sb.rpc('convert_quote_to_invoice'", "p_quote_id:id", "p_invoice_number:number", "r.data.already_converted"]:
+    if marker not in quote_conversion_code:
+        raise SystemExit(f"Missing quote conversion safeguard: {marker}")
+if "sb.from('documents').insert(row)" in quote_conversion_code or "sb.from('documents').update({status:'accepted'})" in quote_conversion_code:
+    raise SystemExit("Quote conversion must use a single database transaction")
+conversion_migration = root / "supabase" / "migrations" / "20261123110000_quote_conversion_atomic_rpc.sql"
+if not conversion_migration.exists(): raise SystemExit("Missing quote conversion RPC migration")
+conversion_sql = conversion_migration.read_text(encoding="utf-8").lower()
+for marker in ["security invoker", "for update", "public.auth_company()", "public.auth_site_ok(v_quote.site_id)", "on conflict (company_id, converted_from)", "already_converted"]:
+    if marker not in conversion_sql: raise SystemExit(f"Missing transactional quote guard: {marker}")

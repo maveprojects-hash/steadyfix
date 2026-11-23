@@ -797,15 +797,6 @@ for marker in [
     if marker not in scan_row_lock_sql:
         raise SystemExit(f"Missing serialized tracking scan safeguard: {marker}")
 
-# User-created tracking scans must receive a database timestamp, not a client-forged event_at.
-scan_row_lock_sql = scan_row_lock_migration.read_text(encoding="utf-8").lower()
-for marker in [
-    "new.event_at := statement_timestamp()",
-    "timestamp integrity: scan events use server time",
-]:
-    if marker not in scan_row_lock_sql:
-        raise SystemExit(f"Missing scan timestamp integrity safeguard: {marker}")
-
 # Server-side tracking scan timestamp override prevents client chronology spoofing.
 scan_timestamp_migration = root / "supabase" / "migrations" / "20261123113000_logistics_scan_server_timestamp.sql"
 if not scan_timestamp_migration.exists():

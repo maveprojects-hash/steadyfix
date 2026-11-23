@@ -666,6 +666,18 @@ for marker in [
         raise SystemExit(f"Missing Logistics booking validation: {marker}")
 
 
+# Unknown/null operational roles must be explicitly rejected (SQL NULL semantics).
+role_null_guard = root / "supabase" / "migrations" / "20261122100000_logistics_role_null_guard.sql"
+if not role_null_guard.exists():
+    raise SystemExit("Missing Logistics null-role guard migration")
+role_null_sql = role_null_guard.read_text(encoding="utf-8").lower()
+for marker in [
+    "if v_role is null or v_role not in ('technician','storeman')",
+    "raise exception 'you are not allowed to update this shipment'",
+]:
+    if marker not in role_null_sql:
+        raise SystemExit(f"Missing Logistics null-role rejection: {marker}")
+
 # Terminal shipments cannot receive user-created scan events.
 terminal_scan_guard = root / "supabase" / "migrations" / "20261121182000_logistics_terminal_scan_guard.sql"
 if not terminal_scan_guard.exists():

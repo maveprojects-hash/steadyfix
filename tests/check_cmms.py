@@ -186,6 +186,11 @@ for marker in [
 if 'id="industry"' not in login_html or "company_industry_profiles').update" not in login_html:
     raise SystemExit("Company onboarding does not save the selected industry profile")
 
+# Company onboarding must provide a return path to the login form for existing users.
+for marker in ['id="loginBack"', "Already registered? Back to log in", "mode='login';auth()"]:
+    if marker not in login_html:
+        raise SystemExit(f"Missing setup return-to-login navigation: {marker}")
+
 assistant_source = root / "supabase" / "functions" / "smart-endpoint" / "index.ts"
 if not assistant_source.exists():
     raise SystemExit("Missing version-controlled iAssistant Edge Function source")

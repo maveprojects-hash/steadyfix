@@ -541,7 +541,7 @@ if "from('support_tickets').select('*').eq('user_id',me.id).order('created_at',{
 
 # Keyboard access: opening the menu reveals it before moving focus to the first option.
 quick_access = html[html.index("function toggleIndustryQuickAccess"):html.index("function sfCloseIndustryQuickAccess")]
-if "menu.hidden=false;btn.setAttribute('aria-expanded','true');" not in quick_access or "menu.querySelector('[data-industry-slug]')?.focus()" not in quick_access:
+if "menu.hidden=false;btn.setAttribute('aria-expanded','true');" not in quick_access or "menu.querySelector('[data-quick-tab],[data-industry-slug]')?.focus()" not in quick_access:
     raise SystemExit("Industry quick-access opening does not focus a visible option")
 if "sfBindIndustryQuickAccessKeyboard();" not in html or "event.key==='ArrowDown'" not in html[html.index("function sfBindIndustryQuickAccessKeyboard"):html.index("sfBindIndustryQuickAccessKeyboard();")]:
     raise SystemExit("Industry quick-access trigger lacks ArrowDown keyboard opening")

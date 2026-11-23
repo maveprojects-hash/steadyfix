@@ -15,6 +15,7 @@ with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8") as f:
     subprocess.run(["node", "--check", f.name], check=True)
 
 required_ui = [
+    "else if(slug)savePrimaryIndustry(slug)",
     "STAFF('assigned_to')",
     "startNotifications()",
     "postgres_changes",

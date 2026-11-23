@@ -444,7 +444,7 @@ print("Industry Quick Access dropdown rendering, navigation, keyboard and dismis
 if html.count('id="industryQuickAccessBtn"') != 1:
     raise SystemExit("Expected exactly one Quick Access button; remove legacy duplicate")
 header_markup = html.split("<header>", 1)[1].split("</header>", 1)[0]
-if re.search(r'<(?:a|button)[^>]*(?:maintdesk_app\.html|manager\\s+(?:cmms\\s+)?application)', header_markup, re.I):
+if ('href="maintdesk_app.html"' in header_markup or "href='maintdesk_app.html'" in header_markup or "Manager CMMS application" in header_markup or "Manager application" in header_markup):
     raise SystemExit("Legacy Manager CMMS application button is still present in the header")
 for marker in [
     "sf-industry-quick{flex-direction:row",

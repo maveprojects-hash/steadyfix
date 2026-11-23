@@ -41,8 +41,8 @@ $$;
 revoke all on function public.guard_logistics_pod_metadata() from public,anon,authenticated;
 drop trigger if exists logistics_shipments_pod_metadata_guard on public.logistics_shipments;
 create trigger logistics_shipments_pod_metadata_guard
-before insert or update of delivered_at,pod_recipient_name,pod_reference,pod_notes
+before insert or update
 on public.logistics_shipments
-for each row execute function public.guard_logistics_pod_metadata_guard();
+for each row execute function public.guard_logistics_pod_metadata();
 
 commit;

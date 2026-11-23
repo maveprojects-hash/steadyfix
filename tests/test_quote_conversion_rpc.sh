@@ -130,6 +130,10 @@ if auth_call_without_role "$Q5" "INV-NO-ROLE" >"$TMP/no-role" 2>&1; then
   echo "Expected missing-role authorization to fail closed" >&2
   exit 1
 fi
+# Failed authorization must leave source quote untouched and create no invoice.
+status="$("${PSQL[@]}" -Atc "select status from public.documents where id='$Q5'")"
+count="$("${PSQL[@]}" -Atc "select count(*) from public.documents where kind='invoice' and converted_from='$Q5'")"
+[[ "$status" == "draft" && "$count" == "0" ]]
 if auth_call "$Q4" "INV-004" >"$TMP/tenant" 2>&1; then
   echo "Expected tenant-scoped quote lookup to fail" >&2
   exit 1

@@ -28,7 +28,7 @@ declare
   v_signed_at timestamptz;
 begin
   if v_user is null or v_company is null then raise exception 'Authentication required'; end if;
-  if v_role not in ('owner','manager','technician','storeman') then raise exception 'You are not allowed to capture proof of delivery'; end if;
+  if v_role is null or v_role not in ('owner','manager','technician','storeman') then raise exception 'You are not allowed to capture proof of delivery'; end if;
   if p_receiver_consent is distinct from true then raise exception 'Receiver confirmation is required'; end if;
   if p_receiver_name is null or length(btrim(p_receiver_name))<2 or length(btrim(p_receiver_name))>160 then
     raise exception 'Enter the receiver full name';

@@ -200,9 +200,140 @@ main>*{animation:rise .28s ease both}
   body>#aib.sf-ai-floating:active{transform:translateX(-50%) scale(.96)!important}
   body>#ai{z-index:2147483001!important}
 }
-#industryProfileSelect{display:none!important}header h1[role=button]{cursor:pointer}header h1[role=button]:focus-visible{outline:2px solid var(--am);outline-offset:5px;border-radius:8px}
+#industryProfileSelect{display:none!important}
+.sf-industry-quick{display:flex;flex-direction:column;gap:6px;flex:1;min-width:240px;position:relative}.sf-industry-quick h1{flex:none!important}.sf-industry-quick-wrap{position:relative;width:max-content;max-width:100%}.sf-industry-quick-btn{display:inline-flex;align-items:center;gap:9px;padding:7px 11px;border-radius:10px;border:1px solid rgba(242,169,0,.55);background:rgba(242,169,0,.13);color:#fff;font-size:12px;font-weight:700;cursor:pointer}.sf-industry-quick-btn:hover{background:rgba(242,169,0,.22)}.sf-industry-quick-btn:focus-visible{outline:2px solid var(--am);outline-offset:2px}.sf-industry-quick-chevron{color:var(--am2);font-size:15px}.sf-industry-quick-menu{position:absolute;z-index:1000;top:calc(100% + 8px);left:0;min-width:250px;max-width:min(360px,85vw);max-height:65vh;overflow:auto;background:#10212d;border:1px solid rgba(255,255,255,.16);border-radius:13px;box-shadow:0 18px 42px rgba(0,0,0,.45);padding:7px}.sf-industry-quick-option{display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;text-align:left;border:0;border-radius:9px;padding:10px 12px;background:transparent;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer}.sf-industry-quick-option:hover,.sf-industry-quick-option:focus-visible{background:rgba(242,169,0,.14);outline:none}.sf-industry-quick-option[aria-selected=true]{background:rgba(242,169,0,.19);color:var(--am2)}.sf-industry-quick-option small{color:#9fb1be;font-size:11px;font-weight:500}.sf-industry-quick-error{color:#ffcf86;padding:10px;font-size:12px}@media(max-width:600px){.sf-industry-quick{min-width:0;flex-basis:100%}.sf-industry-quick-menu{max-width:90vw}}\n</style><div style="--dc:${col}">${f(m,{...o,color:col})}</div>`}
+
+// ---------- preview, PDF and sharing ----------
+function ovl(html){let o=$('pv');if(o)o.remove();o=document.createElement('div');o.id='pv';o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;overflow:auto;padding:10px';o.innerHTML=`<div style="max-width:800px;margin:0 auto"><button class="b" onclick="$('pv').remove()" style="position:sticky;top:0;margin-bottom:8px">Close preview</button><div style="background:#fff;overflow-x:auto">${html}</div></div>`;document.body.appendChild(o)}
+function loadPdfLib(){return window.html2pdf?Promise.resolve():new Promise((ok,bad)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';s.onload=ok;s.onerror=()=>bad(new Error('load'));document.head.appendChild(s)})}
+async function shareHtml(html,fname,subject,text,to){
+ let el=null,url=null;
+ try{
+  if(!html||!String(html).trim())throw new Error('The document is empty.');
+  await loadPdfLib();
+  if(typeof window.html2pdf!=='function')throw new Error('The PDF library did not load.');
+  el=document.createElement('div');
+  el.setAttribute('aria-hidden','true');
+  el.style.cssText='position:absolute;left:0;top:0;width:794px;min-height:1123px;background:#fff;color:#111;z-index:2147483647;pointer-events:none;display:block;visibility:visible;opacity:1;overflow:visible;contain:layout style';
+  el.innerHTML=html;
+  document.body.appendChild(el);
+  if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+  const imgs=Array.from(el.querySelectorAll('img'));
+  await Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;setTimeout(resolve,5000)})));
+  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  const docNode=el.querySelector('.dx');
+  if(!docNode||!docNode.textContent||!docNode.textContent.trim())throw new Error('The quote or invoice layout did not render.');
+  const rect=docNode.getBoundingClientRect();
+  const width=Math.max(794,Math.ceil(rect.width)),height=Math.max(1123,Math.ceil(rect.height));
+  if(!width||!height)throw new Error('The document has no printable size.');
+  const blob=await html2pdf().set({
+   margin:0,
+   image:{type:'jpeg',quality:.94},
+   html2canvas:{scale:1.5,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',logging:false,windowWidth:width,windowHeight:height,scrollX:0,scrollY:0},
+   jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+   pagebreak:{mode:['css','legacy']}
+  }).from(docNode).outputPdf('blob');
+  el.remove();el=null;
+  if(!blob||blob.size<1500)throw new Error('The PDF file was generated empty. Please use Print / Save as PDF.');
+  const safeName=(fname||'STEADYFIX_document').replace(/[^\w-]+/g,'_');
+  const file=new File([blob],safeName+'.pdf',{type:'application/pdf'});
+  let shared=false;
+  try{
+   if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+    await navigator.share({files:[file],title:subject,text});
+    shared=true;
+   }
+  }catch(e){if(e&&e.name==='AbortError')return}
+  if(shared)return;
+  url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=file.name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>{try{URL.revokeObjectURL(url)}catch(e){}},60000);
+  alert('Your PDF has been created and saved to Downloads. Open it to check the document before attaching it to WhatsApp or email.');
+ }catch(e){
+  console.error('STEADYFIX CMMS PDF sharing error:',e);
+  alert('STEADYFIX could not create the PDF: '+(e&&e.message?e.message:'Unknown error')+'. The print view will open next; choose Save as PDF.');
+  sheetPrint(html);
+ }finally{if(el&&el.parentNode)el.remove()}
+}
+function docPreview(l){const col=$('cs_doc_color')?$('cs_doc_color').value:CS.doc_color,logo=LOGO_NEW!==undefined?LOGO_NEW:CS.logo,d={kind:'invoice',number:'INV-0001',reference:'Job 123',issue_date:today,due_date:addDays(30),sales_rep:'',discount_pct:0,paid_amount:0,vat_rate:CS.tax_rate??15,customer_name:'Sample Customer',lines:[{d:'Service call and repair',q:1,p:1200,x:0},{d:'Spare parts',q:3,p:350,x:0}],notes:CS.terms||''};ovl(docHtml(d,{name:'Sample Customer',contact_person:'Alex Sample',address:'PO Box 1\nTown 6500',physical_address:'12 Main Road\nTown 6500',email:'customer@example.com',phone:'044 000 0000'},{layout:l,color:col,logo}))}
+function logoPick(inp){const f=inp.files[0];if(!f)return;if(!/^image\//.test(f.type))return alert('Please choose a picture (PNG or JPG).');const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,500/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));let x=c.getContext('2d');x.drawImage(im,0,0,c.width,c.height);let u=c.toDataURL('image/png');if(u.length>250000){x.globalCompositeOperation='destination-over';x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);u=c.toDataURL('image/jpeg',.85)}LOGO_NEW=u;$('lg_prev').innerHTML=`<img src="${u}" style="max-height:80px;max-width:200px"><div class="note">Tap Save at the bottom to keep it.</div>`};im.onerror=()=>alert('That picture could not be read. Try a PNG or JPG.');im.src=rd.result};rd.readAsDataURL(f)}
+function logoClear(){LOGO_NEW=null;$('lg_prev').innerHTML='<div class="note">Logo removed. Tap Save at the bottom to keep this.</div>'}
+
+// ---------- quotes and invoices ----------
+const ITABS=[['invoice','Invoices'],['quote','Quotes'],['cust','Customers'],['acct','Accounting']];
+const itabs=()=>`<div class="tabs noprint">${ITABS.map(([k,l])=>`<button class="${k==IT?'on':''}" onclick="IT='${k}';INVF={st:'all',q:''};draw()">${l}</button>`).join('')}</div>`;
+const dstat=d=>d.kind=='invoice'&&d.status=='sent'&&d.due_date&&d.due_date<today?'overdue':d.status;
+const dchip=s=>({draft:chip('x','Draft'),sent:chip('on_hold','Sent'),paid:chip('done','Paid'),overdue:chip('overdue','Overdue'),accepted:chip('done','Accepted'),declined:chip('cancelled','Declined'),cancelled:chip('cancelled','Cancelled')})[s]||chip('x',cap(s));
+async function inv(){
+ if(ED)return invEditor();
+ if(IT=='cust'){const h=await mod('customers');return h.replace(/<h2>[^<]*<\/h2>/,'<h2>Invoicing</h2>'+itabs())}
+ if(IT=='acct')return acct();
+ return docList(IT)}
+async function nextNum(kind){const{data}=await sb.from('documents').select('number').eq('company_id',me.company_id).eq('site_id',site).eq('kind',kind);return(kind=='invoice'?'INV-':'QUO-')+String(Math.max(0,...(data||[]).map(x=>parseInt(String(x.number).replace(/\D/g,''))||0))+1).padStart(4,'0')}
+const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return ymd(d)};
+async function docList(kind){
+ const pr=PER['d_'+kind]||{p:'all',d:''};let q=sb.from('documents').select('*').eq('company_id',me.company_id).eq('site_id',site).eq('kind',kind).order('created_at',{ascending:false}).order('issue_date',{ascending:false}).order('number',{ascending:false}),pl='';
+ if(pr.p!='all'){const R_=rng(pr.p,pr.d||today);q=q.gte('issue_date',R_.a).lte('issue_date',R_.b);pl=pr.p=='daily'?dd(R_.a):dd(R_.a)+' to '+dd(R_.b)}
+ const[r,cu]=await Promise.all([q,sb.from('customers').select('*').eq('company_id',me.company_id).order('name')]);
+ if(r.error)return`<h2>Invoicing</h2>${itabs()}<div class="p">Invoicing needs one more database step. Run the invoicing SQL I sent, then reload this page.</div>`;
+ CUST=cu.data||[];const all=(r.data||[]).map(d=>({...d,st:dstat(d)}));DOCS=all;
+ const qq=(INVF.q||'').toLowerCase();let D=all.filter(d=>(INVF.st=='all'||d.st==INVF.st)&&(!qq||(d.number+' '+(d.customer_name||'')).toLowerCase().includes(qq)));
+ const sm=f=>D.filter(f).reduce((a,d)=>a+ +d.total,0),inv_=kind=='invoice';
+ const tiles=inv_?`<div class="g"><div class="k"><b>${M2(sm(d=>!['draft','cancelled'].includes(d.st)))}</b><span>Invoiced</span></div><div class="k"><b>${M2(sm(d=>d.st=='paid'))}</b><span>Paid</span></div><div class="k"><b>${M2(D.filter(d=>['sent','overdue'].includes(d.st)).reduce((a,d)=>a+ +d.total-(+d.paid_amount||0),0))}</b><span>Unpaid</span></div><div class="k"><b class="${D.some(d=>d.st=='overdue')?'bad':''}">${D.filter(d=>d.st=='overdue').length}</b><span>Overdue</span></div></div>`:`<div class="g"><div class="k"><b>${M2(sm(d=>d.st!='draft'))}</b><span>Quoted</span></div><div class="k"><b>${M2(sm(d=>d.st=='accepted'))}</b><span>Accepted</span></div><div class="k"><b>${M2(sm(d=>d.st=='sent'))}</b><span>Waiting for an answer</span></div></div>`;
+ const sts=inv_?['all','draft','sent','overdue','paid','cancelled']:['all','draft','sent','accepted','declined'];
+ const btn=(l,f)=>`<button onclick="${f}">${l}</button>`;
+ const cards=D.map(d=>{const a=[];if(d.st=='draft')a.push(btn('Mark sent',`setDoc('${d.id}','sent')`));
+  if(inv_&&['sent','overdue'].includes(d.st))a.push(btn('Mark paid',`setDoc('${d.id}','paid')`));
+  if(!inv_&&d.st=='sent'){a.push(btn('Accepted',`setDoc('${d.id}','accepted')`));a.push(btn('Declined',`setDoc('${d.id}','declined')`))}
+  if(!inv_&&['sent','accepted'].includes(d.st))a.push(btn('Make invoice',`toInvoice('${d.id}')`));
+  return`<div class="card"><div class="ct"><div>${esc(d.number)} · ${esc(d.customer_name||'No customer')}</div><div class="chips">${dchip(d.st)}</div></div><div class="kv"><span>Date</span><b>${dd(d.issue_date)}</b><span>${inv_?'Due':'Valid until'}</span><b>${dd(d.due_date)}</b><span>Total</span><b>${M2(d.total)}</b>${inv_&&+d.paid_amount>0?`<span>Balance due</span><b>${M2(d.total-d.paid_amount)}</b>`:''}</div><div class="ca noprint" style="flex-wrap:wrap">${btn('View / Print',`printDoc('${d.id}')`)}${btn('Email / Share PDF',`mailDoc('${d.id}')`)}${btn('Edit',`invEdit('${d.id}')`)}${a.join('')}${btn('Copy',`dupDoc('${d.id}')`)}${isMgr()?`<button class="x2" onclick="delDoc('${d.id}')">Delete</button>`:''}</div></div>`}).join('')||`<div class="p">No ${kind=='invoice'?'invoices':'quotes'} yet. Tap New to create one.</div>`;
+ SHARE={title:cap(kind)+'s - '+SH(),text:cap(kind)+'s'+(pl?' ('+pl+')':'')+'\n'+(CS.label||CO)+'\n\n'+(D.map(d=>'- '+d.number+' · '+(d.customer_name||'')+' · '+dd(d.issue_date)+' · '+M2(d.total)+' · '+cap(d.st)).join('\n')||'None')};
+ const pb=`<div class="tabs noprint">${['all','daily','weekly','monthly'].map(c=>`<button class="${c==pr.p?'on':''}" onclick="setP('d_${kind}','${c}')">${cap(c)}</button>`).join('')}</div>${pr.p!='all'?`<div class="f noprint"><button class="b" style="flex:0 0 44px" onclick="stepP('d_${kind}',-1)">‹</button><input type="date" value="${pr.d||today}" onchange="PER['d_${kind}']={p:'${pr.p}',d:this.value};draw()"><button class="b" style="flex:0 0 44px" onclick="stepP('d_${kind}',1)">›</button></div>`:''}`;
+ return`${ph(cap(kind)+'s'+(pl?' · '+pl:''))}<h2>Invoicing</h2>${itabs()}<div class="noprint" style="margin-bottom:10px"><button class="b" onclick="invNew('${kind}')">＋ New ${kind}</button></div>${pb}<div class="f noprint"><input placeholder="Search number or customer…" value="${esc(INVF.q||'')}" onchange="INVF.q=this.value;draw()"><select onchange="INVF.st=this.value;draw()">${sts.map(x=>`<option value="${x}" ${x==INVF.st?'selected':''}>${x=='all'?'All statuses':cap(x)}</option>`).join('')}</select></div>${bar()}${tiles}${cards}${foot('','','')}`}
+async function invNew(kind){ED={kind,number:await nextNum(kind),customer_id:'',customer_name:'',issue_date:today,due_date:addDays(kind=='invoice'?30:14),status:'draft',vat_rate:CS.tax_rate??15,lines:[{d:'',q:1,p:0,x:0}],notes:CS.terms||'',reference:'',sales_rep:'',discount_pct:0,paid_amount:0};draw()}
+function invEdit(id){const d=DOCS.find(x=>x.id==id);ED={...d,lines:JSON.parse(JSON.stringify(d.lines||[]))};if(!ED.lines.length)ED.lines=[{d:'',q:1,p:0,x:0}];draw()}
+function readEd(){const g=i=>$(i)?$(i).value:'';ED.number=g('dnum');ED.customer_id=g('dc');ED.customer_name=g('dn');ED.issue_date=g('di');ED.due_date=g('dd2');ED.vat_rate=+g('dv')||0;ED.notes=g('dnotes');ED.reference=g('dref');ED.sales_rep=g('drep');ED.discount_pct=+g('ddisc')||0;ED.paid_amount=+g('dpaid')||0;ED.lines=[...document.querySelectorAll('.lrow')].map(r=>({d:r.querySelector('.ld').value,q:+r.querySelector('.lq').value||0,p:+r.querySelector('.lp').value||0,x:+r.querySelector('.lx').value||0}))}
+function recalc(){readEd();const t=docTotals(ED.lines,ED.vat_rate,ED.discount_pct);document.querySelectorAll('.lrow').forEach((r,i)=>{r.querySelector('.lt').textContent=M2(ED.lines[i].q*ED.lines[i].p*(1-ED.lines[i].x/100))});$('tsub').textContent=M2(t.sub);if($('tdisc'))$('tdisc').textContent='-'+M2(t.da);$('tvat').textContent=M2(t.v);$('ttot').textContent=M2(t.tot);if($('tbal'))$('tbal').textContent=M2(t.tot-ED.paid_amount)}
+function addLine(){readEd();ED.lines.push({d:'',q:1,p:0,x:0});draw()}
+function delLine(i){readEd();ED.lines.splice(i,1);if(!ED.lines.length)ED.lines=[{d:'',q:1,p:0,x:0}];draw()}
+function pickCust(){const c=CUST.find(x=>x.id==$('dc').value);if(c)$('dn').value=c.name}
+function edPreview(){readEd();const e=ED,t=docTotals(e.lines.filter(l=>l.d.trim()),e.vat_rate,e.discount_pct),c=CUST.find(x=>x.id==e.customer_id)||{};ovl(docHtml({...e,lines:e.lines.filter(l=>l.d.trim()),currency:CURS},c))}
+function invEditor(){const e=ED,k=e.kind,t=docTotals(e.lines,e.vat_rate,e.discount_pct);
+ return`<h2>${e.id?'Edit':'New'} ${k}</h2><div class="p"><label class="el">Number<input id="dnum" value="${esc(e.number)}"></label><label class="el">Customer<select id="dc" onchange="pickCust()"><option value="">Choose a customer…</option>${CUST.map(c=>`<option value="${c.id}" ${c.id==e.customer_id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label><label class="el">Customer name on the ${k}<input id="dn" value="${esc(e.customer_name)}" placeholder="Choose above or type a name"></label><div class="f"><label class="el" style="flex:1">Date<input type="date" id="di" value="${e.issue_date||''}"></label><label class="el" style="flex:1">${k=='invoice'?'Due date':'Valid until'}<input type="date" id="dd2" value="${e.due_date||''}"></label></div><div class="f"><label class="el" style="flex:1">Reference (job or address)<input id="dref" value="${esc(e.reference||'')}"></label><label class="el" style="flex:1">Sales rep<input id="drep" value="${esc(e.sales_rep||'')}"></label></div><label class="el">VAT rate (%)<input id="dv" type="number" value="${e.vat_rate}" oninput="recalc()"></label><div class="note">New customers can be added under Invoicing, Customers. Their full details print on the ${k}.</div></div>
+<div class="p"><b>Items</b>${e.lines.map((l,i)=>`<div class="lrow card" style="margin-top:8px"><label class="el">Description<input class="ld" value="${esc(l.d)}" placeholder="Item or description"></label><div class="f"><label class="el" style="flex:1">Qty<input class="lq" type="number" step="any" value="${l.q}" oninput="recalc()"></label><label class="el" style="flex:1">Unit price<input class="lp" type="number" step="0.01" value="${l.p}" oninput="recalc()"></label><label class="el" style="flex:1">Disc %<input class="lx" type="number" step="any" value="${l.x||0}" oninput="recalc()"></label></div><div class="ct"><div class="lt">${M2(l.q*l.p*(1-(l.x||0)/100))}</div><button class="x" onclick="delLine(${i})">✕ Remove</button></div></div>`).join('')}<div style="margin-top:10px"><button class="b" onclick="addLine()">＋ Add item</button></div></div>
+<div class="p"><label class="el">Overall discount (%)<input id="ddisc" type="number" step="any" value="${e.discount_pct||0}" oninput="recalc()"></label>${k=='invoice'?`<label class="el">Deposit or amount already paid<input id="dpaid" type="number" step="0.01" value="${e.paid_amount||0}" oninput="recalc()"></label>`:''}<div class="kv"><span>Subtotal</span><b id="tsub">${M2(t.sub)}</b><span>Discount</span><b id="tdisc">-${M2(t.da)}</b><span>VAT</span><b id="tvat">${M2(t.v)}</b><span>Total</span><b id="ttot">${M2(t.tot)}</b>${k=='invoice'?`<span>Balance due</span><b id="tbal">${M2(t.tot-(e.paid_amount||0))}</b>`:''}</div><label class="el">Notes or terms<textarea id="dnotes">${esc(e.notes||'')}</textarea></label></div>
+<div class="f"><button class="b" onclick="saveDoc(false)">Save</button><button class="b" onclick="saveDoc(true)">Save and print</button><button onclick="edPreview()">Preview</button><button onclick="ED=null;draw()">Cancel</button></div>`}
+async function saveDoc(pr){readEd();const e=ED;if(!(e.customer_name||'').trim())return alert('Add a customer name.');const L=e.lines.filter(l=>l.d.trim());if(!L.length)return alert('Add at least one item with a description.');
+ const t=docTotals(L,e.vat_rate,e.discount_pct),row={company_id:me.company_id,site_id:site,kind:e.kind,number:e.number.trim(),customer_id:e.customer_id||null,customer_name:e.customer_name.trim(),issue_date:e.issue_date||today,due_date:e.due_date||null,status:e.status||'draft',currency:CURS,vat_rate:e.vat_rate,lines:L,notes:e.notes||null,subtotal:t.ex,vat_amount:t.v,total:t.tot,reference:e.reference||null,sales_rep:e.sales_rep||null,discount_pct:e.discount_pct||0,discount_amount:t.da,paid_amount:e.kind=='invoice'?(e.paid_amount||0):0};
+ const r=e.id?await sb.from('documents').update(row).eq('id',e.id).eq('company_id',me.company_id).eq('site_id',site).select('*').single():await sb.from('documents').insert(row).select('*').single();
+ if(r.error)return alert(/duplicate/.test(r.error.message)?'That number is already used. Please change the number.':/column|schema/i.test(r.error.message)?'Quotes and invoices need one more database step. Run the new SQL I sent, then reload this page.':r.error.message);
+ ED=null;await draw();if(pr)setTimeout(()=>sheetPrint(docSheet(r.data)),250)}
+async function setDoc(id,st){const u={status:st};if(st=='paid'){const d=DOCS.find(x=>x.id==id);if(d)u.paid_amount=d.total}const{error}=await sb.from('documents').update(u).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);error?alert(error.message):draw()}
+async function dupDoc(id){const d=DOCS.find(x=>x.id==id),{id:_i,created_at:_c,...rest}=d;delete rest.st;const{error}=await sb.from('documents').insert({...rest,number:await nextNum(d.kind),status:'draft',issue_date:today,due_date:addDays(d.kind=='invoice'?30:14)});error?alert(error.message):draw()}
+async function toInvoice(id){const q=DOCS.find(x=>x.id==id);if(!confirm('Create an invoice from this quote?'))return;
+ const row={company_id:me.company_id,site_id:site,kind:'invoice',number:await nextNum('invoice'),customer_id:q.customer_id,customer_name:q.customer_name,issue_date:today,due_date:addDays(30),status:'draft',currency:q.currency,vat_rate:q.vat_rate,lines:q.lines,notes:q.notes,subtotal:q.subtotal,vat_amount:q.vat_amount,total:q.total,converted_from:q.id,reference:q.reference||null,sales_rep:q.sales_rep||null,discount_pct:q.discount_pct||0,discount_amount:q.discount_amount||0,paid_amount:0};
+ const r=await sb.from('documents').insert(row);if(r.error)return alert(r.error.message);await sb.from('documents').update({status:'accepted'}).eq('id',id).eq('company_id',me.company_id).eq('site_id',site);IT='invoice';INVF={st:'all',q:''};draw()}
+async function delDoc(id){if(!confirm('Delete this document?'))return;const{error}=await sb.from('documents').delete().eq('id',id).eq('company_id',me.company_id).eq('site_id',site);error?alert(error.message):draw()}
+function docSheet(d){const c=CUST.find(x=>x.id==d.customer_id)||{};return docHtml(d,c)}
+function printDoc(id){const d=DOCS.find(x=>x.id==id);if(d)sheetPrint(docSheet(d))}
+async function mailDoc(id){const d=DOCS.find(x=>x.id==id),c=CUST.find(x=>x.id==d.customer_id)||{},n=cap(d.kind),co=CS.label||CO,subj=`${n} ${d.number} from ${co}`,txt=`Hi${c.contact_person?' '+c.contact_person:''},\n\nPlease find ${n.toLowerCase()} ${d.number} attached.\n\nThank you.\n${co}`;await shareHtml(docSheet(d),n+'_'+d.number,subj,txt,c.email)}
+async function poDoc(rid,mode){const r=LAST.rows.find(x=>x.id==rid);if(!r)return;const sp=r.supplier_id?((await sb.from('suppliers').select('*').eq('id',r.supplier_id).maybeSingle()).data||{}):{},L=(r.lines&&r.lines.length)?r.lines:(+r.total_cost?[{d:'Order total',q:1,p:+r.total_cost,x:0}]:[]),d={kind:'order',number:r.po_number||'DRAFT',issue_date:(r.created_at||today).slice(0,10),due_date:r.expected_at,customer_name:sp.name||'',lines:L,vat_rate:0,discount_pct:0,paid_amount:0,notes:''},html=docHtml(d,sp);
+ if(mode=='share')await shareHtml(html,'Order_'+d.number,'Purchase order '+d.number+' from '+(CS.label||CO),'Please find purchase order '+d.number+' attached.\n\nThank you.\n'+(CS.label||CO),sp.email);else sheetPrint(html)}
+
+// ---------- accounting export ----------
+function acct(){const d=new Date();AX.from=AX.from||d.getFullYear()+'-01-01';AX.to=AX.to||today;const g=k=>esc(LS(k));
+ const prog=(n,note,exp,extra)=>`<div class="card"><div class="ct"><div>${n}</div></div><div class="note">${note}</div>${extra||''}<div class="f"><button class="b" onclick="${exp}">⬇ Download invoices for ${n}</button><button onclick="reqConn('${n}')">Ask for a live connection</button></div></div>`;
+ return`<h2>Invoicing</h2>${itabs()}<div class="p"><b>Send your invoices to your accounting program</b><div class="note">Choose the dates, then download the file for your program below. Draft and cancelled invoices are left out.</div><div class="f"><label class="el" style="flex:1">From<input type="date" value="${AX.from}" onchange="AX.from=this.value"></label><label class="el" style="flex:1">To<input type="date" value="${AX.to}" onchange="AX.to=this.value"></label></div></div>`
+ +prog('Xero','Creates a file in the sales invoice import layout used by Xero. Xero brings the invoices in as drafts for you to approve. The account code and tax type must match your Xero setup exactly.',"exportXero()",`<div class="f"><label class="el" style="flex:1">Sales account code<input id="xa" value="${g('sf_xacc')||'200'}"></label><label class="el" style="flex:1">Tax type name<input id="xt" value="${g('sf_xtax')}" placeholder="exactly as in Xero"></label></div>`)
+ +prog('QuickBooks','Creates a file in the invoice import layout used by QuickBooks Online, one row per item. The item name must already exist in QuickBooks. Pick your date format on the mapping screen.',"exportQB()",`<label class="el">Item name in QuickBooks<input id="qi" value="${g('sf_qbitem')||'Services'}"></label>`)
+ +prog('Sage','Sage has several products and each has its own importer. This gives a clean invoice-by-invoice file (date, reference, customer, net, VAT and total) to map, or to copy into the import template for your product.',"exportSage()")
+ +prog('Pastel','Pastel uses the same clean invoice-by-invoice file as Sage. Copy it into your Pastel import layout, or ask us for a connection built for your version.',"exportSage()")
+ +`<div class="p"><b>Other downloads</b><div class="f"><button class="b" onclick="exportDocs('invoice')">⬇ Invoices, full detail</button><button class="b" onclick="exportDocs('quote')">⬇ Quotes</button><button class="b" onclick="exportCust()">⬇ Customers</button><button class="b" onclick="exportExp()">⬇ Expenses</button></div><div class="f" style="margin-top:8px"><button onclick="reqConn('Another program')">My program is not listed</button></div></div>`}
+const svx=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const fd=s=>s?String(s).slice(8,10)+'/'+String(s).slice(5,7)+'/'+String(s).slice(0,4):'';
+async function progDocs(){const r=await sb.from('documents').select('*').eq('company_id',me.company_id).eq('site_id',site).eq('kind','invoice').gte('issue_date',AX.from).lte('issue_date',AX.to).order('issue_date'),D=(r.data||[]).filter(d=>!['draft','cancelled'].includes(d.status));if(!D.length){alert('No sent or paid invoices in these dates.');return null}return{D,cu:(await sb.from('customers').select('*').eq('company_id',me.company_id)).data||[]}}
 </style><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1b2831"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><link rel="stylesheet" href="communication.css"></head><body>
-<header><h1 role="button" tabindex="0" title="Choose your industry workspace" aria-label="Open STEADYFIX industry workspaces" onclick="openIndustryHub()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openIndustryHub()}">STEADYFIX CMMS<span class="sl">Maintain excellence.</span></h1><div class="notif-wrap"><button id="notifBtn" class="notif-btn" type="button" onclick="openCommunicationCentre()" aria-label="Notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span id="notifCount" hidden>0</span></button><div id="notifPanel" class="notif-panel" hidden><div class="notif-head"><b>Notifications</b><button type="button" onclick="markAllNotificationsRead()">Mark all read</button></div><div id="notifList" class="notif-list">Loading…</div><div class="notif-foot"><button type="button" onclick="enableDesktopNotifications()">Enable desktop alerts</button></div></div></div><select id="industryProfileSelect" hidden aria-hidden="true" tabindex="-1"></select><select id="site"></select><a href="maintdesk_login.html">Team &amp; sites</a></header>
+<header><div class="sf-industry-quick"><h1>STEADYFIX CMMS<span class="sl">Maintain excellence.</span></h1><div class="sf-industry-quick-wrap"><button id="industryQuickAccessBtn" class="sf-industry-quick-btn" type="button" onclick="toggleIndustryQuickAccess()" aria-haspopup="listbox" aria-expanded="false" aria-controls="industryQuickAccessMenu"><span>Industry quick access</span><span class="sf-industry-quick-chevron" aria-hidden="true">▾</span></button><div id="industryQuickAccessMenu" class="sf-industry-quick-menu" role="listbox" aria-label="Choose industry workspace" hidden></div></div></div><div class="notif-wrap"><button id="notifBtn" class="notif-btn" type="button" onclick="openCommunicationCentre()" aria-label="Notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span id="notifCount" hidden>0</span></button><div id="notifPanel" class="notif-panel" hidden><div class="notif-head"><b>Notifications</b><button type="button" onclick="markAllNotificationsRead()">Mark all read</button></div><div id="notifList" class="notif-list">Loading…</div><div class="notif-foot"><button type="button" onclick="enableDesktopNotifications()">Enable desktop alerts</button></div></div></div><select id="industryProfileSelect" hidden aria-hidden="true" tabindex="-1"></select><select id="site"></select><a href="maintdesk_login.html">Team &amp; sites</a></header>
 <nav id="nav"></nav><main id="v">Loading…</main>
 <script>
 const SUPABASE_URL='https://wqggnimaglsikdusbvuh.supabase.co', SUPABASE_ANON_KEY='sb_publishable_NhiAgVZ451DMdfwzWTSGvQ_zQlbwW8l';
@@ -211,6 +342,61 @@ const $=id=>document.getElementById(id), V=$('v');
 let notificationChannel=null, NOTIFICATIONS=[], notificationToastTimer=null;
 let me,site,cur='dash',cf='daily';
 let INDUSTRIES=[],INDUSTRY_PROFILE=null;
+
+// Industry quick-access dropdown: render catalog, preserve keyboard and dismissal behavior.
+function sfIndustryQuickPick(){
+  const menu=$('industryQuickAccessMenu'),btn=$('industryQuickAccessBtn');if(!menu||!btn)return;
+  const current=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug;
+  const departments=[...$('nav').querySelectorAll('button[data-t]')];
+  const departmentHtml=departments.map(n=>{
+    const tab=n.dataset.t,label=n.querySelector('span')?.textContent||n.textContent.trim();
+    return '<button type="button" role="option" aria-selected="false" class="sf-industry-quick-option" data-quick-tab="'+esc(tab)+'"><span>'+esc(label)+'</span><span aria-hidden="true">↗</span></button>';
+  }).join('');
+  const industryHtml=(INDUSTRIES||[]).map(ind=>'<button type="button" role="option" class="sf-industry-quick-option'+(ind.slug===current?' active':'')+'" aria-selected="'+(ind.slug===current)+'" data-industry-slug="'+esc(ind.slug)+'"><span>Switch industry · '+esc(ind.name)+'</span>'+(ind.slug===current?'<span aria-hidden="true">✓</span>':'')+'</button>').join('');
+  menu.innerHTML='<div role="group" aria-label="Departments" style="padding:8px 12px;color:#9fb1be;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">Jump to department</div>'+departmentHtml+(industryHtml?'<div role="group" aria-label="Industry workspaces" style="padding:8px 12px;color:#9fb1be;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-top:1px solid rgba(255,255,255,.08);margin-top:6px">Industry workspaces</div>'+industryHtml:'');
+  const options=[...menu.querySelectorAll('[data-quick-tab],[data-industry-slug]')];
+  options.forEach((option,index)=>{
+    option.addEventListener('click',()=>{
+      const tab=option.dataset.quickTab,slug=option.dataset.industrySlug;
+      sfCloseIndustryQuickAccess();
+      if(tab){cur=tab;draw()}else if(slug)chooseIndustryWorkspace(slug);
+    });
+    option.addEventListener('keydown',event=>{
+      let targetIndex=index;
+      if(event.key==='ArrowDown')targetIndex=Math.min(options.length-1,index+1);
+      else if(event.key==='ArrowUp')targetIndex=Math.max(0,index-1);
+      else if(event.key==='Home')targetIndex=0;
+      else if(event.key==='End')targetIndex=options.length-1;
+      else return;
+      event.preventDefault();options[targetIndex]?.focus();
+    });
+  });
+}
+function toggleIndustryQuickAccess(){
+  const btn=$('industryQuickAccessBtn'),menu=$('industryQuickAccessMenu');if(!btn||!menu)return;
+  if(!menu.hidden){sfCloseIndustryQuickAccess();return}
+  sfIndustryQuickPick();menu.hidden=false;btn.setAttribute('aria-expanded','true');
+  menu.querySelector('[data-quick-tab],[data-industry-slug]')?.focus();
+}
+function sfBindIndustryQuickAccessKeyboard(){
+  const btn=$('industryQuickAccessBtn');if(!btn||btn.__sfKeyboardBound)return;btn.__sfKeyboardBound=true;
+  btn.addEventListener('keydown',event=>{
+    if(event.key==='ArrowDown'){event.preventDefault();if($('industryQuickAccessMenu')?.hidden)toggleIndustryQuickAccess();else $('industryQuickAccessMenu')?.querySelector('[data-quick-tab],[data-industry-slug]')?.focus()}
+  });
+}
+sfBindIndustryQuickAccessKeyboard();
+function sfCloseIndustryQuickAccess(){
+  const btn=$('industryQuickAccessBtn'),menu=$('industryQuickAccessMenu');if(!btn||!menu)return;
+  menu.hidden=true;btn.setAttribute('aria-expanded','false');
+}
+function sfBindIndustryQuickAccessDismiss(){
+  if(document.__sfIndustryQuickAccessBound)return;document.__sfIndustryQuickAccessBound=true;
+  document.addEventListener('click',event=>{const btn=$('industryQuickAccessBtn'),menu=$('industryQuickAccessMenu');if(btn&&menu&&!btn.contains(event.target)&&!menu.contains(event.target))sfCloseIndustryQuickAccess()});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'){const btn=$('industryQuickAccessBtn'),menu=$('industryQuickAccessMenu');if(btn&&menu&&!menu.hidden){sfCloseIndustryQuickAccess();btn.focus()}}});
+}
+
+sfBindIndustryQuickAccessDismiss();
+
 
 function notificationTime(v){try{return new Date(v).toLocaleString('en-ZA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}catch(e){return''}}
 let UNREAD_NOTIFICATION_COUNT=0, notificationAudioContext=null;
@@ -298,9 +484,11 @@ async function savePrimaryIndustry(slug){
 async function saveIndustryProfile(){
  if(!isMgr())return;
  const primary=$('industryPrimary').value;
- const secondary=[...$('industrySecondary').selectedOptions].map(o=>o.value).filter(x=>x!==primary);
+ const secondary=[...new Set([...$('industrySecondary').selectedOptions].map(o=>o.value).filter(x=>x!==primary))];
  const description=$('industryDescription').value.trim();
  if(!INDUSTRIES.some(x=>x.slug===primary)){alert('Choose a valid primary industry.');return}
+ if(secondary.length>8){alert('Choose no more than 8 secondary industries. Remove some selections before saving.');return}
+ if(secondary.some(x=>!INDUSTRIES.some(ind=>ind.slug===x))){alert('One or more secondary industries are invalid. Please refresh and choose from the list.');return}
  const{error}=await sb.from('company_industry_profiles').update({primary_industry_slug:primary,secondary_industry_slugs:secondary,business_description:description}).eq('company_id',me.company_id);
  if(error){alert('Could not save the company profile: '+error.message);return}
  await loadIndustryProfile();renderIndustrySelector();await draw();
@@ -339,7 +527,7 @@ async function boot(){
  const{data:{session}}=await sb.auth.getSession(); if(!session)return location.href='maintdesk_login.html';
  let pr_=await sb.from('profiles').select('id,company_id,full_name,role,is_admin').eq('id',session.user.id).maybeSingle();if(pr_.error)pr_=await sb.from('profiles').select('id,company_id,full_name,role').eq('id',session.user.id).maybeSingle();const data=pr_.data;
  if(!data)return location.href='maintdesk_login.html'; me=data;
- const{data:sites}=await sb.from('sites').select('id,name').order('name'); site=sites[0]?.id;
+ const{data:sites}=await sb.from('sites').select('id,name').eq('company_id',me.company_id).order('name'); site=sites[0]?.id;
  $('site').innerHTML=sites.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
  $('site').onchange=e=>{site=e.target.value;draw()};
  await lockCheck();buildNav();
@@ -635,8 +823,8 @@ async function mon(){
  return`${ph('Monitoring status')}<h2>Monitoring</h2><div class="tabs noprint">${[['day','Last 24 hours'],['week','Last 7 days'],['month','Last 30 days']].map(([k,l])=>`<button class="${k==MPD?'on':''}" onclick="MPD='${k}';draw()">${l}</button>`).join('')}</div>${bar()}<div class="g"><div class="k"><b>${on}</b><span>Online</span></div><div class="k"><b class="${off?'bad':''}">${off}</b><span>Offline</span></div><div class="k"><b class="${al?'bad':''}">${al}</b><span>Alerts</span></div><div class="k"><b>${ss.length}${co.max_devices!=null?' / '+co.max_devices:''}</b><span>Devices${co.max_devices==null?' (unlimited)':' used'}</span></div></div>${gw}${add}${cards}${help}${foot('','','')}`}
 async function addS(){const n=$('sn').value.trim();if(!n)return alert('Type a name first.');const k=$('sk').value,r={company_id:me.company_id,site_id:site,name:n,kind:k,unit:$('su').value||null,alert_min:$('smin').value===''?null:+$('smin').value,alert_max:$('smax').value===''?null:+$('smax').value};
  const{error}=await sb.from('sensors').insert(r);error?alert(error.message):draw()}
-async function updS(id,f,v,t){const{error}=await sb.from('sensors').update({[f]:val(t,v)}).eq('id',id);if(error)alert(error.message)}
-async function delS(id){if(!confirm('Delete this device and its readings?'))return;const{error}=await sb.from('sensors').delete().eq('id',id);error?alert(error.message):draw()}
+async function updS(id,f,v,t){const{error}=await sb.from('sensors').update({[f]:val(t,v)}).eq('id',id).eq('company_id',me.company_id);if(error)alert(error.message)}
+async function delS(id){if(!confirm('Delete this device and its readings?'))return;const{error}=await sb.from('sensors').delete().eq('id',id).eq('company_id',me.company_id);error?alert(error.message):draw()}
 
 const PER={};let MPD='day',RP='weekly',RD='',RS={},RC={staff:[],days:[]};
 const bin=(a,n)=>{if(a.length<=n)return a;const k=a.length/n,o=[];for(let i=0;i<n;i++){const x=a.slice(Math.floor(i*k),Math.floor((i+1)*k));o.push(x.reduce((u,v)=>u+v,0)/x.length)}return o};
@@ -667,11 +855,11 @@ async function ros(){
 function rtot(){const W=['day','night','standby'];RC.staff.forEach(id=>{let n=0;RC.days.forEach(d=>{if(W.includes(RS[id+'|'+d]))n++});const e=$('tt_'+id);if(e)e.textContent=n});RC.days.forEach(d=>{let n=0;RC.staff.forEach(id=>{if(W.includes(RS[id+'|'+d]))n++});const e=$('on_'+d);if(e)e.textContent=n})}
 async function rcyc(sid,ds){const k=sid+'|'+ds,i=SHK.indexOf(RS[k]),nx=i+1<SHK.length?SHK[i+1]:null,el=$('c_'+sid+'_'+ds);
  if(nx){RS[k]=nx;el.textContent=SHT[nx][0];el.style.background=SHT[nx][2]}else{delete RS[k];el.textContent='';el.style.background=''}rtot();
- const r=nx?await sb.from('roster_shifts').upsert({company_id:me.company_id,site_id:site,staff_id:sid,shift_date:ds,shift_type:nx},{onConflict:'staff_id,shift_date'}):await sb.from('roster_shifts').delete().eq('staff_id',sid).eq('shift_date',ds);
+ const r=nx?await sb.from('roster_shifts').upsert({company_id:me.company_id,site_id:site,staff_id:sid,shift_date:ds,shift_type:nx},{onConflict:'staff_id,shift_date'}):await sb.from('roster_shifts').delete().eq('company_id',me.company_id).eq('site_id',site).eq('staff_id',sid).eq('shift_date',ds);
  if(r.error)alert(r.error.message)}
 async function addStaff(){const n=$('stn').value.trim();if(!n)return alert('Type a name first.');const{error}=await sb.from('staff_members').insert({company_id:me.company_id,site_id:site,name:n,role:$('str').value.trim()||null});error?alert(error.message):draw()}
-async function renStaff(id,f,v){const{error}=await sb.from('staff_members').update({[f]:v||null}).eq('id',id);if(error)alert(error.message)}
-async function delStaff(id){if(!confirm('Remove this staff member and their roster entries?'))return;const{error}=await sb.from('staff_members').delete().eq('id',id);error?alert(error.message):draw()}
+async function renStaff(id,f,v){if(!isMgr())return alert('Manager access required.');let q=sb.from('staff_members').update({[f]:v||null}).eq('id',id).eq('company_id',me.company_id);if(site)q=q.eq('site_id',site);const{error}=await q;if(error)alert(error.message)}
+async function delStaff(id){if(!isMgr())return alert('Manager access required.');if(!confirm('Remove this staff member and their roster entries?'))return;let q=sb.from('staff_members').delete().eq('id',id).eq('company_id',me.company_id);if(site)q=q.eq('site_id',site);const{error}=await q;error?alert(error.message):draw()}
 async function copyPrev(){const R=rng('weekly',RD||today),a=new Date(R.da),b=new Date(R.db);a.setDate(a.getDate()-7);b.setDate(b.getDate()-7);
  const{data}=await sb.from('roster_shifts').select('staff_id,shift_date,shift_type').eq('site_id',site).gte('shift_date',ymd(a)).lte('shift_date',ymd(b));
  if(!data||!data.length)return alert('Nothing to copy from last week.');if(!confirm("Copy last week's roster into this week? Shifts already set this week will be replaced."))return;
@@ -692,7 +880,7 @@ const FAQ=[['How do I add or change a checklist?','Open Checklists, pick Daily, 
 ['Can the app be customized for our business?','Yes. Send a “Customization” request describing what you need, for example your own report layout, extra fields, branding or a connection to another system, and we will reply here with options.']];
 async function sup(){
  const{data:{session}}=await sb.auth.getSession(),em=session?.user?.email||'',pf_=PREF||{};PREF=null;
- const tk=await sb.from('support_tickets').select('*').order('created_at',{ascending:false});
+ const tk=await sb.from('support_tickets').select('*').eq('user_id',me.id).order('created_at',{ascending:false});
  if(tk.error)return`<h2>Support</h2><div class="p">Support needs one more database step. Run the support SQL I sent, then reload this page.</div>`;
  const btn='class="b" style="display:inline-block;text-decoration:none;text-align:center;flex:1;padding:10px"';
  const contact=(SUPPORT_EMAIL||SUPPORT_WA)?`<div class="p"><b>Contact us directly</b><div class="f" style="margin-top:8px">${SUPPORT_EMAIL?`<a ${btn} href="mailto:${esc(SUPPORT_EMAIL)}?subject=STEADYFIX%20support">✉ Email us</a>`:''}${SUPPORT_WA?`<a ${btn} href="https://wa.me/${esc(SUPPORT_WA)}">WhatsApp</a>`:''}</div></div>`:'';
@@ -784,7 +972,7 @@ async function aiSend(t){if(AI.busy)return;t=String(t||$('aiin').value).trim();i
 async function aiApply(p){
  if(p.kind==='industry_config'){
   if(!isMgr())throw new Error('Only a company owner or manager can approve workspace customizations.');
-  const allowed=SF_CONFIGURABLE_MODULES||new Set(['work_orders','assets','service_contracts','stock_items','purchase_orders','customers','inv','suppliers','pm_schedules','chk','fleet','rep','ohs','damage_reports','shutdowns','logistics_ops']);
+  const allowed=SF_CONFIGURABLE_MODULES||new Set(['work_orders','assets','service_contracts','stock_items','purchase_orders','customers','inv','suppliers','pm_schedules','chk','fleet','rep','ohs','damage_reports','shutdowns','logistics_ops','workshop_jobs']);
   const changes=p.changes||{},current=INDUSTRY_PROFILE?.configuration_overrides||{};
   const disabled=Array.isArray(changes.disabled_modules)?[...new Set(changes.disabled_modules)]:Array.isArray(current.disabled_modules)?current.disabled_modules:[];
   if(disabled.length>30||disabled.some(x=>!allowed.has(x)))throw new Error('The proposed hidden modules include an unsupported section.');
@@ -797,12 +985,12 @@ async function aiApply(p){
  const sc=aiSchema()[p.table];if(!sc)throw new Error('That area is not supported.');const ok=new Set(sc.fields.map(f=>f.k)),m=MOD[p.table];
  const clean=o=>{const r={};for(const[k,v]of Object.entries(o||{})){if(!ok.has(k))continue;const f=m&&m.f.find(x=>x.k==k);r[k]=f&&f.t=='n'&&v!==''&&v!=null?+v:v}if(m)m.f.forEach(f=>{if(f.t=='li'&&Array.isArray(r[f.k])&&f.o&&f.o.tot)r[f.o.tot]=liSum(r[f.k])});return r};
  if(p.kind=='create'){const row={...clean(p.fields),company_id:me.company_id};if(sc.site)row.site_id=site;const{error}=await sb.from(p.table).insert(row);if(error)throw new Error(error.message)}
- else{const ch=clean(p.changes);if(!Object.keys(ch).length)throw new Error('Nothing to change.');const{error}=await sb.from(p.table).update(ch).eq('id',p.rowId);if(error)throw new Error(error.message)}}
+ else{const ch=clean(p.changes);if(!Object.keys(ch).length)throw new Error('Nothing to change.');let q=sb.from(p.table).update(ch).eq('id',p.rowId).eq('company_id',me.company_id);if(sc.site)q=q.eq('site_id',site);const{error}=await q;if(error)throw new Error(error.message)}}
 async function aiApprove(id,quiet){const p=AI.props.find(x=>x.id==id);if(!p||p.state!='pending')return true;try{await aiApply(p);p.state='done';if(!quiet){AI.msgs.push({role:'assistant',content:'Done: '+(p.summary||'saved'),note:1});aiRender();draw()}return true}catch(e){p.state='failed';AI.msgs.push({role:'assistant',content:'Could not save "'+(p.summary||'that')+'": '+e.message,err:true});aiRender();return false}}
 async function aiApproveAll(){const ids=AI.props.filter(p=>p.state=='pending').map(p=>p.id);let n=0;for(const id of ids)if(await aiApprove(id,true))n++;AI.msgs.push({role:'assistant',content:'Done: '+n+' change'+(n==1?'':'s')+' saved.',note:1});aiRender();draw()}
 function aiSkip(id){const p=AI.props.find(x=>x.id==id);if(p)p.state='skipped';aiRender()}
-async function aiMem(){const r=await sb.from('assistant_memory').select('id,note').order('created_at',{ascending:false});AI.mem=r.data||[];aiRender()}
-async function aiForget(id){await sb.from('assistant_memory').delete().eq('id',id);AI.mem=AI.mem.filter(m=>m.id!=id);aiRender()}
+async function aiMem(){const r=await sb.from('assistant_memory').select('id,note').order('created_at',{ascending:false});if(r.error){AI.mem=null;aiRender();alert('Could not load assistant memory: '+r.error.message);return}AI.mem=r.data||[];aiRender()}
+async function aiForget(id){const{error}=await sb.from('assistant_memory').delete().eq('id',id);if(error){alert('Could not forget this memory: '+error.message);return}AI.mem=AI.mem.filter(m=>m.id!=id);aiRender()}
 // ---------- shared item block, totals, layouts, PDF sharing ----------
 const r2=n=>Math.round((+n||0)*100)/100;
 const nl=s=>esc(s||'').replace(/\n/g,'<br>');
@@ -814,7 +1002,7 @@ function liRead(cid){return[...$(cid).querySelectorAll('.lrow2')].map(r=>({d:r.q
 function liCalc(cid){const b=$(cid);let s=0;b.querySelectorAll('.lrow2').forEach(r=>{const t=(+r.querySelector('.lq').value||0)*(+r.querySelector('.lp').value||0);s+=t;r.querySelector('.lt').textContent=M2(t)});b.querySelector('.litot').textContent=M2(s)}
 function liAdd(cid){$(cid).querySelector('.liadd').insertAdjacentHTML('beforebegin',liRow({d:'',q:1,p:0}))}
 function liDel(btn){const row=btn.closest('.lrow2'),b=row.parentElement,cid=b.id;if(b.querySelectorAll('.lrow2').length>1)row.remove();else{row.querySelector('.ld').value='';row.querySelector('.lq').value=1;row.querySelector('.lp').value=0}liCalc(cid);liChg(cid)}
-async function liChg(cid){const c=LIC[cid];if(!c)return;const L=liRead(cid),u={[c.k]:L};if(c.tot&&L.length)u[c.tot]=liSum(L);const{error}=await sb.from(c.tb).update(u).eq('id',c.rid);if(error)alert(/column|schema/i.test(error.message)?'Item lists need one more database step. Run the new SQL I sent, then reload this page.':error.message)}
+async function liChg(cid){const c=LIC[cid];if(!c)return;const L=liRead(cid),u={[c.k]:L};if(c.tot&&L.length)u[c.tot]=liSum(L);let q=sb.from(c.tb).update(u).eq('id',c.rid).eq('company_id',me.company_id);if(site)q=q.eq('site_id',site);const{error}=await q;if(error)alert(/column|schema/i.test(error.message)?'Item lists need one more database step. Run the new SQL I sent, then reload this page.':error.message)}
 const liView=(L,lbl)=>(L&&L.length)?`<div class="kv" style="margin-top:6px"><span>${esc(lbl)}</span><b></b>${L.map(l=>`<span>${esc(l.d)}</span><b>${l.q} × ${M2(l.p)} = ${M2(l.q*l.p)}</b>`).join('')}</div>`:'';
 function liEdit(tb,rid,f,v){const cid='e'+rid+f.k;return`<div class="el">${f.l}${liBlock(cid,v,{tb,rid,k:f.k,tot:f.o&&f.o.tot})}</div>`}
 
@@ -844,136 +1032,6 @@ const L_modern=(m,o)=>`<div class="dx" style="padding:0"><div class="dxband"><di
 const L_minimal=(m,o)=>`<div class="dx"><div class="dxrow" style="align-items:center"><div style="flex:1"><div style="font-size:11px;letter-spacing:.2em;font-weight:700">${m.title}</div><div style="font-size:20px;font-weight:800;margin-top:2px">${esc(m.d.number||'')}</div></div><div style="text-align:right">${logoImg(o,70)}</div></div><div class="dxrow dxgap" style="border-top:1px solid #111;padding-top:14px"><div style="flex:1"><div class="dxl">${m.partyLbl}</div>${partyHtml(m)}</div><div style="flex:1"><div class="dxl">From</div>${coHtml()}</div><div style="flex:1"><div class="dxl">Details</div>${metaTbl(m,true,false)}</div></div>${tableHtml(m,'minimal')}<div class="dxrow dxgap"><div style="flex:1">${notesHtml(m)}</div><div style="width:250px">${totHtml(m)}</div></div>${footHtml(m)}</div>`;
 const L_bold=(m,o)=>`<div class="dx" style="border-left:12px solid var(--dc)"><div class="dxrow" style="align-items:center"><div style="flex:1"><div style="font-size:38px;font-weight:900;color:var(--dc);line-height:1">${m.title}</div><div style="font-size:15px;font-weight:700;margin-top:4px">${esc(m.d.number||'')}</div></div><div style="text-align:right">${logoImg(o,80)}</div></div><div class="dxrow dxgap"><div style="flex:1"><div class="dxh">${m.partyLbl.toUpperCase()}</div>${partyHtml(m)}</div><div style="flex:1"><div class="dxh">FROM</div>${coHtml()}</div><div style="flex:1"><div class="dxh">DETAILS</div>${metaTbl(m,true,false)}</div></div>${tableHtml(m,'bold')}<div class="dxrow dxgap"><div style="flex:1">${notesHtml(m)}</div><div style="width:250px">${totHtml(m)}</div></div>${footHtml(m)}</div>`;
 function docHtml(d,c,o){o=o||{};const m=dModel(d,c),lay=o.layout||CS.doc_layout||'classic',cc=o.color||CS.doc_color||'',col=/^#[0-9a-f]{6}$/i.test(cc)?cc:'#1B2831',f={classic:L_classic,modern:L_modern,minimal:L_minimal,bold:L_bold}[lay]||L_classic;return`<style>${DXCSS}</style><div style="--dc:${col}">${f(m,{...o,color:col})}</div>`}
-
-// ---------- preview, PDF and sharing ----------
-function ovl(html){let o=$('pv');if(o)o.remove();o=document.createElement('div');o.id='pv';o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;overflow:auto;padding:10px';o.innerHTML=`<div style="max-width:800px;margin:0 auto"><button class="b" onclick="$('pv').remove()" style="position:sticky;top:0;margin-bottom:8px">Close preview</button><div style="background:#fff;overflow-x:auto">${html}</div></div>`;document.body.appendChild(o)}
-function loadPdfLib(){return window.html2pdf?Promise.resolve():new Promise((ok,bad)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';s.onload=ok;s.onerror=()=>bad(new Error('load'));document.head.appendChild(s)})}
-async function shareHtml(html,fname,subject,text,to){
- let el=null,url=null;
- try{
-  if(!html||!String(html).trim())throw new Error('The document is empty.');
-  await loadPdfLib();
-  if(typeof window.html2pdf!=='function')throw new Error('The PDF library did not load.');
-  el=document.createElement('div');
-  el.setAttribute('aria-hidden','true');
-  el.style.cssText='position:absolute;left:0;top:0;width:794px;min-height:1123px;background:#fff;color:#111;z-index:2147483647;pointer-events:none;display:block;visibility:visible;opacity:1;overflow:visible;contain:layout style';
-  el.innerHTML=html;
-  document.body.appendChild(el);
-  if(document.fonts&&document.fonts.ready)await document.fonts.ready;
-  const imgs=Array.from(el.querySelectorAll('img'));
-  await Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;setTimeout(resolve,5000)})));
-  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-  const docNode=el.querySelector('.dx');
-  if(!docNode||!docNode.textContent||!docNode.textContent.trim())throw new Error('The quote or invoice layout did not render.');
-  const rect=docNode.getBoundingClientRect();
-  const width=Math.max(794,Math.ceil(rect.width)),height=Math.max(1123,Math.ceil(rect.height));
-  if(!width||!height)throw new Error('The document has no printable size.');
-  const blob=await html2pdf().set({
-   margin:0,
-   image:{type:'jpeg',quality:.94},
-   html2canvas:{scale:1.5,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',logging:false,windowWidth:width,windowHeight:height,scrollX:0,scrollY:0},
-   jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-   pagebreak:{mode:['css','legacy']}
-  }).from(docNode).outputPdf('blob');
-  el.remove();el=null;
-  if(!blob||blob.size<1500)throw new Error('The PDF file was generated empty. Please use Print / Save as PDF.');
-  const safeName=(fname||'STEADYFIX_document').replace(/[^\w-]+/g,'_');
-  const file=new File([blob],safeName+'.pdf',{type:'application/pdf'});
-  let shared=false;
-  try{
-   if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
-    await navigator.share({files:[file],title:subject,text});
-    shared=true;
-   }
-  }catch(e){if(e&&e.name==='AbortError')return}
-  if(shared)return;
-  url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download=file.name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();
-  setTimeout(()=>{try{URL.revokeObjectURL(url)}catch(e){}},60000);
-  alert('Your PDF has been created and saved to Downloads. Open it to check the document before attaching it to WhatsApp or email.');
- }catch(e){
-  console.error('STEADYFIX CMMS PDF sharing error:',e);
-  alert('STEADYFIX could not create the PDF: '+(e&&e.message?e.message:'Unknown error')+'. The print view will open next; choose Save as PDF.');
-  sheetPrint(html);
- }finally{if(el&&el.parentNode)el.remove()}
-}
-function docPreview(l){const col=$('cs_doc_color')?$('cs_doc_color').value:CS.doc_color,logo=LOGO_NEW!==undefined?LOGO_NEW:CS.logo,d={kind:'invoice',number:'INV-0001',reference:'Job 123',issue_date:today,due_date:addDays(30),sales_rep:'',discount_pct:0,paid_amount:0,vat_rate:CS.tax_rate??15,customer_name:'Sample Customer',lines:[{d:'Service call and repair',q:1,p:1200,x:0},{d:'Spare parts',q:3,p:350,x:0}],notes:CS.terms||''};ovl(docHtml(d,{name:'Sample Customer',contact_person:'Alex Sample',address:'PO Box 1\nTown 6500',physical_address:'12 Main Road\nTown 6500',email:'customer@example.com',phone:'044 000 0000'},{layout:l,color:col,logo}))}
-function logoPick(inp){const f=inp.files[0];if(!f)return;if(!/^image\//.test(f.type))return alert('Please choose a picture (PNG or JPG).');const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,500/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));let x=c.getContext('2d');x.drawImage(im,0,0,c.width,c.height);let u=c.toDataURL('image/png');if(u.length>250000){x.globalCompositeOperation='destination-over';x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);u=c.toDataURL('image/jpeg',.85)}LOGO_NEW=u;$('lg_prev').innerHTML=`<img src="${u}" style="max-height:80px;max-width:200px"><div class="note">Tap Save at the bottom to keep it.</div>`};im.onerror=()=>alert('That picture could not be read. Try a PNG or JPG.');im.src=rd.result};rd.readAsDataURL(f)}
-function logoClear(){LOGO_NEW=null;$('lg_prev').innerHTML='<div class="note">Logo removed. Tap Save at the bottom to keep this.</div>'}
-
-// ---------- quotes and invoices ----------
-const ITABS=[['invoice','Invoices'],['quote','Quotes'],['cust','Customers'],['acct','Accounting']];
-const itabs=()=>`<div class="tabs noprint">${ITABS.map(([k,l])=>`<button class="${k==IT?'on':''}" onclick="IT='${k}';INVF={st:'all',q:''};draw()">${l}</button>`).join('')}</div>`;
-const dstat=d=>d.kind=='invoice'&&d.status=='sent'&&d.due_date&&d.due_date<today?'overdue':d.status;
-const dchip=s=>({draft:chip('x','Draft'),sent:chip('on_hold','Sent'),paid:chip('done','Paid'),overdue:chip('overdue','Overdue'),accepted:chip('done','Accepted'),declined:chip('cancelled','Declined'),cancelled:chip('cancelled','Cancelled')})[s]||chip('x',cap(s));
-async function inv(){
- if(ED)return invEditor();
- if(IT=='cust'){const h=await mod('customers');return h.replace(/<h2>[^<]*<\/h2>/,'<h2>Invoicing</h2>'+itabs())}
- if(IT=='acct')return acct();
- return docList(IT)}
-async function nextNum(kind){const{data}=await sb.from('documents').select('number').eq('kind',kind);return(kind=='invoice'?'INV-':'QUO-')+String(Math.max(0,...(data||[]).map(x=>parseInt(String(x.number).replace(/\D/g,''))||0))+1).padStart(4,'0')}
-const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return ymd(d)};
-async function docList(kind){
- const pr=PER['d_'+kind]||{p:'all',d:''};let q=sb.from('documents').select('*').eq('kind',kind).order('created_at',{ascending:false}).order('issue_date',{ascending:false}).order('number',{ascending:false}),pl='';
- if(pr.p!='all'){const R_=rng(pr.p,pr.d||today);q=q.gte('issue_date',R_.a).lte('issue_date',R_.b);pl=pr.p=='daily'?dd(R_.a):dd(R_.a)+' to '+dd(R_.b)}
- const[r,cu]=await Promise.all([q,sb.from('customers').select('*').order('name')]);
- if(r.error)return`<h2>Invoicing</h2>${itabs()}<div class="p">Invoicing needs one more database step. Run the invoicing SQL I sent, then reload this page.</div>`;
- CUST=cu.data||[];const all=(r.data||[]).map(d=>({...d,st:dstat(d)}));DOCS=all;
- const qq=(INVF.q||'').toLowerCase();let D=all.filter(d=>(INVF.st=='all'||d.st==INVF.st)&&(!qq||(d.number+' '+(d.customer_name||'')).toLowerCase().includes(qq)));
- const sm=f=>D.filter(f).reduce((a,d)=>a+ +d.total,0),inv_=kind=='invoice';
- const tiles=inv_?`<div class="g"><div class="k"><b>${M2(sm(d=>!['draft','cancelled'].includes(d.st)))}</b><span>Invoiced</span></div><div class="k"><b>${M2(sm(d=>d.st=='paid'))}</b><span>Paid</span></div><div class="k"><b>${M2(D.filter(d=>['sent','overdue'].includes(d.st)).reduce((a,d)=>a+ +d.total-(+d.paid_amount||0),0))}</b><span>Unpaid</span></div><div class="k"><b class="${D.some(d=>d.st=='overdue')?'bad':''}">${D.filter(d=>d.st=='overdue').length}</b><span>Overdue</span></div></div>`:`<div class="g"><div class="k"><b>${M2(sm(d=>d.st!='draft'))}</b><span>Quoted</span></div><div class="k"><b>${M2(sm(d=>d.st=='accepted'))}</b><span>Accepted</span></div><div class="k"><b>${M2(sm(d=>d.st=='sent'))}</b><span>Waiting for an answer</span></div></div>`;
- const sts=inv_?['all','draft','sent','overdue','paid','cancelled']:['all','draft','sent','accepted','declined'];
- const btn=(l,f)=>`<button onclick="${f}">${l}</button>`;
- const cards=D.map(d=>{const a=[];if(d.st=='draft')a.push(btn('Mark sent',`setDoc('${d.id}','sent')`));
-  if(inv_&&['sent','overdue'].includes(d.st))a.push(btn('Mark paid',`setDoc('${d.id}','paid')`));
-  if(!inv_&&d.st=='sent'){a.push(btn('Accepted',`setDoc('${d.id}','accepted')`));a.push(btn('Declined',`setDoc('${d.id}','declined')`))}
-  if(!inv_&&['sent','accepted'].includes(d.st))a.push(btn('Make invoice',`toInvoice('${d.id}')`));
-  return`<div class="card"><div class="ct"><div>${esc(d.number)} · ${esc(d.customer_name||'No customer')}</div><div class="chips">${dchip(d.st)}</div></div><div class="kv"><span>Date</span><b>${dd(d.issue_date)}</b><span>${inv_?'Due':'Valid until'}</span><b>${dd(d.due_date)}</b><span>Total</span><b>${M2(d.total)}</b>${inv_&&+d.paid_amount>0?`<span>Balance due</span><b>${M2(d.total-d.paid_amount)}</b>`:''}</div><div class="ca noprint" style="flex-wrap:wrap">${btn('View / Print',`printDoc('${d.id}')`)}${btn('Email / Share PDF',`mailDoc('${d.id}')`)}${btn('Edit',`invEdit('${d.id}')`)}${a.join('')}${btn('Copy',`dupDoc('${d.id}')`)}${isMgr()?`<button class="x2" onclick="delDoc('${d.id}')">Delete</button>`:''}</div></div>`}).join('')||`<div class="p">No ${kind=='invoice'?'invoices':'quotes'} yet. Tap New to create one.</div>`;
- SHARE={title:cap(kind)+'s - '+SH(),text:cap(kind)+'s'+(pl?' ('+pl+')':'')+'\n'+(CS.label||CO)+'\n\n'+(D.map(d=>'- '+d.number+' · '+(d.customer_name||'')+' · '+dd(d.issue_date)+' · '+M2(d.total)+' · '+cap(d.st)).join('\n')||'None')};
- const pb=`<div class="tabs noprint">${['all','daily','weekly','monthly'].map(c=>`<button class="${c==pr.p?'on':''}" onclick="setP('d_${kind}','${c}')">${cap(c)}</button>`).join('')}</div>${pr.p!='all'?`<div class="f noprint"><button class="b" style="flex:0 0 44px" onclick="stepP('d_${kind}',-1)">‹</button><input type="date" value="${pr.d||today}" onchange="PER['d_${kind}']={p:'${pr.p}',d:this.value};draw()"><button class="b" style="flex:0 0 44px" onclick="stepP('d_${kind}',1)">›</button></div>`:''}`;
- return`${ph(cap(kind)+'s'+(pl?' · '+pl:''))}<h2>Invoicing</h2>${itabs()}<div class="noprint" style="margin-bottom:10px"><button class="b" onclick="invNew('${kind}')">＋ New ${kind}</button></div>${pb}<div class="f noprint"><input placeholder="Search number or customer…" value="${esc(INVF.q||'')}" onchange="INVF.q=this.value;draw()"><select onchange="INVF.st=this.value;draw()">${sts.map(x=>`<option value="${x}" ${x==INVF.st?'selected':''}>${x=='all'?'All statuses':cap(x)}</option>`).join('')}</select></div>${bar()}${tiles}${cards}${foot('','','')}`}
-async function invNew(kind){ED={kind,number:await nextNum(kind),customer_id:'',customer_name:'',issue_date:today,due_date:addDays(kind=='invoice'?30:14),status:'draft',vat_rate:CS.tax_rate??15,lines:[{d:'',q:1,p:0,x:0}],notes:CS.terms||'',reference:'',sales_rep:'',discount_pct:0,paid_amount:0};draw()}
-function invEdit(id){const d=DOCS.find(x=>x.id==id);ED={...d,lines:JSON.parse(JSON.stringify(d.lines||[]))};if(!ED.lines.length)ED.lines=[{d:'',q:1,p:0,x:0}];draw()}
-function readEd(){const g=i=>$(i)?$(i).value:'';ED.number=g('dnum');ED.customer_id=g('dc');ED.customer_name=g('dn');ED.issue_date=g('di');ED.due_date=g('dd2');ED.vat_rate=+g('dv')||0;ED.notes=g('dnotes');ED.reference=g('dref');ED.sales_rep=g('drep');ED.discount_pct=+g('ddisc')||0;ED.paid_amount=+g('dpaid')||0;ED.lines=[...document.querySelectorAll('.lrow')].map(r=>({d:r.querySelector('.ld').value,q:+r.querySelector('.lq').value||0,p:+r.querySelector('.lp').value||0,x:+r.querySelector('.lx').value||0}))}
-function recalc(){readEd();const t=docTotals(ED.lines,ED.vat_rate,ED.discount_pct);document.querySelectorAll('.lrow').forEach((r,i)=>{r.querySelector('.lt').textContent=M2(ED.lines[i].q*ED.lines[i].p*(1-ED.lines[i].x/100))});$('tsub').textContent=M2(t.sub);if($('tdisc'))$('tdisc').textContent='-'+M2(t.da);$('tvat').textContent=M2(t.v);$('ttot').textContent=M2(t.tot);if($('tbal'))$('tbal').textContent=M2(t.tot-ED.paid_amount)}
-function addLine(){readEd();ED.lines.push({d:'',q:1,p:0,x:0});draw()}
-function delLine(i){readEd();ED.lines.splice(i,1);if(!ED.lines.length)ED.lines=[{d:'',q:1,p:0,x:0}];draw()}
-function pickCust(){const c=CUST.find(x=>x.id==$('dc').value);if(c)$('dn').value=c.name}
-function edPreview(){readEd();const e=ED,t=docTotals(e.lines.filter(l=>l.d.trim()),e.vat_rate,e.discount_pct),c=CUST.find(x=>x.id==e.customer_id)||{};ovl(docHtml({...e,lines:e.lines.filter(l=>l.d.trim()),currency:CURS},c))}
-function invEditor(){const e=ED,k=e.kind,t=docTotals(e.lines,e.vat_rate,e.discount_pct);
- return`<h2>${e.id?'Edit':'New'} ${k}</h2><div class="p"><label class="el">Number<input id="dnum" value="${esc(e.number)}"></label><label class="el">Customer<select id="dc" onchange="pickCust()"><option value="">Choose a customer…</option>${CUST.map(c=>`<option value="${c.id}" ${c.id==e.customer_id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label><label class="el">Customer name on the ${k}<input id="dn" value="${esc(e.customer_name)}" placeholder="Choose above or type a name"></label><div class="f"><label class="el" style="flex:1">Date<input type="date" id="di" value="${e.issue_date||''}"></label><label class="el" style="flex:1">${k=='invoice'?'Due date':'Valid until'}<input type="date" id="dd2" value="${e.due_date||''}"></label></div><div class="f"><label class="el" style="flex:1">Reference (job or address)<input id="dref" value="${esc(e.reference||'')}"></label><label class="el" style="flex:1">Sales rep<input id="drep" value="${esc(e.sales_rep||'')}"></label></div><label class="el">VAT rate (%)<input id="dv" type="number" value="${e.vat_rate}" oninput="recalc()"></label><div class="note">New customers can be added under Invoicing, Customers. Their full details print on the ${k}.</div></div>
-<div class="p"><b>Items</b>${e.lines.map((l,i)=>`<div class="lrow card" style="margin-top:8px"><label class="el">Description<input class="ld" value="${esc(l.d)}" placeholder="Item or description"></label><div class="f"><label class="el" style="flex:1">Qty<input class="lq" type="number" step="any" value="${l.q}" oninput="recalc()"></label><label class="el" style="flex:1">Unit price<input class="lp" type="number" step="0.01" value="${l.p}" oninput="recalc()"></label><label class="el" style="flex:1">Disc %<input class="lx" type="number" step="any" value="${l.x||0}" oninput="recalc()"></label></div><div class="ct"><div class="lt">${M2(l.q*l.p*(1-(l.x||0)/100))}</div><button class="x" onclick="delLine(${i})">✕ Remove</button></div></div>`).join('')}<div style="margin-top:10px"><button class="b" onclick="addLine()">＋ Add item</button></div></div>
-<div class="p"><label class="el">Overall discount (%)<input id="ddisc" type="number" step="any" value="${e.discount_pct||0}" oninput="recalc()"></label>${k=='invoice'?`<label class="el">Deposit or amount already paid<input id="dpaid" type="number" step="0.01" value="${e.paid_amount||0}" oninput="recalc()"></label>`:''}<div class="kv"><span>Subtotal</span><b id="tsub">${M2(t.sub)}</b><span>Discount</span><b id="tdisc">-${M2(t.da)}</b><span>VAT</span><b id="tvat">${M2(t.v)}</b><span>Total</span><b id="ttot">${M2(t.tot)}</b>${k=='invoice'?`<span>Balance due</span><b id="tbal">${M2(t.tot-(e.paid_amount||0))}</b>`:''}</div><label class="el">Notes or terms<textarea id="dnotes">${esc(e.notes||'')}</textarea></label></div>
-<div class="f"><button class="b" onclick="saveDoc(false)">Save</button><button class="b" onclick="saveDoc(true)">Save and print</button><button onclick="edPreview()">Preview</button><button onclick="ED=null;draw()">Cancel</button></div>`}
-async function saveDoc(pr){readEd();const e=ED;if(!(e.customer_name||'').trim())return alert('Add a customer name.');const L=e.lines.filter(l=>l.d.trim());if(!L.length)return alert('Add at least one item with a description.');
- const t=docTotals(L,e.vat_rate,e.discount_pct),row={company_id:me.company_id,site_id:site,kind:e.kind,number:e.number.trim(),customer_id:e.customer_id||null,customer_name:e.customer_name.trim(),issue_date:e.issue_date||today,due_date:e.due_date||null,status:e.status||'draft',currency:CURS,vat_rate:e.vat_rate,lines:L,notes:e.notes||null,subtotal:t.ex,vat_amount:t.v,total:t.tot,reference:e.reference||null,sales_rep:e.sales_rep||null,discount_pct:e.discount_pct||0,discount_amount:t.da,paid_amount:e.kind=='invoice'?(e.paid_amount||0):0};
- const r=e.id?await sb.from('documents').update(row).eq('id',e.id).select('*').single():await sb.from('documents').insert(row).select('*').single();
- if(r.error)return alert(/duplicate/.test(r.error.message)?'That number is already used. Please change the number.':/column|schema/i.test(r.error.message)?'Quotes and invoices need one more database step. Run the new SQL I sent, then reload this page.':r.error.message);
- ED=null;await draw();if(pr)setTimeout(()=>sheetPrint(docSheet(r.data)),250)}
-async function setDoc(id,st){const u={status:st};if(st=='paid'){const d=DOCS.find(x=>x.id==id);if(d)u.paid_amount=d.total}const{error}=await sb.from('documents').update(u).eq('id',id);error?alert(error.message):draw()}
-async function dupDoc(id){const d=DOCS.find(x=>x.id==id),{id:_i,created_at:_c,...rest}=d;delete rest.st;const{error}=await sb.from('documents').insert({...rest,number:await nextNum(d.kind),status:'draft',issue_date:today,due_date:addDays(d.kind=='invoice'?30:14)});error?alert(error.message):draw()}
-async function toInvoice(id){const q=DOCS.find(x=>x.id==id);if(!confirm('Create an invoice from this quote?'))return;
- const row={company_id:me.company_id,site_id:site,kind:'invoice',number:await nextNum('invoice'),customer_id:q.customer_id,customer_name:q.customer_name,issue_date:today,due_date:addDays(30),status:'draft',currency:q.currency,vat_rate:q.vat_rate,lines:q.lines,notes:q.notes,subtotal:q.subtotal,vat_amount:q.vat_amount,total:q.total,converted_from:q.id,reference:q.reference||null,sales_rep:q.sales_rep||null,discount_pct:q.discount_pct||0,discount_amount:q.discount_amount||0,paid_amount:0};
- const r=await sb.from('documents').insert(row);if(r.error)return alert(r.error.message);await sb.from('documents').update({status:'accepted'}).eq('id',id);IT='invoice';INVF={st:'all',q:''};draw()}
-async function delDoc(id){if(!confirm('Delete this document?'))return;const{error}=await sb.from('documents').delete().eq('id',id);error?alert(error.message):draw()}
-function docSheet(d){const c=CUST.find(x=>x.id==d.customer_id)||{};return docHtml(d,c)}
-function printDoc(id){const d=DOCS.find(x=>x.id==id);if(d)sheetPrint(docSheet(d))}
-async function mailDoc(id){const d=DOCS.find(x=>x.id==id),c=CUST.find(x=>x.id==d.customer_id)||{},n=cap(d.kind),co=CS.label||CO,subj=`${n} ${d.number} from ${co}`,txt=`Hi${c.contact_person?' '+c.contact_person:''},\n\nPlease find ${n.toLowerCase()} ${d.number} attached.\n\nThank you.\n${co}`;await shareHtml(docSheet(d),n+'_'+d.number,subj,txt,c.email)}
-async function poDoc(rid,mode){const r=LAST.rows.find(x=>x.id==rid);if(!r)return;const sp=r.supplier_id?((await sb.from('suppliers').select('*').eq('id',r.supplier_id).maybeSingle()).data||{}):{},L=(r.lines&&r.lines.length)?r.lines:(+r.total_cost?[{d:'Order total',q:1,p:+r.total_cost,x:0}]:[]),d={kind:'order',number:r.po_number||'DRAFT',issue_date:(r.created_at||today).slice(0,10),due_date:r.expected_at,customer_name:sp.name||'',lines:L,vat_rate:0,discount_pct:0,paid_amount:0,notes:''},html=docHtml(d,sp);
- if(mode=='share')await shareHtml(html,'Order_'+d.number,'Purchase order '+d.number+' from '+(CS.label||CO),'Please find purchase order '+d.number+' attached.\n\nThank you.\n'+(CS.label||CO),sp.email);else sheetPrint(html)}
-
-// ---------- accounting export ----------
-function acct(){const d=new Date();AX.from=AX.from||d.getFullYear()+'-01-01';AX.to=AX.to||today;const g=k=>esc(LS(k));
- const prog=(n,note,exp,extra)=>`<div class="card"><div class="ct"><div>${n}</div></div><div class="note">${note}</div>${extra||''}<div class="f"><button class="b" onclick="${exp}">⬇ Download invoices for ${n}</button><button onclick="reqConn('${n}')">Ask for a live connection</button></div></div>`;
- return`<h2>Invoicing</h2>${itabs()}<div class="p"><b>Send your invoices to your accounting program</b><div class="note">Choose the dates, then download the file for your program below. Draft and cancelled invoices are left out.</div><div class="f"><label class="el" style="flex:1">From<input type="date" value="${AX.from}" onchange="AX.from=this.value"></label><label class="el" style="flex:1">To<input type="date" value="${AX.to}" onchange="AX.to=this.value"></label></div></div>`
- +prog('Xero','Creates a file in the sales invoice import layout used by Xero. Xero brings the invoices in as drafts for you to approve. The account code and tax type must match your Xero setup exactly.',"exportXero()",`<div class="f"><label class="el" style="flex:1">Sales account code<input id="xa" value="${g('sf_xacc')||'200'}"></label><label class="el" style="flex:1">Tax type name<input id="xt" value="${g('sf_xtax')}" placeholder="exactly as in Xero"></label></div>`)
- +prog('QuickBooks','Creates a file in the invoice import layout used by QuickBooks Online, one row per item. The item name must already exist in QuickBooks. Pick your date format on the mapping screen.',"exportQB()",`<label class="el">Item name in QuickBooks<input id="qi" value="${g('sf_qbitem')||'Services'}"></label>`)
- +prog('Sage','Sage has several products and each has its own importer. This gives a clean invoice-by-invoice file (date, reference, customer, net, VAT and total) to map, or to copy into the import template for your product.',"exportSage()")
- +prog('Pastel','Pastel uses the same clean invoice-by-invoice file as Sage. Copy it into your Pastel import layout, or ask us for a connection built for your version.',"exportSage()")
- +`<div class="p"><b>Other downloads</b><div class="f"><button class="b" onclick="exportDocs('invoice')">⬇ Invoices, full detail</button><button class="b" onclick="exportDocs('quote')">⬇ Quotes</button><button class="b" onclick="exportCust()">⬇ Customers</button><button class="b" onclick="exportExp()">⬇ Expenses</button></div><div class="f" style="margin-top:8px"><button onclick="reqConn('Another program')">My program is not listed</button></div></div>`}
-const svx=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
-const fd=s=>s?String(s).slice(8,10)+'/'+String(s).slice(5,7)+'/'+String(s).slice(0,4):'';
-async function progDocs(){const r=await sb.from('documents').select('*').eq('kind','invoice').gte('issue_date',AX.from).lte('issue_date',AX.to).order('issue_date'),D=(r.data||[]).filter(d=>!['draft','cancelled'].includes(d.status));if(!D.length){alert('No sent or paid invoices in these dates.');return null}return{D,cu:(await sb.from('customers').select('*')).data||[]}}
 async function exportXero(){const acc=$('xa').value.trim()||'200',tax=$('xt').value.trim();if(!tax)return alert('Type your Xero tax type name first, exactly as it appears in Xero (for example, the name of your VAT rate).');svx('sf_xacc',acc);svx('sf_xtax',tax);const x=await progDocs();if(!x)return;
  const rows=[['ContactName','EmailAddress','InvoiceNumber','Reference','InvoiceDate','DueDate','Description','Quantity','UnitAmount','AccountCode','TaxType']];
  x.D.forEach(d=>{const c=x.cu.find(k=>k.id==d.customer_id)||{};(d.lines||[]).forEach(l=>rows.push([d.customer_name,c.email||'',d.number,'',fd(d.issue_date),fd(d.due_date||d.issue_date),l.d,l.q,effP(d,l).toFixed(2),acc,tax]))});
@@ -987,31 +1045,31 @@ async function exportSage(){const x=await progDocs();if(!x)return;
  x.D.forEach(d=>{const c=x.cu.find(k=>k.id==d.customer_id)||{};rows.push(['SI',fd(d.issue_date),d.number,d.customer_name,c.vat_no||'',(d.lines||[]).map(l=>l.d).join('; ').slice(0,60),(+d.subtotal).toFixed(2),d.vat_rate,(+d.vat_amount).toFixed(2),(+d.total).toFixed(2)])});
  csvDownload('Sage_Pastel_invoices_'+AX.from+'_to_'+AX.to+'.csv',rows)}
 function reqConn(n){PREF={kind:'custom',subject:'Accounting connection: '+n,message:'Please connect STEADYFIX to '+n+'. '};goTab('sup')}
-async function exportDocs(kind){const r=await sb.from('documents').select('*').eq('kind',kind).gte('issue_date',AX.from).lte('issue_date',AX.to).order('issue_date'),D=r.data||[];if(!D.length)return alert('Nothing to export for these dates.');
+async function exportDocs(kind){const r=await sb.from('documents').select('*').eq('company_id',me.company_id).eq('site_id',site).eq('kind',kind).gte('issue_date',AX.from).lte('issue_date',AX.to).order('issue_date'),D=r.data||[];if(!D.length)return alert('Nothing to export for these dates.');
  const cu=(await sb.from('customers').select('*')).data||[],rows=[['Number','Type','Customer','Customer email','Customer VAT no','Issue date','Due date','Status','Currency','Line description','Quantity','Unit price','Line net','VAT rate %','Line VAT','Line total','Document subtotal','Document VAT','Document total','Notes']];
  D.forEach(d=>{const c=cu.find(x=>x.id==d.customer_id)||{};(d.lines||[]).forEach(l=>{const net=l.q*effP(d,l),vat=net*d.vat_rate/100;rows.push([d.number,kind,d.customer_name,c.email||'',c.vat_no||'',d.issue_date,d.due_date||'',dstat(d),d.currency,l.d,l.q,effP(d,l).toFixed(2),net.toFixed(2),d.vat_rate,vat.toFixed(2),(net+vat).toFixed(2),d.subtotal,d.vat_amount,d.total,d.notes||''])})});
  csvDownload(cap(kind)+'s_'+AX.from+'_to_'+AX.to+'.csv',rows)}
-async function exportCust(){const D=(await sb.from('customers').select('*').order('name')).data||[];if(!D.length)return alert('No customers yet.');csvDownload('Customers_'+today+'.csv',[['Name','Contact person','Email','Phone','Cell','Postal address','Physical address','VAT number','Account no','Notes'],...D.map(c=>[c.name,c.contact_person||'',c.email||'',c.phone||'',c.mobile||'',c.address||'',c.physical_address||'',c.vat_no||'',c.account_ref||'',c.notes||''])])}
-async function exportExp(){const D=(await sb.from('expenses').select('*').gte('spent_on',AX.from).lte('spent_on',AX.to).order('spent_on')).data||[];if(!D.length)return alert('Nothing to export for these dates.');csvDownload('Expenses_'+AX.from+'_to_'+AX.to+'.csv',[['Date','Category','Supplier','Description','Reference','Amount'],...D.map(e=>[e.spent_on,e.category,e.supplier||'',e.description||'',e.reference||'',e.amount])])}
+async function exportCust(){const D=(await sb.from('customers').select('*').eq('company_id',me.company_id).order('name')).data||[];if(!D.length)return alert('No customers yet.');csvDownload('Customers_'+today+'.csv',[['Name','Contact person','Email','Phone','Cell','Postal address','Physical address','VAT number','Account no','Notes'],...D.map(c=>[c.name,c.contact_person||'',c.email||'',c.phone||'',c.mobile||'',c.address||'',c.physical_address||'',c.vat_no||'',c.account_ref||'',c.notes||''])])}
+async function exportExp(){const D=(await sb.from('expenses').select('*').eq('company_id',me.company_id).eq('site_id',site).gte('spent_on',AX.from).lte('spent_on',AX.to).order('spent_on')).data||[];if(!D.length)return alert('Nothing to export for these dates.');csvDownload('Expenses_'+AX.from+'_to_'+AX.to+'.csv',[['Date','Category','Supplier','Description','Reference','Amount'],...D.map(e=>[e.spent_on,e.category,e.supplier||'',e.description||'',e.reference||'',e.amount])])}
 
 const val=(t,v)=>v===''?null:t=='n'?+v:t=='dt'?new Date(v).toISOString():v;
-async function upd(tb,rid,k,t,v,virt){let patch={[k]:val(t,v)};if(tb=='work_orders'&&k=='assigned_to'){if(v){const{data:p,error:pe}=await sb.from('profiles').select('full_name').eq('id',v).eq('company_id',me.company_id).eq('active',true).maybeSingle();if(pe||!p)return alert('That staff account is no longer available. Refresh and choose an active team member.');patch.assigned_name=p.full_name}else patch.assigned_name=null}const r=virt?await sb.from('stock_levels').upsert({item_id:rid,site_id:site,company_id:me.company_id,on_hand:+v}):await sb.from(tb).update(patch).eq('id',rid);if(r.error)alert(r.error.message);else if(tb=='stock_items')draw()}
+async function upd(tb,rid,k,t,v,virt){let patch={[k]:val(t,v)};if(tb=='work_orders'&&k=='assigned_to'){if(v){const{data:p,error:pe}=await sb.from('profiles').select('full_name').eq('id',v).eq('company_id',me.company_id).eq('active',true).maybeSingle();if(pe||!p)return alert('That staff account is no longer available. Refresh and choose an active team member.');patch.assigned_name=p.full_name}else patch.assigned_name=null}const r=virt?await sb.from('stock_levels').upsert({item_id:rid,site_id:site,company_id:me.company_id,on_hand:+v}):await (async()=>{let q=sb.from(tb).update(patch).eq('id',rid).eq('company_id',me.company_id);if(MOD[tb]?.s)q=q.eq('site_id',site);return q})();if(r.error)alert(r.error.message);else if(tb=='stock_items')draw()}
 async function ins(id){const m=MOD[id],row={company_id:me.company_id};if(m.s)row.site_id=site;if(id=='work_orders')row.created_by=me.id;let oh=0;
  m.f.forEach((f,i)=>{if(f.t=='li'){const L=liRead('nl'+i);if(L.length){row[f.k]=L;if(f.o&&f.o.tot)row[f.o.tot]=liSum(L)}return}const v=val(f.t,$('n'+i).value);if(f.v)oh=v||0;else if(v!==null)row[f.k]=v});
  if(id=='work_orders'&&row.assigned_to){const{data:p,error:pe}=await sb.from('profiles').select('full_name').eq('id',row.assigned_to).eq('company_id',me.company_id).eq('active',true).maybeSingle();if(pe||!p)return alert('That staff account is no longer available. Refresh and choose an active team member.');row.assigned_name=p.full_name}
  const{data,error}=await sb.from(id).insert(row).select('id').single();if(error)return alert(/column|schema/i.test(error.message)?'This needs one more database step. Run the new SQL I sent, then reload this page.':error.message);
  if(id=='stock_items')await sb.from('stock_levels').upsert({item_id:data.id,site_id:site,company_id:me.company_id,on_hand:oh});draw()}
-async function del(tb,rid){if(!confirm('Delete this row?'))return;const{error}=await sb.from(tb).delete().eq('id',rid);error?alert(error.message):draw()}
+async function del(tb,rid){if(!confirm('Delete this row?'))return;let q=sb.from(tb).delete().eq('id',rid).eq('company_id',me.company_id);if(MOD[tb]?.s)q=q.eq('site_id',site);const{error}=await q;error?alert(error.message):draw()}
 
 const STARTER={daily:['Walk-round: leaks, noises, alarms','Pool plant pressure & chlorine','Generator fuel & battery','Geyser valves','Log meter readings'],weekly:['Test emergency lighting','Grease pumps & motors','Inspect gas connections','Clean strainers & filters','Fleet tyre & oil check'],monthly:['Thermal scan DB boards','Test generator on load','Service booster pumps','Review stock vs min levels','Review overdue PMs'],yearly:['Fire equipment service check','Electrical compliance inspection','Gas safety inspection','Boiler and geyser inspection','Review equipment replacement plan']};
 const FRQ=['daily','weekly','monthly','yearly'];let ct=null,ced=false,MP=Promise.resolve();
 function pk(f){const d=new Date(),z=n=>String(n).padStart(2,'0');if(f=='weekly')d.setDate(d.getDate()-((d.getDay()+6)%7));if(f=='monthly')d.setDate(1);if(f=='yearly'){d.setMonth(0);d.setDate(1)}return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())}
 async function chk(){
- const all=(await sb.from('checklist_templates').select('*').eq('site_id',site).order('created_at',{ascending:false}).order('name')).data||[],list=all.filter(x=>x.frequency==cf),t=list.find(x=>x.id==ct)||list[0];
+ const all=(await sb.from('checklist_templates').select('*').eq('company_id',me.company_id).eq('site_id',site).order('created_at',{ascending:false}).order('name')).data||[],list=all.filter(x=>x.frequency==cf),t=list.find(x=>x.id==ct)||list[0];
  const head=`<h2>Checklists</h2><div class="tabs noprint">${FRQ.map(c=>`<button class="${c==cf?'on':''}" onclick="cf='${c}';ct=null;ced=false;draw()">${cap(c)}</button>`).join('')}</div>`;
  const newf=`<details class="p noprint"><summary>＋ New ${cf} checklist</summary><div class="f" style="margin-top:10px"><input id="ncn" placeholder="Name, e.g. Kitchen opening check"><button onclick="newList()">Create</button></div></details>`;
  if(!t)return head+`<div class="p noprint">No ${cf} checklist yet. Create your own below${all.length?'.':', or add starter lists for every frequency.'}</div>${all.length?'':`<button class="b noprint" onclick="seed()">Add starter lists</button><br><br>`}${newf}`;
- ct=t.id;const key=pk(cf),run=(await sb.from('checklist_runs').select('results').eq('template_id',t.id).eq('run_date',key).maybeSingle()).data,res=run?.results||{},meta=res._meta||{},by=meta.by??me.full_name;
+ ct=t.id;const key=pk(cf),run=(await sb.from('checklist_runs').select('results').eq('company_id',me.company_id).eq('site_id',site).eq('template_id',t.id).eq('run_date',key).maybeSingle()).data,res=run?.results||{},meta=res._meta||{},by=meta.by??me.full_name;
  SHARE={title:t.name+' - '+SH(),text:t.name+' ('+cap(cf)+' checklist)\n'+(CS.label||LS('sf_label')||CO)+' · '+SH()+' · '+dd(key)+'\nChecked by: '+(by||'-')+'\n\n'+t.items.map((x,i)=>(res[i]?'[x] ':'[ ] ')+x).join('\n')+(meta.notes?'\n\nNotes: '+meta.notes:'')+'\n\nSigned off by: '+(meta.mgr||'-')+(meta.date?' on '+dd(meta.date):'')};
  const mt=f=>`onchange="meta('${t.id}','${key}','${f}',this.value)"`;
  const sel=list.length>1?`<div class="f noprint"><select onchange="ct=this.value;ced=false;draw()">${list.map(x=>`<option value="${x.id}" ${x.id==t.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>`:'';
@@ -1022,15 +1080,16 @@ async function chk(){
  return head+sel+`${ph(t.name+' ('+cap(cf)+' checklist)')}`+bar()+(ced?'':`<div class="noprint" style="margin-bottom:10px"><button class="b" onclick="ced=true;draw()">Edit tasks</button> ${newf?'':''}</div>`)+body+sheet+(ced?'':newf)}
 async function seed(){await sb.from('checklist_templates').insert(Object.entries(STARTER).map(([f,items])=>({company_id:me.company_id,site_id:site,name:cap(f)+' checks',frequency:f,items})));draw()}
 async function newList(){const n=$('ncn').value.trim();if(!n)return alert('Type a name for the checklist first.');const{data,error}=await sb.from('checklist_templates').insert({company_id:me.company_id,site_id:site,name:n,frequency:cf,items:[]}).select('id').single();if(error)return alert(error.message);ct=data.id;ced=true;draw()}
-const getT=async id=>(await sb.from('checklist_templates').select('items').eq('id',id).single()).data.items||[];
-const setItems=async(id,items)=>{const{error}=await sb.from('checklist_templates').update({items}).eq('id',id);if(error)alert(error.message)};
-async function addTask(id){const v=$('nt').value.trim();if(!v)return;const it=await getT(id);it.push(v);await setItems(id,it);draw()}
-async function delTask(id,i){const it=await getT(id);it.splice(i,1);await setItems(id,it);draw()}
-async function editTask(id,i,v){const it=await getT(id);it[i]=v;await setItems(id,it)}
-async function renList(id,v){const{error}=await sb.from('checklist_templates').update({name:v}).eq('id',id);if(error)alert(error.message)}
-async function delList(id){if(!confirm('Delete this checklist and its history?'))return;await sb.from('checklist_templates').delete().eq('id',id);ct=null;ced=false;draw()}
-function meta(tid,key,f,v){MP=(async()=>{const{data}=await sb.from('checklist_runs').select('results').eq('template_id',tid).eq('run_date',key).maybeSingle();const results={...(data?.results||{})};results._meta={...(results._meta||{}),[f]:v};await sb.from('checklist_runs').upsert({company_id:me.company_id,site_id:site,template_id:tid,run_date:key,results,completed_by:me.id,completed_at:new Date().toISOString()},{onConflict:'template_id,run_date'})})()}
-async function tick(tid,key,i,on){await MP;const{data}=await sb.from('checklist_runs').select('results').eq('template_id',tid).eq('run_date',key).maybeSingle();
+const listScope=q=>q.eq('company_id',me.company_id).eq('site_id',site);
+const getT=async id=>{const{data,error}=await listScope(sb.from('checklist_templates').select('items').eq('id',id)).maybeSingle();if(error){alert(error.message);return null}return data?.items||[]};
+const setItems=async(id,items)=>{if(!isMgr())return alert('Manager access required.');const{error}=await listScope(sb.from('checklist_templates').update({items}).eq('id',id));if(error)alert(error.message)};
+async function addTask(id){if(!isMgr())return alert('Manager access required.');const v=$('nt').value.trim();if(!v)return;const it=await getT(id);if(!it)return;it.push(v);await setItems(id,it);draw()}
+async function delTask(id,i){if(!isMgr())return alert('Manager access required.');const it=await getT(id);if(!it)return;it.splice(i,1);await setItems(id,it);draw()}
+async function editTask(id,i,v){if(!isMgr())return alert('Manager access required.');const it=await getT(id);if(!it)return;it[i]=v;await setItems(id,it)}
+async function renList(id,v){if(!isMgr())return alert('Manager access required.');const{error}=await listScope(sb.from('checklist_templates').update({name:v}).eq('id',id));if(error)alert(error.message)}
+async function delList(id){if(!isMgr())return alert('Manager access required.');if(!confirm('Delete this checklist and its history?'))return;const{error}=await listScope(sb.from('checklist_templates').delete().eq('id',id));if(error)return alert(error.message);ct=null;ced=false;draw()}
+function meta(tid,key,f,v){MP=(async()=>{const{data}=await sb.from('checklist_runs').select('results').eq('company_id',me.company_id).eq('site_id',site).eq('template_id',tid).eq('run_date',key).maybeSingle();const results={...(data?.results||{})};results._meta={...(results._meta||{}),[f]:v};await sb.from('checklist_runs').upsert({company_id:me.company_id,site_id:site,template_id:tid,run_date:key,results,completed_by:me.id,completed_at:new Date().toISOString()},{onConflict:'template_id,run_date'})})()}
+async function tick(tid,key,i,on){await MP;const{data}=await sb.from('checklist_runs').select('results').eq('company_id',me.company_id).eq('site_id',site).eq('template_id',tid).eq('run_date',key).maybeSingle();
  const results={...(data?.results||{}),[i]:on};await sb.from('checklist_runs').upsert({company_id:me.company_id,site_id:site,template_id:tid,run_date:key,results,completed_by:me.id,completed_at:new Date().toISOString()},{onConflict:'template_id,run_date'});draw()}
 const PP_ID='BAAshiyibCQ9kJ0LRlICmsarQCMDDn_-hw-C21GIh3S077ex8wwvq_cTdKrUEV2Mqe9unUk5O5xLOICTas';
 const PRO_ID='P-6BL49939LY725041UNLC5AEI';

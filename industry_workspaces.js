@@ -10,7 +10,8 @@ async function chooseIndustryWorkspace(slug){
     if(!isMgr()){alert('Only a company owner or manager can change the company industry workspace.');return}
     if(!confirm('Switch the company workspace to '+target.name+'? The current industry will be kept as a secondary activity where possible.'))return;
     const secondary=[...new Set((INDUSTRY_PROFILE.secondary_industry_slugs||[]).filter(x=>x!==slug))];
-    if(current&&!secondary.includes(current)&&secondary.length<8)secondary.push(current);
+    if(current&&!secondary.includes(current))secondary.push(current);
+    if(secondary.length>8){alert('Cannot switch industry: this would exceed the maximum of 8 secondary industries. Remove one in Industry profile first.');return}
     const {error}=await sb.from('company_industry_profiles').update({primary_industry_slug:slug,secondary_industry_slugs:secondary}).eq('company_id',me.company_id);
     if(error){alert('Could not switch industry: '+error.message);return}
     await loadIndustryProfile();renderIndustrySelector();
@@ -18,28 +19,14 @@ async function chooseIndustryWorkspace(slug){
   cur='industry_workspace';draw();
 }
 
-async function sfIndustryHub(){
-  if(!INDUSTRIES||!INDUSTRIES.length)await loadIndustryProfile();
-  const current=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug;
-  let html='<h2>Choose your industry workspace</h2><div class="p"><b>One STEADYFIX CMMS. Different industry setups.</b><div class="note">Choose the type of business you operate. STEADYFIX keeps one secure base application and organises its departments, terminology and day-to-day tools around that industry. Owners and managers can change the company primary workspace.</div></div><div class="dg">';
-  (INDUSTRIES||[]).forEach(ind=>{
-    const focus=(ind.default_configuration&&ind.default_configuration.focus_areas)||[], examples=ind.business_examples||[], active=ind.slug===current;
-    html+='<div class="card"><div class="ct"><div>'+esc(ind.name)+'</div>'+(active?'<span class="chip g">Current workspace</span>':'')+'</div>';
-    html+='<div class="note">'+esc(ind.description||'')+'</div>';
-    if(examples.length)html+='<div class="rl"><b>Typical businesses:</b> '+esc(examples.slice(0,4).join(' · '))+'</div>';
-    if(focus.length)html+='<div class="rl"><b>Day-to-day focus:</b> '+esc(focus.slice(0,5).join(' · '))+'</div>';
-    html+='<div class="ca"><button class="b" onclick="chooseIndustryWorkspace(\''+esc(ind.slug)+'\')">'+(active?'Open workspace':'Choose this industry')+'</button></div></div>';
-  });
-  return html+'</div>';
-}
 
-const SF_CONFIGURABLE_MODULES=new Set(['work_orders','assets','service_contracts','stock_items','purchase_orders','customers','inv','suppliers','pm_schedules','chk','fleet','rep','ohs','damage_reports','shutdowns','logistics_ops']);
+const SF_CONFIGURABLE_MODULES=new Set(['work_orders','assets','service_contracts','stock_items','purchase_orders','customers','inv','suppliers','pm_schedules','chk','fleet','rep','ohs','damage_reports','shutdowns','logistics_ops','workshop_jobs']);
 function sfIndustryModuleOverrides(){const o=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.configuration_overrides||{};return{disabled:new Set(Array.isArray(o.disabled_modules)?o.disabled_modules:[]),labels:o.module_labels&&typeof o.module_labels==='object'?o.module_labels:{}}}
 function sfIndustryModules(slug){
   const all={
     automation:[['🧰','Service job cards','Create service calls, assign technicians, record labour, progress, faults and parts used','work_orders'],['🖨️','Customer equipment','Register copiers and devices, serial numbers and page meter readings','assets'],['📑','Service contracts','Manage covered devices, service levels, meter allowances and contract dates','service_contracts'],['📦','Stock & consumables','Track toner, drums, staples, spares and reorder levels','stock_items'],['🛒','Parts purchasing','Create supplier purchase orders','purchase_orders'],['👥','Customers','Manage customer accounts and service contacts','customers'],['💳','Quotes & invoicing','Prepare quotes, invoices and customer billing','inv'],['🤝','Suppliers','Manage parts suppliers and service partners','suppliers'],['🔁','Preventive maintenance','Schedule recurring device servicing','pm_schedules'],['☑️','Service checklists','Use repeatable callout, installation and service checklists','chk']],
     'fleet-management':[['🚚','Fleet & tracking','Vehicles, GPS positions, utilisation and alerts','fleet'],['🧰','Maintenance work','Create and assign vehicle maintenance work','work_orders'],['🔁','Service schedules','Plan recurring vehicle maintenance','pm_schedules'],['📦','Parts & stock','Manage workshop parts and consumables','stock_items'],['🛒','Purchasing','Order parts and supplies','purchase_orders'],['☑️','Inspections','Vehicle and fleet checklists','chk'],['📊','Reports','Fleet and maintenance reporting','rep']],
-    workshops:[['🔧','Workshop & job cards','Workshop bookings, vehicle job cards and repair progress','fleet'],['🧰','Work orders','Assign maintenance and repair tasks','work_orders'],['📦','Workshop stock','Parts and materials','stock_items'],['🛒','Parts purchasing','Supplier orders','purchase_orders'],['👥','Customers','Customer records','customers'],['💳','Quotes & invoicing','Customer billing','inv'],['☑️','Quality checklists','Inspection and sign-off lists','chk']],
+    workshops:[['🔧','Workshop & job cards','Workshop bookings, vehicle job cards and repair progress','workshop_jobs'],['🧰','Work orders','Assign maintenance and repair tasks','work_orders'],['📦','Workshop stock','Parts and materials','stock_items'],['🛒','Parts purchasing','Supplier orders','purchase_orders'],['👥','Customers','Customer records','customers'],['💳','Quotes & invoicing','Customer billing','inv'],['☑️','Quality checklists','Inspection and sign-off lists','chk']],
     'logistics-transport':[['📦','Parcel operations','Create waybills, track consignments, record depot scans and capture proof of delivery','logistics_ops'],['🚛','Fleet & GPS tracking','Vehicle locations, movement and alerts','fleet'],['🧰','Depot maintenance','Work orders for vehicles, depots and equipment','work_orders'],['🔁','Maintenance schedules','Planned maintenance','pm_schedules'],['📦','Stock & supplies','Depot stock and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['☑️','Inspections','Vehicle and facility checks','chk'],['📊','Reports','Operations and maintenance reporting','rep']],
     'hospitality-tourism':[['🏨','Property assets','Rooms, plant, equipment and facilities','assets'],['🛠️','Maintenance requests','Guest and staff maintenance tasks','work_orders'],['🔁','Preventive maintenance','Recurring room, plant and facility tasks','pm_schedules'],['☑️','Operating checklists','Daily, weekly and monthly checks','chk'],['📦','Stores & stock','Maintenance stock and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['🦺','Safety & fire','Inspections, incidents and fire equipment','ohs']],
     'food-beverage':[['🍽️','Venue equipment','Kitchen, refrigeration and dining equipment','assets'],['🛠️','Maintenance tasks','Repairs and breakdowns','work_orders'],['🔁','Planned servicing','Recurring equipment maintenance','pm_schedules'],['☑️','Hygiene & operating checks','Repeatable operating and maintenance checklists','chk'],['📦','Stock & supplies','Maintenance consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['🦺','Safety','Workplace and fire safety','ohs']],
@@ -104,17 +91,23 @@ async function sfServiceContracts(){
 async function sfResetIndustryCustomizations(){if(!isMgr()||!confirm('Restore the default industry workspace shortcuts and labels?'))return;const{error}=await sb.from('company_industry_profiles').update({configuration_overrides:{}}).eq('company_id',me.company_id);if(error)return alert('Could not reset customizations: '+error.message);await loadIndustryProfile();await draw()}
 
 async function sfSaveServiceContract(){
+  if(!isMgr())return alert('Only company owners and managers can save service contracts.');
   const customerId=$('sfContractCustomer').value,customer=SF_SERVICE_CUSTOMERS.find(c=>c.id===customerId);
   const number=$('sfContractNumber').value.trim(),startDate=$('sfContractStart').value,endDate=$('sfContractEnd').value||null;
   if(!customer||!number||!startDate)return alert('Choose a customer and enter a contract number and start date.');
   if(endDate&&endDate<startDate)return alert('The contract end date cannot be before its start date.');
-  const fee=Math.max(0,Number($('sfContractFee').value)||0);
-  const row={company_id:me.company_id,site_id:site,kind:'service_contract',number,customer_id:customer.id,customer_name:customer.name,issue_date:startDate,due_date:endDate,start_date:startDate,end_date:endDate,status:$('sfContractStatus').value,currency:(CS&&CS.currency)||'R',vat_rate:(CS&&CS.tax_rate)||15,contract_type:$('sfContractType').value,billing_cycle:$('sfContractCycle').value,monthly_fee:fee,subtotal:fee,vat_amount:0,total:fee,response_hours:Math.max(0,Number($('sfContractResponse').value)||0),included_pages:Math.max(0,Number($('sfContractPages').value)||0),overage_rate:Math.max(0,Number($('sfContractOverage').value)||0),covered_devices:$('sfContractDevices').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),notes:$('sfContractNotes').value.trim()};
-  const result=SF_EDITING_CONTRACT_ID?await sb.from('documents').update(row).eq('id',SF_EDITING_CONTRACT_ID).eq('kind','service_contract'):await sb.from('documents').insert(row);
+  const fee=Number($('sfContractFee').value),responseHours=Number($('sfContractResponse').value),includedPages=Number($('sfContractPages').value),overageRate=Number($('sfContractOverage').value);
+  if(!Number.isFinite(fee)||fee<0||Math.abs(fee*100-Math.round(fee*100))>1e-8)return alert('Fee must be a non-negative amount with at most 2 decimal places.');
+  if(!Number.isFinite(responseHours)||responseHours<0||responseHours*2!==Math.round(responseHours*2))return alert('Response target must be a non-negative number in half-hour increments.');
+  if(!Number.isFinite(includedPages)||includedPages<0||!Number.isInteger(includedPages))return alert('Included pages must be a non-negative whole number.');
+  if(!Number.isFinite(overageRate)||overageRate<0||Math.abs(overageRate*10000-Math.round(overageRate*10000))>1e-8)return alert('Overage rate must be non-negative with at most 4 decimal places.');
+  const row={company_id:me.company_id,site_id:site,kind:'service_contract',number,customer_id:customer.id,customer_name:customer.name,issue_date:startDate,due_date:endDate,start_date:startDate,end_date:endDate,status:$('sfContractStatus').value,currency:(CS&&CS.currency)||'R',vat_rate:CS&&CS.tax_rate!=null?CS.tax_rate:15,contract_type:$('sfContractType').value,billing_cycle:$('sfContractCycle').value,monthly_fee:fee,subtotal:fee,vat_amount:0,total:fee,response_hours:responseHours,included_pages:includedPages,overage_rate:overageRate,covered_devices:$('sfContractDevices').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),notes:$('sfContractNotes').value.trim()};
+  const result=SF_EDITING_CONTRACT_ID?await sb.from('documents').update(row).eq('id',SF_EDITING_CONTRACT_ID).eq('company_id',me.company_id).eq('site_id',site).eq('kind','service_contract'):await sb.from('documents').insert(row);
   if(result.error)return alert('Could not save the service contract: '+result.error.message);
   SF_EDITING_CONTRACT_ID=null;draw();
 }
 function sfEditServiceContract(id){
+  if(!isMgr())return alert('Only company owners and managers can edit service contracts.');
   const c=SF_SERVICE_CONTRACTS.find(x=>x.id===id);if(!c)return;SF_EDITING_CONTRACT_ID=id;
   $('sfContractNumber').value=c.number||'';$('sfContractCustomer').value=c.customer_id||'';$('sfContractType').value=c.contract_type||'full_service';
   $('sfContractStart').value=c.start_date||c.issue_date||'';$('sfContractEnd').value=c.end_date||c.due_date||'';$('sfContractStatus').value=c.status||'draft';
@@ -128,8 +121,9 @@ function sfResetServiceContract(){
   $('sfContractStatus').value='draft';$('sfContractType').value='full_service';$('sfContractCycle').value='monthly';$('sfContractSummary').textContent='＋ Create service contract';
 }
 async function sfDeleteServiceContract(id){
+  if(!isMgr())return alert('Only company owners and managers can delete service contracts.');
   if(!confirm('Delete this service contract?'))return;
-  const {error}=await sb.from('documents').delete().eq('id',id).eq('kind','service_contract');if(error)alert(error.message);else draw();
+  const {error}=await sb.from('documents').delete().eq('id',id).eq('company_id',me.company_id).eq('site_id',site).eq('kind','service_contract');if(error)alert(error.message);else draw();
 }
 function sfPrintServiceContract(id){
   const c=SF_SERVICE_CONTRACTS.find(x=>x.id===id);if(!c)return;let sh=$('sheet');if(!sh){sh=document.createElement('div');sh.id='sheet';document.body.appendChild(sh)}

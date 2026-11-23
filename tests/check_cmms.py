@@ -394,3 +394,14 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+
+# Assistant saved memory is strictly company-scoped (prevents cross-tenant context leakage).
+assistant_endpoint = (root / "supabase" / "functions" / "smart-endpoint" / "index.ts").read_text(encoding="utf-8")
+for marker in [
+    'sb.from("assistant_memory").select("id,note").eq("company_id", company_id)',
+    'sb.from("assistant_memory").delete().eq("id", String(input.id)).eq("company_id", ctx.company_id)',
+    'sb.from("assistant_memory").insert({ company_id: ctx.company_id, note, created_by: ctx.user_id })',
+]:
+    if marker not in assistant_endpoint:
+        raise SystemExit(f"Missing assistant company-memory isolation: {marker}")

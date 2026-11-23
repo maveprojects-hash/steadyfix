@@ -426,6 +426,14 @@ for marker in quick_access_markers:
         raise SystemExit(f"Quick Access dropdown regression marker missing: {marker}")
 print("Industry Quick Access dropdown rendering, navigation, keyboard and dismissal: PASS")
 
+# Header cleanup: only one Quick Access trigger exists, with responsive compact layout.
+if html.count('id="industryQuickAccessBtn"') != 1:
+    raise SystemExit("Expected exactly one Quick Access button; remove legacy duplicate")
+for marker in ["sf-industry-quick{flex-direction:row", "@media(max-width:700px)", "header #site{min-width:130px;max-width:220px}"]:
+    if marker not in html:
+        raise SystemExit(f"Quick Access header layout regression marker missing: {marker}")
+print("Single Quick Access button and responsive header layout: PASS")
+
 # Atomic quote conversion regression markers and transactional migration safeguards.
 quote_conversion_start = html.find("async function toInvoice(")
 quote_conversion_end = html.find("async function delDoc(", quote_conversion_start)

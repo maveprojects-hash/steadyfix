@@ -440,6 +440,12 @@ if "if(secondary.length>8)" not in workspace_code or "would exceed the maximum o
 for marker in ['toggleIndustryQuickAccess','sfIndustryQuickPick','sfCloseIndustryQuickAccess','sfBindIndustryQuickAccessDismiss','data-industry-slug','aria-selected','role="listbox"','event.key===\'Escape\'','btn.focus()','btn.contains(event.target)','menu.contains(event.target)','event.key===\'ArrowDown\'','event.key===\'ArrowUp\'','event.key===\'Home\'','event.key===\'End\'','options[targetIndex]?.focus()']:
     if marker not in html and marker not in workspace_code:
         raise SystemExit(f"Missing industry quick-access behavior: {marker}")
+# Quick-access listbox option semantics: all items expose selection state and labels are grouped.
+if 'aria-selected="false" class="sf-industry-quick-option" data-quick-tab=' not in html:
+    raise SystemExit("Department options missing aria-selected=false state")
+if 'role="group" aria-label="Departments"' not in html or 'role="group" aria-label="Industry workspaces"' not in html:
+    raise SystemExit("Industry quick-access listbox headings lack group semantics")
+
 if "['🔧','Workshop & job cards','Workshop bookings, vehicle job cards and repair progress','workshop_jobs']" not in workspace_code:
     raise SystemExit("Workshop job-card quick access does not route to workshop_jobs")
 

@@ -19,7 +19,7 @@ begin
   if v_user is null or v_company is null then
     raise exception 'Authentication required';
   end if;
-  if v_role not in ('owner','manager') then
+  if v_role is null or v_role not in ('owner','manager') then
     raise exception 'Only owners and managers can convert quotes';
   end if;
   if p_invoice_number is null or length(btrim(p_invoice_number)) = 0 then

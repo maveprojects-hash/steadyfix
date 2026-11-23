@@ -446,7 +446,7 @@ stock_adjust_source = html.split("async function adjStock(", 1)[1].split("\n\nas
 for marker in ["sb.rpc('adjust_stock_level'", "p_item_id:rid", "p_site_id:site", "p_delta:d"]:
     if marker not in stock_adjust_source:
         raise SystemExit(f"Missing atomic stock adjustment behavior: {marker}")
-stock_adjust_migration = root / "supabase" / "migrations" / "20261122173000_atomic_stock_adjustments.sql"
+stock_adjust_migration = root / "supabase" / "migrations" / "20261123170000_atomic_stock_adjustments.sql"
 if not stock_adjust_migration.exists():
     raise SystemExit("Missing atomic stock adjustment RPC migration")
 stock_adjust_sql = stock_adjust_migration.read_text(encoding="utf-8").lower()

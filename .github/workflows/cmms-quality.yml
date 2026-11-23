@@ -7,6 +7,7 @@ on:
       - "communication.js"
       - "communication.css"
       - "supabase/migrations/**"
+      - "supabase/functions/smart-endpoint/**"
       - "tests/**"
       - ".github/workflows/cmms-quality.yml"
   push:
@@ -15,6 +16,7 @@ on:
       - "communication.js"
       - "communication.css"
       - "supabase/migrations/**"
+      - "supabase/functions/smart-endpoint/**"
       - "tests/**"
       - ".github/workflows/cmms-quality.yml"
 

@@ -805,3 +805,13 @@ for marker in [
 ]:
     if marker not in scan_row_lock_sql:
         raise SystemExit(f"Missing scan timestamp integrity safeguard: {marker}")
+
+# Server-side tracking scan timestamp override prevents client chronology spoofing.
+scan_timestamp_migration = root / "supabase" / "migrations" / "20261123113000_logistics_scan_server_timestamp.sql"
+if not scan_timestamp_migration.exists():
+    raise SystemExit("Missing Logistics scan server-timestamp migration")
+scan_timestamp_sql = scan_timestamp_migration.read_text(encoding="utf-8").lower()
+if "new.event_at := statement_timestamp()" not in scan_timestamp_sql:
+    raise SystemExit("Tracking scan event_at must be set from database time")
+if "ignore any client-supplied event_at" not in scan_timestamp_sql:
+    raise SystemExit("Scan timestamp guard must document overriding client event_at")

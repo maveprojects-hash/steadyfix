@@ -306,6 +306,19 @@ for marker in [
         raise SystemExit(f"Missing industry operations UI capability: {marker}")
 
 
+# Tracking event history must remain append-only for authenticated clients.
+tracking_history_immutable_migration = next((root / "supabase" / "migrations").glob("*_logistics_tracking_events_immutable_permissions.sql"))
+tracking_history_immutable_sql = tracking_history_immutable_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "revoke update, delete on table public.logistics_tracking_events from authenticated",
+    "drop policy if exists logistics_tracking_events_update",
+    "drop policy if exists logistics_tracking_events_delete",
+    "grant select, insert on table public.logistics_tracking_events to authenticated",
+]:
+    if marker not in tracking_history_immutable_sql:
+        raise SystemExit(f"Missing append-only tracking-history permission safeguard: {marker}")
+
+
 # Tracking history is lazy-loaded per shipment, with bounded pages and tenant/site filters.
 logistics_workspace = workspace_code[workspace_code.index("async function sfLogisticsWorkspace"):workspace_code.index("const SF_SHIPMENT_CREATE_LOCK")]
 if "logistics_tracking_events').select('*').eq('company_id',me.company_id).eq('site_id',site).order('event_at'" in logistics_workspace:

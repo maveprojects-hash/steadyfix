@@ -257,7 +257,7 @@ async function sfLoadShipmentHistory(id){
     const rows=result.data||[];
     if(offset===0)container.innerHTML='';
     const html=rows.map(e=>'<div class="rl">'+esc(new Date(e.event_at).toLocaleString('en-ZA'))+' · <b>'+esc(cap(e.status||e.event_type))+'</b>'+(e.location?' · '+esc(e.location):'')+(e.notes?'<div class="note">'+esc(e.notes)+'</div>':'')+'</div>').join('');
-    container.insertAdjacentHTML('beforeend',html||(offset===0?'<div class="note">No scans recorded yet.</div>':'');container.dataset.offset=String(offset+rows.length);container.dataset.loaded='true';
+    container.insertAdjacentHTML('beforeend',html||(offset===0?'<div class="note">No scans recorded yet.</div>':''));container.dataset.offset=String(offset+rows.length);container.dataset.loaded='true';
     if(button){button.textContent=rows.length===pageSize?'Load more scans':'History loaded';button.disabled=rows.length<pageSize;}
   }catch(error){alert('Could not load tracking history: '+(error.message||error));if(button)button.disabled=false;}
   finally{container.dataset.loading='false';}

@@ -216,7 +216,8 @@ subprocess.run(["node", "--check", str(industry_workspaces)], check=True)
 for marker in [
     'onclick="openIndustryHub()"',
     'industry_workspaces.js',
-    'hidden aria-hidden="true"',
+    'id="industryProfileSelect"',
+    "QUICK INDUSTRY ACCESS",
 ]:
     if marker not in html:
         raise SystemExit(f"Missing industry workspace entry point: {marker}")

@@ -418,7 +418,7 @@ quick_access_markers = [
     'role="group" aria-label="Departments"',
     'role="group" aria-label="Industry workspaces"',
     "event.key==='ArrowDown'", "event.key==='ArrowUp'",
-    "event.key==='Home'", "event.key==='End'", "event.key==='Escape'",
+    "event.key==='Home'", "event.key==='End'", "e.key==='Escape'",
     "menu.querySelector('[data-quick-tab],[data-industry-slug]')?.focus()",
 ]
 for marker in quick_access_markers:

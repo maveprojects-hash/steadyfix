@@ -806,3 +806,14 @@ if "new.event_at := statement_timestamp()" not in scan_timestamp_sql:
     raise SystemExit("Tracking scan event_at must be set from database time")
 if "ignore any client-supplied event_at" not in scan_timestamp_sql:
     raise SystemExit("Scan timestamp guard must document overriding client event_at")
+
+
+# Direct authenticated tracking-event inserts are limited to scan events; lifecycle rows are trigger-owned.
+tracking_insert_policy_migration = root / "supabase" / "migrations" / "20261123114000_logistics_tracking_events_scan_only_insert_policy.sql"
+if not tracking_insert_policy_migration.exists():
+    raise SystemExit("Missing Logistics scan-only tracking event insert policy migration")
+tracking_insert_policy_sql = tracking_insert_policy_migration.read_text(encoding="utf-8").lower()
+if "event_type = 'scan'" not in tracking_insert_policy_sql:
+    raise SystemExit("Authenticated direct tracking-event inserts must be restricted to scan events")
+if "drop policy if exists logistics_tracking_events_insert" not in tracking_insert_policy_sql:
+    raise SystemExit("Scan-only insert migration must replace the prior permissive policy")

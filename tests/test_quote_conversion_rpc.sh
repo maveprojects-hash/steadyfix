@@ -9,6 +9,7 @@ trap 'rm -rf "$TMP"' EXIT
 
 # Minimal schema/auth fixture to exercise the real conversion migration in PostgreSQL.
 "${PSQL[@]}" <<'SQL'
+create role anon nologin;
 create role authenticated nologin;
 create schema auth;
 grant usage on schema auth to authenticated;

@@ -769,3 +769,11 @@ if "if(offset===0)container.innerHTML=''" not in history_loader:
 latest_scan_policy = (root / "supabase" / "migrations" / "20261121220000_logistics_scan_location_length_guard.sql").read_text(encoding="utf-8").lower()
 if "s.status not in ('delivered','returned')" not in latest_scan_policy:
     raise SystemExit("Latest Logistics scan insert policy allows terminal shipments")
+
+# POD RPC must reject a missing role (SQL NULL makes NOT IN evaluate to NULL).
+pod_lock_guard = root / "supabase" / "migrations" / "20261121112000_logistics_pod_submission_lock.sql"
+if not pod_lock_guard.exists():
+    raise SystemExit("Missing Logistics POD submission lock migration")
+pod_lock_guard_sql = pod_lock_guard.read_text(encoding="utf-8").lower()
+if "if v_role is null or v_role not in ('owner','manager','technician','storeman')" not in pod_lock_guard_sql:
+    raise SystemExit("Logistics POD RPC must reject null/unknown roles")

@@ -35,3 +35,5 @@ jobs:
           node-version: "22"
       - name: Check CMMS JavaScript and notification safeguards
         run: python3 tests/check_cmms.py
+      - name: Check stock-level location integrity
+        run: python3 tests/check_stock_level_location_integrity.py

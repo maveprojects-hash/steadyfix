@@ -35,3 +35,5 @@ jobs:
           node-version: "22"
       - name: Check CMMS JavaScript and notification safeguards
         run: python3 tests/check_cmms.py
+      - name: Check work-order stock quantity validation
+        run: python3 tests/check_work_order_stock_quantity.py

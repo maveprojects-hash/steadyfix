@@ -395,3 +395,34 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+
+// Expanded industry catalog: ensure the migration, industry workspace maps and public
+// landing page all expose the same ten additional sectors without removing legacy options.
+expanded_industries = [
+    "construction-building", "healthcare-medical", "education-campus", "retail-shopping",
+    "agriculture-farming", "mining-heavy-equipment", "utilities-energy",
+    "it-telecommunications", "security-services", "cleaning-contract-services",
+]
+catalog_expansion = (root / "supabase" / "migrations" / "20261123160000_expand_industry_catalog.sql").read_text(encoding="utf-8")
+landing = (root / "index.html").read_text(encoding="utf-8")
+workspace_maps = workspace_code
+login_setup = login_html
+for slug in expanded_industries:
+    if slug not in catalog_expansion:
+        raise SystemExit(f"Missing expanded industry migration seed: {slug}")
+    if slug not in workspace_maps:
+        raise SystemExit(f"Missing expanded industry workspace mapping: {slug}")
+    if slug not in landing:
+        raise SystemExit(f"Missing expanded industry landing card: {slug}")
+    if slug not in login_setup:
+        raise SystemExit(f"Missing expanded industry onboarding reference: {slug}")
+if "on conflict (slug) do update set" not in catalog_expansion.lower():
+    raise SystemExit("Expanded industry catalog migration must be idempotent")
+for marker in [
+    "QUICK INDUSTRY ACCESS",
+    "async function chooseIndustryWorkspace",
+    "savePrimaryIndustry(el.value)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing quick industry switch persistence behavior: {marker}")

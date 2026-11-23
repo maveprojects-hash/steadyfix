@@ -214,7 +214,7 @@ if not industry_workspaces.exists():
     raise SystemExit("Missing industry workspace client module")
 subprocess.run(["node", "--check", str(industry_workspaces)], check=True)
 for marker in [
-    'onclick="openIndustryHub()"',
+    'id="industryQuickAccessBtn"',
     'industry_workspaces.js',
     'hidden aria-hidden="true"',
 ]:

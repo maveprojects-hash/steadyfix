@@ -817,3 +817,20 @@ if "event_type = 'scan'" not in tracking_insert_policy_sql:
     raise SystemExit("Authenticated direct tracking-event inserts must be restricted to scan events")
 if "drop policy if exists logistics_tracking_events_insert" not in tracking_insert_policy_sql:
     raise SystemExit("Scan-only insert migration must replace the prior permissive policy")
+
+
+# Delivered/returned shipments are terminal; delivery requires a recorded receiver signoff.
+terminal_status_migration = root / "supabase" / "migrations" / "20261123115000_logistics_terminal_status_guard.sql"
+if not terminal_status_migration.exists():
+    raise SystemExit("Missing Logistics terminal-status guard migration")
+terminal_status_sql = terminal_status_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "old.status in ('delivered','returned') and new.status is distinct from old.status",
+    "new.status='delivered'",
+    "public.logistics_pod_signoffs",
+    "before update of status on public.logistics_shipments",
+    "terminal shipment status cannot be changed",
+    "delivery status requires a receiver signoff",
+]:
+    if marker not in terminal_status_sql:
+        raise SystemExit(f"Missing Logistics terminal-status safeguard: {marker}")

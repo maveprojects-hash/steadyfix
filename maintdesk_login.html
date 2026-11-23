@@ -72,7 +72,8 @@ async function setup(){
  '<input id="co" placeholder="Company name"><input id="st" placeholder="First site name (e.g. Head office)">'+
  '<label style="display:block;font-weight:650;margin:8px 0">Primary industry<select id="industry" required>'+industryOptions+'</select></label>'+
  '<p>Choose the closest fit. You can add other business activities later.</p>'+
- '<button id="mk">Create company</button><p style="text-align:center">or</p><input id="tk" placeholder="Invite code"><button id="jn">Join with invite</button>';
+ '<button id="mk">Create company</button><p style="text-align:center">or</p><input id="tk" placeholder="Invite code"><button id="jn">Join with invite</button><button class="l" id="loginBack" type="button">Already registered? Back to log in</button>';
+ $('loginBack').onclick=()=>{mode='login';auth()};
  $('mk').onclick=async()=>{err();if(!$('nm').value||!$('co').value)return err('Enter your name and company name.');
   const{data:companyId,error}=await sb.rpc('signup_company',{p_company:$('co').value,p_site:$('st').value,p_name:$('nm').value});
   if(error)return err(error.message);

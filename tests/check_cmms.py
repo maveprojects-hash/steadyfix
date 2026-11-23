@@ -83,7 +83,7 @@ for marker in ["d.company_id!==me.company_id", "company_id:me.company_id", "stat
     if marker not in dup_code:
         raise SystemExit(f"Missing document duplication guard: {marker}")
 
-# Quote-to-invoice validation and failure handling guards.
+# Quote conversion now delegates to a transactional, idempotent database RPC.
 convert_start = html.find("async function toInvoice(")
 convert_end = html.find("async function delDoc(", convert_start)
 if convert_start < 0 or convert_end < 0:
@@ -93,14 +93,39 @@ for marker in [
     "q.company_id!==me.company_id",
     "q.kind!=='quote'",
     "q.status==='cancelled'",
-    "x.company_id===me.company_id&&x.kind=='invoice'&&x.converted_from==q.id",
-    ".eq('kind','quote')",
-    "converted_from==q.id",
-    "upd.error",
-    "Invoice was created, but the quote status could not be updated",
+    "sb.rpc('convert_quote_to_invoice'",
+    "p_quote_id:id",
+    "p_invoice_number:number",
+    "r.error",
+    "r.data.already_converted",
 ]:
     if marker not in convert_code:
-        raise SystemExit(f"Missing quote conversion guard: {marker}")
+        raise SystemExit(f"Missing atomic conversion client safeguard: {marker}")
+if "sb.from('documents').insert(row)" in convert_code or "sb.from('documents').update({status:'accepted'})" in convert_code:
+    raise SystemExit("Quote conversion still performs separate client-side writes")
+
+conversion_migration = root / "supabase" / "migrations" / "20261123110000_quote_conversion_atomic_rpc.sql"
+if not conversion_migration.exists():
+    raise SystemExit("Missing atomic quote conversion RPC migration")
+conversion_sql = conversion_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "create or replace function public.convert_quote_to_invoice",
+    "security invoker",
+    "public.auth_company()",
+    "public.auth_role()",
+    "for update",
+    "public.auth_site_ok(v_quote.site_id)",
+    "v_quote.status = 'cancelled'",
+    "on conflict (company_id, converted_from)",
+    "where kind = 'invoice' and converted_from is not null",
+    "set status = 'accepted'",
+    "raise exception 'quote state could not be updated; conversion rolled back'",
+    "already_converted",
+    "grant execute on function public.convert_quote_to_invoice(uuid,text) to authenticated",
+]:
+    if marker not in conversion_sql:
+        raise SystemExit(f"Missing transactional conversion safeguard: {marker}")
+
 
 # Print and email actions validate the document and company scope before rendering.
 action_start = html.index("function printDoc(id)")

@@ -445,6 +445,17 @@ if "Always refresh dashboard and industry profile after a successful switch" not
     raise SystemExit("Industry switch must refresh the dashboard after saving")
 print("Industry switch dashboard refresh regression guard: PASS")
 
+# Industry switch must confirm a database row was updated and surface failures.
+for marker in [
+    "select('company_id,primary_industry_slug').maybeSingle()",
+    "No company profile row was updated",
+    "Industry switch failed:",
+    "finally{if(btn)btn.disabled=false}",
+]:
+    if marker not in html:
+        raise SystemExit(f"Industry switch save-confirmation marker missing: {marker}")
+print("Industry switch confirmation, error feedback and button recovery: PASS")
+
 # Header cleanup: only one Quick Access trigger exists, with responsive compact layout.
 if html.count('id="industryQuickAccessBtn"') != 1:
     raise SystemExit("Expected exactly one Quick Access button; remove legacy duplicate")

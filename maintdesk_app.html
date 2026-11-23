@@ -321,11 +321,17 @@ function renderIndustrySelector(){
 }
 async function savePrimaryIndustry(slug){
  if(!isMgr()||!INDUSTRIES.some(x=>x.slug===slug))return;
- const secondary=(INDUSTRY_PROFILE?.secondary_industry_slugs||[]).filter(x=>x!==slug);
- const{error}=await sb.from('company_industry_profiles').update({primary_industry_slug:slug,secondary_industry_slugs:secondary}).eq('company_id',me.company_id);
- if(error){alert('Could not update the company industry profile: '+error.message);renderIndustrySelector();return}
- await loadIndustryProfile();renderIndustrySelector();
- draw(); // Always refresh dashboard and industry profile after a successful switch.
+ const btn=$('industryQuickAccessBtn');if(btn)btn.disabled=true;
+ try{
+  const secondary=(INDUSTRY_PROFILE?.secondary_industry_slugs||[]).filter(x=>x!==slug);
+  const{data,error}=await sb.from('company_industry_profiles').update({primary_industry_slug:slug,secondary_industry_slugs:secondary}).eq('company_id',me.company_id).select('company_id,primary_industry_slug').maybeSingle();
+  if(error)throw error;
+  if(!data||data.primary_industry_slug!==slug)throw new Error('No company profile row was updated. Check manager access and company profile setup.');
+  await loadIndustryProfile();renderIndustrySelector();draw();
+ }catch(error){
+  alert('Industry switch failed: '+(error?.message||'Unknown error'));
+  await loadIndustryProfile().catch(()=>{});renderIndustrySelector();
+ }finally{if(btn)btn.disabled=false}
 }
 async function saveIndustryProfile(){
  if(!isMgr())return;

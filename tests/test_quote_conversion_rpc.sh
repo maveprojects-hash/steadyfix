@@ -11,6 +11,7 @@ trap 'rm -rf "$TMP"' EXIT
 "${PSQL[@]}" <<'SQL'
 create role authenticated nologin;
 create schema auth;
+grant usage on schema auth to authenticated;
 create or replace function auth.uid() returns uuid language sql stable as
   $$ select nullif(current_setting('test.user_id', true),'')::uuid $$;
 create or replace function public.auth_company() returns uuid language sql stable as
@@ -99,6 +100,8 @@ auth_call "$Q2" "INV-002B" >"$TMP/b" 2>&1 &
 pid_b=$!
 wait "$pid_a"
 wait "$pid_b"
+grep -q '"already_converted": false' "$TMP/a" "$TMP/b"
+grep -q '"already_converted": true' "$TMP/a" "$TMP/b"
 count="$("${PSQL[@]}" -Atc "select count(*) from public.documents where kind='invoice' and converted_from='$Q2'")"
 [[ "$count" == "1" ]]
 

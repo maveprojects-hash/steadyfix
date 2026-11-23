@@ -347,10 +347,20 @@ let INDUSTRIES=[],INDUSTRY_PROFILE=null;
 function sfIndustryQuickPick(){
   const menu=$('industryQuickAccessMenu'),btn=$('industryQuickAccessBtn');if(!menu||!btn)return;
   const current=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug;
-  menu.innerHTML=(INDUSTRIES||[]).map(ind=>'<button type="button" role="option" class="sf-industry-quick-option'+(ind.slug===current?' active':'')+'" aria-selected="'+(ind.slug===current)+'" data-industry-slug="'+esc(ind.slug)+'"><span>'+esc(ind.name)+'</span>'+(ind.slug===current?'<span aria-hidden="true">✓</span>':'')+'</button>').join('');
-  const options=[...menu.querySelectorAll('[data-industry-slug]')];
+  const departments=[...$('nav').querySelectorAll('button[data-t]')];
+  const departmentHtml=departments.map(n=>{
+    const tab=n.dataset.t,label=n.querySelector('span')?.textContent||n.textContent.trim();
+    return '<button type="button" role="option" class="sf-industry-quick-option" data-quick-tab="'+esc(tab)+'"><span>'+esc(label)+'</span><span aria-hidden="true">↗</span></button>';
+  }).join('');
+  const industryHtml=(INDUSTRIES||[]).map(ind=>'<button type="button" role="option" class="sf-industry-quick-option'+(ind.slug===current?' active':'')+'" aria-selected="'+(ind.slug===current)+'" data-industry-slug="'+esc(ind.slug)+'"><span>Switch industry · '+esc(ind.name)+'</span>'+(ind.slug===current?'<span aria-hidden="true">✓</span>':'')+'</button>').join('');
+  menu.innerHTML='<div style="padding:8px 12px;color:#9fb1be;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">Jump to department</div>'+departmentHtml+(industryHtml?'<div style="padding:8px 12px;color:#9fb1be;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-top:1px solid rgba(255,255,255,.08);margin-top:6px">Industry workspaces</div>'+industryHtml:'');
+  const options=[...menu.querySelectorAll('[data-quick-tab],[data-industry-slug]')];
   options.forEach((option,index)=>{
-    option.addEventListener('click',()=>{const slug=option.dataset.industrySlug;sfCloseIndustryQuickAccess();chooseIndustryWorkspace(slug)});
+    option.addEventListener('click',()=>{
+      const tab=option.dataset.quickTab,slug=option.dataset.industrySlug;
+      sfCloseIndustryQuickAccess();
+      if(tab){cur=tab;draw()}else if(slug)chooseIndustryWorkspace(slug);
+    });
     option.addEventListener('keydown',event=>{
       let targetIndex=index;
       if(event.key==='ArrowDown')targetIndex=Math.min(options.length-1,index+1);

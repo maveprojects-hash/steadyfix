@@ -461,8 +461,9 @@ print("Single Quick Access button, legacy Manager button removal, and mobile inl
 # Mobile dropdown must be portaled out of the header stacking context and remain topmost.
 for marker in [
     "document.body.appendChild(menu)",
-    "z-index:2147483647!important",
+    "z-index:2147483647",
     "pointer-events:auto",
+    "transform:none",
     'id="site" hidden aria-hidden="true" tabindex="-1"',
 ]:
     if marker not in html:

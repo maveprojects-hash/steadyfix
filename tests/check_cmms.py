@@ -442,7 +442,7 @@ for marker in ["security invoker", "for update", "public.auth_company()", "publi
     if marker not in conversion_sql: raise SystemExit(f"Missing transactional quote guard: {marker}")
 
 # Stock adjustment buttons must use the atomic delta RPC, never stale client-side upserts.
-stock_adjust_source = html.split("async function adjStock(", 1)[1].split("\\n\\nasync function mod(", 1)[0]
+stock_adjust_source = html.split("async function adjStock(", 1)[1].split("\n\nasync function mod(", 1)[0]
 for marker in ["sb.rpc('adjust_stock_level'", "p_item_id:rid", "p_site_id:site", "p_delta:d"]:
     if marker not in stock_adjust_source:
         raise SystemExit(f"Missing atomic stock adjustment behavior: {marker}")

@@ -400,7 +400,9 @@ print("CMMS syntax, notifications, industry profiles, Automation operations, log
 assistant_endpoint = (root / "supabase" / "functions" / "smart-endpoint" / "index.ts").read_text(encoding="utf-8")
 for marker in [
     'sb.from("assistant_memory").select("id,note").eq("company_id", company_id)',
-    'sb.from("assistant_memory").delete().eq("id", String(input.id)).eq("company_id", ctx.company_id)',
+    'sb.from("assistant_memory").delete().eq("id", String(input.id)).eq("company_id", ctx.company_id).select("id")',
+    'if (!data || !data.length) return "No matching memory found for this company.";',
+    'st.memory = st.memory.filter((m) => String(m.id) !== String(input.id)); return "Removed.";',
     'sb.from("assistant_memory").insert({ company_id: ctx.company_id, note, created_by: ctx.user_id })',
 ]:
     if marker not in assistant_endpoint:

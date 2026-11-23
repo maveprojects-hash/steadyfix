@@ -200,9 +200,9 @@ main>*{animation:rise .28s ease both}
   body>#aib.sf-ai-floating:active{transform:translateX(-50%) scale(.96)!important}
   body>#ai{z-index:2147483001!important}
 }
-#industryProfileSelect{display:none!important}header h1[role=button]{cursor:pointer}header h1[role=button]:focus-visible{outline:2px solid var(--am);outline-offset:5px;border-radius:8px}
+header h1[role=button]{cursor:pointer}header h1[role=button]:focus-visible{outline:2px solid var(--am);outline-offset:5px;border-radius:8px}header .industry-quick{display:flex;flex-direction:column;gap:3px;min-width:180px;max-width:280px}header .industry-quick label{font-size:10px;letter-spacing:.1em;color:#b9c6ce;font-weight:800}header #industryProfileSelect{display:block!important;visibility:visible!important;position:static!important;width:100%;max-width:280px;padding:8px 10px;border:1px solid #526472;border-radius:10px;background:#263743;color:#fff;font-size:13px}header #industryProfileSelect:disabled{opacity:.7}
 </style><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1b2831"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><link rel="stylesheet" href="communication.css"></head><body>
-<header><h1 role="button" tabindex="0" title="Choose your industry workspace" aria-label="Open STEADYFIX industry workspaces" onclick="openIndustryHub()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openIndustryHub()}">STEADYFIX CMMS<span class="sl">Maintain excellence.</span></h1><div class="notif-wrap"><button id="notifBtn" class="notif-btn" type="button" onclick="openCommunicationCentre()" aria-label="Notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span id="notifCount" hidden>0</span></button><div id="notifPanel" class="notif-panel" hidden><div class="notif-head"><b>Notifications</b><button type="button" onclick="markAllNotificationsRead()">Mark all read</button></div><div id="notifList" class="notif-list">Loading…</div><div class="notif-foot"><button type="button" onclick="enableDesktopNotifications()">Enable desktop alerts</button></div></div></div><select id="industryProfileSelect" hidden aria-hidden="true" tabindex="-1"></select><select id="site"></select><a href="maintdesk_login.html">Team &amp; sites</a></header>
+<header><h1 role="button" tabindex="0" title="Choose your industry workspace" aria-label="Open STEADYFIX industry workspaces" onclick="openIndustryHub()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openIndustryHub()}">STEADYFIX CMMS<span class="sl">Maintain excellence.</span></h1><div class="industry-quick"><label for="industryProfileSelect">QUICK INDUSTRY ACCESS</label><select id="industryProfileSelect" aria-label="Quick industry access"></select></div><div class="notif-wrap"><button id="notifBtn" class="notif-btn" type="button" onclick="openCommunicationCentre()" aria-label="Notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span id="notifCount" hidden>0</span></button><div id="notifPanel" class="notif-panel" hidden><div class="notif-head"><b>Notifications</b><button type="button" onclick="markAllNotificationsRead()">Mark all read</button></div><div id="notifList" class="notif-list">Loading…</div><div class="notif-foot"><button type="button" onclick="enableDesktopNotifications()">Enable desktop alerts</button></div></div></div><select id="site" aria-label="Select site"></select><a href="maintdesk_login.html">Team &amp; sites</a></header>
 <nav id="nav"></nav><main id="v">Loading…</main>
 <script>
 const SUPABASE_URL='https://wqggnimaglsikdusbvuh.supabase.co', SUPABASE_ANON_KEY='sb_publishable_NhiAgVZ451DMdfwzWTSGvQ_zQlbwW8l';
@@ -285,15 +285,16 @@ function renderIndustrySelector(){
  if(current&&rows.some(x=>x.slug===current))el.value=current;
  el.disabled=!isMgr()||!!LOCK||!rows.length;
  el.title=isMgr()?'Change this company primary industry profile':'Your company industry profile';
- el.onchange=()=>savePrimaryIndustry(el.value);
+ el.onchange=async()=>{const ok=await savePrimaryIndustry(el.value);if(ok){cur='industry_workspace';draw()}};
 }
 async function savePrimaryIndustry(slug){
- if(!isMgr()||!INDUSTRIES.some(x=>x.slug===slug))return;
+ if(!isMgr()||!INDUSTRIES.some(x=>x.slug===slug))return false;
  const secondary=(INDUSTRY_PROFILE?.secondary_industry_slugs||[]).filter(x=>x!==slug);
  const{error}=await sb.from('company_industry_profiles').update({primary_industry_slug:slug,secondary_industry_slugs:secondary}).eq('company_id',me.company_id);
- if(error){alert('Could not update the company industry profile: '+error.message);renderIndustrySelector();return}
+ if(error){alert('Could not update the company industry profile: '+error.message);renderIndustrySelector();return false}
  await loadIndustryProfile();renderIndustrySelector();
  if(cur==='industry')draw();
+ return true;
 }
 async function saveIndustryProfile(){
  if(!isMgr())return;

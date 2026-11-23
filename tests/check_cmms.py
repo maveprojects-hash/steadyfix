@@ -216,7 +216,8 @@ subprocess.run(["node", "--check", str(industry_workspaces)], check=True)
 for marker in [
     'onclick="openIndustryHub()"',
     'industry_workspaces.js',
-    'hidden aria-hidden="true"',
+    'id="industryProfileSelect"',
+    "QUICK INDUSTRY ACCESS",
 ]:
     if marker not in html:
         raise SystemExit(f"Missing industry workspace entry point: {marker}")
@@ -394,3 +395,42 @@ for marker in [
         raise SystemExit(f"Missing signed logistics POD UI: {marker}")
 
 print("CMMS syntax, notifications, industry profiles, Automation operations, logistics and tenant safeguards: PASS")
+
+
+# Expanded industry catalog: ensure migration seeds and workspace maps contain the ten new sectors.
+expanded_industries = [
+    "construction-building", "healthcare-medical", "education-campus", "retail-shopping",
+    "agriculture-farming", "mining-heavy-equipment", "utilities-energy",
+    "it-telecommunications", "security-services", "cleaning-contract-services",
+]
+catalog_expansion = (root / "supabase" / "migrations" / "20261123160000_expand_industry_catalog.sql").read_text(encoding="utf-8")
+landing = (root / "index.html").read_text(encoding="utf-8")
+for slug in expanded_industries:
+    if slug not in catalog_expansion:
+        raise SystemExit(f"Missing expanded industry migration seed: {slug}")
+    if slug not in workspace_code:
+        raise SystemExit(f"Missing expanded industry workspace mapping: {slug}")
+if "One application. Every industry." not in landing or "Construction &amp; Building" not in landing:
+    raise SystemExit("Missing expanded industry landing positioning or sector cards")
+if "industry_catalog" not in login_html or "industryOptions" not in login_html:
+    raise SystemExit("Company onboarding must populate its industry selector from the active catalog")
+if "on conflict (slug) do update set" not in catalog_expansion.lower():
+    raise SystemExit("Expanded industry catalog migration must be idempotent")
+for marker in [
+    "QUICK INDUSTRY ACCESS",
+    "el.onchange=async()=>{const ok=await savePrimaryIndustry(el.value);if(ok){cur='industry_workspace';draw()}}",
+    "savePrimaryIndustry(el.value)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Missing quick industry switch persistence behavior: {marker}")
+
+# Industry workspace shortcuts must point to a real base module or an explicit custom route.
+workspace_targets = set(re.findall(r"\['[^']*','[^']*','[^']*','([^']+)'\]", workspace_code))
+base_module_block = html.split("MOD={", 1)[-1].split("};", 1)[0]
+base_module_keys = set(re.findall(r"^\s*([a-z_]+):\{l:", base_module_block, re.M))
+tabs_block = html.split("const TABS=[", 1)[-1].split("];", 1)[0]
+tab_keys = set(re.findall(r"\['([^']+)'(?:,|'\])", tabs_block))
+custom_workspace_routes = {"service_contracts", "logistics_ops", "not_required", "retired"}
+unknown_workspace_routes = workspace_targets - base_module_keys - tab_keys - custom_workspace_routes
+if unknown_workspace_routes:
+    raise SystemExit(f"Industry workspace shortcuts target unknown routes: {sorted(unknown_workspace_routes)}")

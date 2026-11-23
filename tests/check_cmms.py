@@ -214,7 +214,7 @@ if not industry_workspaces.exists():
     raise SystemExit("Missing industry workspace client module")
 subprocess.run(["node", "--check", str(industry_workspaces)], check=True)
 for marker in [
-    'onclick="openIndustryHub()"',
+    'id="industryQuickAccessBtn"',
     'industry_workspaces.js',
     'hidden aria-hidden="true"',
 ]:
@@ -407,3 +407,21 @@ for marker in [
 ]:
     if marker not in assistant_endpoint:
         raise SystemExit(f"Missing assistant company-memory isolation: {marker}")
+
+# Quick Access dropdown must expose departments and industry workspace selection.
+quick_access_markers = [
+    'id="industryQuickAccessBtn"', 'id="industryQuickAccessMenu"',
+    'function sfIndustryQuickPick()', 'function toggleIndustryQuickAccess()',
+    'function sfCloseIndustryQuickAccess()', 'function sfBindIndustryQuickAccess()',
+    'role="listbox"', 'role="option"', 'aria-selected="false"',
+    'data-quick-tab=', 'data-industry-slug=',
+    'role="group" aria-label="Departments"',
+    'role="group" aria-label="Industry workspaces"',
+    "event.key==='ArrowDown'", "event.key==='ArrowUp'",
+    "event.key==='Home'", "event.key==='End'", "e.key==='Escape'",
+    "menu.querySelector('[data-quick-tab],[data-industry-slug]')?.focus()",
+]
+for marker in quick_access_markers:
+    if marker not in html:
+        raise SystemExit(f"Quick Access dropdown regression marker missing: {marker}")
+print("Industry Quick Access dropdown rendering, navigation, keyboard and dismissal: PASS")

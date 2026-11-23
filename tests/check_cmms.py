@@ -748,6 +748,11 @@ for marker in [
 if "logistics_tracking_events').select('*')" in shipment_workspace:
     raise SystemExit("Logistics workspace must not load all tracking events on open")
 
+# First-page tracking history load replaces its initial placeholder rather than leaving stale copy beside results.
+history_loader = industry_text[industry_text.index("async function sfLoadShipmentHistory"):industry_text.index("async function sfLogisticsWorkspace")]
+if "if(offset===0)container.innerHTML=''" not in history_loader:
+    raise SystemExit("Logistics tracking history first page must clear the initial placeholder")
+
 # Latest scan insert policy must retain the terminal-shipment restriction after later policy replacements.
 latest_scan_policy = (root / "supabase" / "migrations" / "20261121220000_logistics_scan_location_length_guard.sql").read_text(encoding="utf-8").lower()
 if "s.status not in ('delivered','returned')" not in latest_scan_policy:

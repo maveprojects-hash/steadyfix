@@ -219,7 +219,7 @@ header>a{display:inline-flex;align-items:center;justify-content:center;min-heigh
 <nav id="nav"></nav><main id="v">Loading…</main>
 <script>
 const SUPABASE_URL='https://wqggnimaglsikdusbvuh.supabase.co', SUPABASE_ANON_KEY='sb_publishable_NhiAgVZ451DMdfwzWTSGvQ_zQlbwW8l';
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY); async function sfGetRestoredSession(){for(let attempt=0;attempt<2;attempt++){const{data,error}=await sb.auth.getSession();if(data?.session)return data.session;if(error)console.warn('Session restore attempt failed:',error.message);if(attempt===0)await new Promise(resolve=>setTimeout(resolve,300))}return null}
 const $=id=>document.getElementById(id), V=$('v');
 let notificationChannel=null, NOTIFICATIONS=[], notificationToastTimer=null;
 let me,site,cur='dash',cf='daily';
@@ -368,8 +368,9 @@ let CS={},CURS='R';
 const R=n=>CURS+' '+(+n||0).toLocaleString('en-ZA',{minimumFractionDigits:Number.isInteger(+n||0)?0:2,maximumFractionDigits:2});
 
 async function boot(){
- const{data:{session}}=await sb.auth.getSession(); if(!session)return location.href='maintdesk_login.html';
+ const session=await sfGetRestoredSession(); if(!session)return location.href='maintdesk_login.html';
  let pr_=await sb.from('profiles').select('id,company_id,full_name,role,is_admin').eq('id',session.user.id).maybeSingle();if(pr_.error)pr_=await sb.from('profiles').select('id,company_id,full_name,role').eq('id',session.user.id).maybeSingle();const data=pr_.data;
+ if(!data&&pr_.error){V.innerHTML='<section class="p"><h2>Account temporarily unavailable</h2><p>Your session is intact, but account details could not be loaded. Please retry in a moment.</p><button type="button" onclick="location.reload()">Retry</button></section>';return}
  if(!data)return location.href='maintdesk_login.html'; me=data;
  const{data:sites}=await sb.from('sites').select('id,name').order('name'); site=sites[0]?.id;
  $('site').innerHTML=sites.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');

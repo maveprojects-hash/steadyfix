@@ -635,7 +635,7 @@ print("Quote/invoice lists, customer data and accounting exports company/site sc
 # Quote/invoice mutations must remain constrained to the active tenant and site.
 save_doc_start = html.index("async function saveDoc(pr)")
 save_doc_end = html.index("async function toInvoice(", save_doc_start)
-doc_mutations = html[save_doc_start:save_doc_end]
+doc_mutations = html[save_doc_start:html.index("function docSheet(d)", save_doc_start)]
 for marker in [
     ".update(row).eq('id',e.id).eq('company_id',me.company_id).eq('site_id',site)",
     "async function setDoc(id,st)",

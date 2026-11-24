@@ -459,6 +459,20 @@ for marker in [
         raise SystemExit(f"Industry switch save-confirmation marker missing: {marker}")
 print("Industry switch confirmation, error feedback and button recovery: PASS")
 
+# Full industry profile editor validates and confirms the saved company row.
+profile_start = html.index("async function saveIndustryProfile(){")
+profile_end = html.index("\nasync function industryProfile()", profile_start)
+profile_save = html[profile_start:profile_end]
+for marker in [
+    "secondary.some(x=>!INDUSTRIES.some(i=>i.slug===x))",
+    ".select('company_id,primary_industry_slug').maybeSingle()",
+    "No company profile row was updated",
+    "finally{if(saveBtn)saveBtn.disabled=false}",
+]:
+    if marker not in profile_save:
+        raise SystemExit(f"Industry profile save safeguard missing: {marker}")
+print("Industry profile editor save confirmation and validation: PASS")
+
 # Industry profiles must drive real workspace navigation, not only the dashboard banner.
 for marker in [
     "config.dashboard_priority_tabs",

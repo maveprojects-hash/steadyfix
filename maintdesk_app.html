@@ -339,9 +339,17 @@ async function saveIndustryProfile(){
  const secondary=[...$('industrySecondary').selectedOptions].map(o=>o.value).filter(x=>x!==primary);
  const description=$('industryDescription').value.trim();
  if(!INDUSTRIES.some(x=>x.slug===primary)){alert('Choose a valid primary industry.');return}
- const{error}=await sb.from('company_industry_profiles').update({primary_industry_slug:primary,secondary_industry_slugs:secondary,business_description:description}).eq('company_id',me.company_id);
- if(error){alert('Could not save the company profile: '+error.message);return}
- await loadIndustryProfile();renderIndustrySelector();buildNav();await draw();
+ if(secondary.some(x=>!INDUSTRIES.some(i=>i.slug===x))){alert('One or more secondary industries are invalid. Please review your selection.');return}
+ const saveBtn=$('industrySaveBtn');if(saveBtn)saveBtn.disabled=true;
+ try{
+  const{data,error}=await sb.from('company_industry_profiles').update({primary_industry_slug:primary,secondary_industry_slugs:[...new Set(secondary)],business_description:description}).eq('company_id',me.company_id).select('company_id,primary_industry_slug').maybeSingle();
+  if(error)throw error;
+  if(!data||data.primary_industry_slug!==primary)throw new Error('No company profile row was updated. Check manager access and company profile setup.');
+  await loadIndustryProfile();renderIndustrySelector();buildNav();await draw();
+ }catch(error){
+  alert('Could not save the company profile: '+(error?.message||'Unknown error'));
+  await loadIndustryProfile().catch(()=>{});renderIndustrySelector();buildNav();
+ }finally{if(saveBtn)saveBtn.disabled=false}
 }
 async function industryProfile(){
  if(!isMgr())return '<h2>Industry profile</h2><div class="p">Only company owners and managers can change this profile.</div>';

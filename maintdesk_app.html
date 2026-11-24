@@ -937,6 +937,11 @@ async function shareHtml(html,fname,subject,text,to){
   }).from(docNode).outputPdf('blob');
   el.remove();el=null;
   if(!blob||blob.size<1500)throw new Error('The PDF file was generated empty. Please use Print / Save as PDF.');
+  const pdfBytes=new Uint8Array(await blob.arrayBuffer());
+  const pdfText=Array.from(pdfBytes,b=>String.fromCharCode(b)).join('');
+  if(!pdfText.startsWith('%PDF-')||!pdfText.includes('%%EOF')||!/\\/Type\\s*\\/Page(?!s)\\b/.test(pdfText)){
+   throw new Error('The generated PDF is incomplete or contains no readable page. Please use Print / Save as PDF.');
+  }
   const safeName=(fname||'STEADYFIX_document').replace(/[^\w-]+/g,'_');
   const file=new File([blob],safeName+'.pdf',{type:'application/pdf'});
   let shared=false;

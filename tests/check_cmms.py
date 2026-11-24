@@ -482,7 +482,7 @@ for marker in [
     "await blob.arrayBuffer()",
     "pdfText.startsWith('%PDF-')",
     "pdfText.includes('%%EOF')",
-    "/Type\\\\s*\\\\/Page(?!s)\\\\b",
+    "Page(?!s)",
     "generated PDF is incomplete or contains no readable page",
 ]:
     if marker not in pdf_share:

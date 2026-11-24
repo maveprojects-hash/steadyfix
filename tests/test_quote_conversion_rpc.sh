@@ -52,6 +52,18 @@ grant execute on function auth.uid() to authenticated;
 grant execute on function public.auth_company() to authenticated;
 grant execute on function public.auth_role() to authenticated;
 grant execute on function public.auth_site_ok(uuid) to authenticated;
+
+-- Exercise the RPC as an invoker under RLS, matching the live documents policy shape.
+create or replace function public.company_subscription_access() returns boolean
+language sql stable as $ select true $;
+grant execute on function public.company_subscription_access() to authenticated;
+alter table public.documents enable row level security;
+create policy docs_mgr on public.documents for all to public
+  using (company_id = public.auth_company() and public.auth_role() in ('owner','manager'))
+  with check (company_id = public.auth_company() and public.auth_role() in ('owner','manager'));
+create policy subscription_entitlement_gate on public.documents for all to authenticated
+  using (public.company_subscription_access())
+  with check (public.company_subscription_access());
 SQL
 
 # Apply the actual uniqueness migration from PR #25 and the new atomic RPC migration.

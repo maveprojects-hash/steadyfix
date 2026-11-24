@@ -143,6 +143,13 @@ test('PDF download and native file-share handoff contain a rendered non-blank pa
   await loadHarness(page, { width: 1280, height: 900 });
   await page.addScriptTag({ path: path.join(root, 'node_modules/html2pdf.js/dist/html2pdf.bundle.min.js') });
   await page.addScriptTag({ path: path.join(root, 'node_modules/pdfjs-dist/build/pdf.min.js') });
+  const pdfWorkerSource = await fs.readFile(path.join(root, 'node_modules/pdfjs-dist/build/pdf.worker.min.js'), 'utf8');
+  await page.evaluate(workerSource => {
+    const workerBlob = new Blob([workerSource], { type: 'text/javascript' });
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob);
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: undefined });
+  }, pdfWorkerSource);
   await page.evaluate(() => { window.print = () => {}; });
   page.on('dialog', dialog => dialog.accept());
 
@@ -172,31 +179,33 @@ test('PDF download and native file-share handoff contain a rendered non-blank pa
     const raw = atob(base64);
     const data = new Uint8Array(raw.length);
     for (let i = 0; i < raw.length; i++) data[i] = raw.charCodeAt(i);
-    const pdf = await window.pdfjsLib.getDocument({ data, disableWorker: true }).promise;
-    const firstPage = await pdf.getPage(1);
-    const viewport = firstPage.getViewport({ scale: 1 });
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.ceil(viewport.width);
-    canvas.height = Math.ceil(viewport.height);
-    const context = canvas.getContext('2d', { willReadFrequently: true });
-    await firstPage.render({ canvasContext: context, viewport }).promise;
-    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-    let nonWhite = 0;
-    for (let i = 0; i < pixels.length; i += 4) {
-      if (pixels[i] < 245 || pixels[i + 1] < 245 || pixels[i + 2] < 245) nonWhite++;
+    const pdf = await window.pdfjsLib.getDocument({ data }).promise;
+    const pageMetrics = [];
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+      const pdfPage = await pdf.getPage(pageNumber);
+      const viewport = pdfPage.getViewport({ scale: 1 });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      await pdfPage.render({ canvasContext: context, viewport }).promise;
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      let nonWhite = 0;
+      for (let i = 0; i < pixels.length; i += 4) {
+        if (pixels[i] < 245 || pixels[i + 1] < 245 || pixels[i + 2] < 245) nonWhite++;
+      }
+      pageMetrics.push({ width: viewport.width, height: viewport.height, nonWhiteRatio: nonWhite / (canvas.width * canvas.height) });
     }
-    return {
-      pages: pdf.numPages,
-      width: viewport.width,
-      height: viewport.height,
-      nonWhiteRatio: nonWhite / (canvas.width * canvas.height),
-    };
+    return { pages: pdf.numPages, pageMetrics };
   }, pdfBytes.toString('base64'));
 
   expect(rendered.pages).toBeGreaterThanOrEqual(1);
-  expect(rendered.width).toBeGreaterThan(500);
-  expect(rendered.height).toBeGreaterThan(700);
-  expect(rendered.nonWhiteRatio).toBeGreaterThan(0.01);
+  expect(rendered.pageMetrics.length).toBe(rendered.pages);
+  for (const pageMetric of rendered.pageMetrics) {
+    expect(pageMetric.width).toBeGreaterThan(500);
+    expect(pageMetric.height).toBeGreaterThan(700);
+    expect(pageMetric.nonWhiteRatio).toBeGreaterThan(0.01);
+  }
 
   await page.evaluate(() => {
     window.__sfNativeShare = null;

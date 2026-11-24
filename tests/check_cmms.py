@@ -471,7 +471,24 @@ for marker in [
 ]:
     if marker not in profile_save:
         raise SystemExit(f"Industry profile save safeguard missing: {marker}")
+
 print("Industry profile editor save confirmation and validation: PASS")
+
+# PDF downloads and shares must contain a real PDF header, terminal marker and page object.
+pdf_start = html.index("async function shareHtml(")
+pdf_end = html.index("\nfunction docPreview(", pdf_start)
+pdf_share = html[pdf_start:pdf_end]
+for marker in [
+    "await blob.arrayBuffer()",
+    "pdfText.startsWith('%PDF-')",
+    "pdfText.includes('%%EOF')",
+    "Page(?!s)",
+    "generated PDF is incomplete or contains no readable page",
+]:
+    if marker not in pdf_share:
+        raise SystemExit(f"PDF structure validation missing: {marker}")
+print("PDF structure validation and blank-document fallback: PASS")
+
 
 # Industry profiles must drive real workspace navigation, not only the dashboard banner.
 for marker in [

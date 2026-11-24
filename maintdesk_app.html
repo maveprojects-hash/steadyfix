@@ -976,12 +976,12 @@ async function inv(){
  if(IT=='cust'){const h=await mod('customers');return h.replace(/<h2>[^<]*<\/h2>/,'<h2>Invoicing</h2>'+itabs())}
  if(IT=='acct')return acct();
  return docList(IT)}
-async function nextNum(kind){const{data}=await sb.from('documents').select('number').eq('kind',kind);return(kind=='invoice'?'INV-':'QUO-')+String(Math.max(0,...(data||[]).map(x=>parseInt(String(x.number).replace(/\D/g,''))||0))+1).padStart(4,'0')}
+async function nextNum(kind){const{data}=await sb.from('documents').select('number').eq('company_id',me.company_id).eq('kind',kind);return(kind=='invoice'?'INV-':'QUO-')+String(Math.max(0,...(data||[]).map(x=>parseInt(String(x.number).replace(/\D/g,''))||0))+1).padStart(4,'0')}
 const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return ymd(d)};
 async function docList(kind){
- const pr=PER['d_'+kind]||{p:'all',d:''};let q=sb.from('documents').select('*').eq('kind',kind).order('created_at',{ascending:false}).order('issue_date',{ascending:false}).order('number',{ascending:false}),pl='';
+ const pr=PER['d_'+kind]||{p:'all',d:''};let q=sb.from('documents').select('*').eq('company_id',me.company_id).eq('site_id',site).eq('kind',kind).order('created_at',{ascending:false}).order('issue_date',{ascending:false}).order('number',{ascending:false}),pl='';
  if(pr.p!='all'){const R_=rng(pr.p,pr.d||today);q=q.gte('issue_date',R_.a).lte('issue_date',R_.b);pl=pr.p=='daily'?dd(R_.a):dd(R_.a)+' to '+dd(R_.b)}
- const[r,cu]=await Promise.all([q,sb.from('customers').select('*').order('name')]);
+ const[r,cu]=await Promise.all([q,sb.from('customers').select('*').eq('company_id',me.company_id).order('name')]);
  if(r.error)return`<h2>Invoicing</h2>${itabs()}<div class="p">Invoicing needs one more database step. Run the invoicing SQL I sent, then reload this page.</div>`;
  CUST=cu.data||[];const all=(r.data||[]).map(d=>({...d,st:dstat(d)}));DOCS=all;
  const qq=(INVF.q||'').toLowerCase();let D=all.filter(d=>(INVF.st=='all'||d.st==INVF.st)&&(!qq||(d.number+' '+(d.customer_name||'')).toLowerCase().includes(qq)));
@@ -1036,7 +1036,7 @@ function acct(){const d=new Date();AX.from=AX.from||d.getFullYear()+'-01-01';AX.
  +`<div class="p"><b>Other downloads</b><div class="f"><button class="b" onclick="exportDocs('invoice')">⬇ Invoices, full detail</button><button class="b" onclick="exportDocs('quote')">⬇ Quotes</button><button class="b" onclick="exportCust()">⬇ Customers</button><button class="b" onclick="exportExp()">⬇ Expenses</button></div><div class="f" style="margin-top:8px"><button onclick="reqConn('Another program')">My program is not listed</button></div></div>`}
 const svx=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
 const fd=s=>s?String(s).slice(8,10)+'/'+String(s).slice(5,7)+'/'+String(s).slice(0,4):'';
-async function progDocs(){const r=await sb.from('documents').select('*').eq('kind','invoice').gte('issue_date',AX.from).lte('issue_date',AX.to).order('issue_date'),D=(r.data||[]).filter(d=>!['draft','cancelled'].includes(d.status));if(!D.length){alert('No sent or paid invoices in these dates.');return null}return{D,cu:(await sb.from('customers').select('*')).data||[]}}
+async function progDocs(){const r=await sb.from('documents').select('*').eq('company_id',me.company_id).eq('site_id',site).eq('kind','invoice').gte('issue_date',AX.from).lte('issue_date',AX.to).order('issue_date'),D=(r.data||[]).filter(d=>!['draft','cancelled'].includes(d.status));if(!D.length){alert('No sent or paid invoices in these dates.');return null}return{D,cu:(await sb.from('customers').select('*')).data||[]}}
 async function exportXero(){const acc=$('xa').value.trim()||'200',tax=$('xt').value.trim();if(!tax)return alert('Type your Xero tax type name first, exactly as it appears in Xero (for example, the name of your VAT rate).');svx('sf_xacc',acc);svx('sf_xtax',tax);const x=await progDocs();if(!x)return;
  const rows=[['ContactName','EmailAddress','InvoiceNumber','Reference','InvoiceDate','DueDate','Description','Quantity','UnitAmount','AccountCode','TaxType']];
  x.D.forEach(d=>{const c=x.cu.find(k=>k.id==d.customer_id)||{};(d.lines||[]).forEach(l=>rows.push([d.customer_name,c.email||'',d.number,'',fd(d.issue_date),fd(d.due_date||d.issue_date),l.d,l.q,effP(d,l).toFixed(2),acc,tax]))});

@@ -21,7 +21,7 @@ create or replace function public.auth_company() returns uuid language sql stabl
 create or replace function public.auth_role() returns text language sql stable as
   $$ select current_setting('test.role', true) $$;
 create or replace function public.auth_site_ok(p_site_id uuid) returns boolean language sql stable security definer set search_path=public as
-  $ select p_site_id is null or public.auth_role() in ('owner','manager') or exists (select 1 from public.user_sites where user_id=auth.uid() and site_id=p_site_id) $;
+  $$ select p_site_id is null or public.auth_role() in ('owner','manager') or exists (select 1 from public.user_sites where user_id=auth.uid() and site_id=p_site_id) $$;
 
 create table public.documents (
   id uuid primary key default gen_random_uuid(),

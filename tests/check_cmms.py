@@ -441,8 +441,11 @@ for marker in quick_access_markers:
 print("Industry Quick Access dropdown rendering, navigation, keyboard and dismissal: PASS")
 
 # Changing a primary industry must refresh dashboard-dependent industry content.
-if "Always refresh dashboard and industry profile after a successful switch" not in html:
-    raise SystemExit("Industry switch must refresh the dashboard after saving")
+save_start = html.index("async function savePrimaryIndustry(slug){")
+save_end = html.index("\\nasync function saveIndustryProfile()", save_start)
+save_function = html[save_start:save_end]
+if "await loadIndustryProfile();renderIndustrySelector();draw();" not in save_function:
+    raise SystemExit("Industry switch must reload profile and redraw dashboard after saving")
 print("Industry switch dashboard refresh regression guard: PASS")
 
 # Industry switch must confirm a database row was updated and surface failures.

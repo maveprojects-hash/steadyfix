@@ -152,13 +152,13 @@ test('PDF download and native file-share handoff contain a rendered non-blank pa
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.evaluate(html => window.__SF_TEST_API__.shareHtml(
+    page.evaluate(({ html, to }) => window.__SF_TEST_API__.shareHtml(
       html,
       'Invoice_INV-BROWSER-001',
       'Invoice INV-BROWSER-001',
       'Please find the invoice attached.',
-      customer.email,
-    ), invoiceHtml),
+      to,
+    ), { html: invoiceHtml, to: customer.email }),
   ]);
 
   expect(download.suggestedFilename()).toBe('Invoice_INV-BROWSER-001.pdf');
@@ -224,13 +224,13 @@ test('PDF download and native file-share handoff contain a rendered non-blank pa
     window.__SF_TEST_API__.docHtml(docData, customerData, { layout: 'modern', color }),
   { docData: quote, customerData: customer, color: company.doc_color });
 
-  await page.evaluate(html => window.__SF_TEST_API__.shareHtml(
+  await page.evaluate(({ html, to }) => window.__SF_TEST_API__.shareHtml(
     html,
     'Quote_QUO-BROWSER-001',
     'Quote QUO-BROWSER-001',
     'Please review this quotation.',
-    customer.email,
-  ), quoteHtml);
+    to,
+  ), { html: quoteHtml, to: customer.email });
 
   const shared = await page.evaluate(() => window.__sfNativeShare);
   expect(shared?.title).toBe('Quote QUO-BROWSER-001');

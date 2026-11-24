@@ -476,7 +476,7 @@ print("Industry profile editor save confirmation and validation: PASS")
 
 # PDF downloads and shares must contain a real PDF header, terminal marker and page object.
 pdf_start = html.index("async function shareHtml(")
-pdf_end = html.index("\\nfunction docPreview(", pdf_start)
+pdf_end = html.index("\nfunction docPreview(", pdf_start)
 pdf_share = html[pdf_start:pdf_end]
 for marker in [
     "await blob.arrayBuffer()",

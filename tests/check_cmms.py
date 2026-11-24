@@ -631,3 +631,21 @@ for marker in [
     if marker not in html:
         raise SystemExit(f"Accounting export tenant/site regression missing: {marker}")
 print("Quote/invoice lists, customer data and accounting exports company/site scope: PASS")
+
+# Quote/invoice mutations must remain constrained to the active tenant and site.
+save_doc_start = html.index("async function saveDoc(pr)")
+save_doc_end = html.index("async function toInvoice(", save_doc_start)
+doc_mutations = html[save_doc_start:save_doc_end]
+for marker in [
+    ".update(row).eq('id',e.id).eq('company_id',me.company_id).eq('site_id',site)",
+    "async function setDoc(id,st)",
+    ".update(u).eq('id',id).eq('company_id',me.company_id).eq('site_id',site)",
+    "async function dupDoc(id)",
+    "d.company_id!==me.company_id||d.site_id!==site",
+    "async function delDoc(id)",
+    ".delete().eq('id',id).eq('company_id',me.company_id).eq('site_id',site)",
+]:
+    if marker not in doc_mutations:
+        raise SystemExit(f"Quote/invoice write is missing company/site scope: {marker}")
+print("Quote/invoice edits, status changes, duplication and deletion company/site scope: PASS")
+

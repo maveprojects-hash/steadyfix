@@ -98,6 +98,10 @@ async function previewMetrics(page, doc, layout) {
       paperScrollWidth: paper?.scrollWidth || 0,
       contentWidth: content?.clientWidth || 0,
       contentScrollWidth: content?.scrollWidth || 0,
+      itemRows: Array.from(paper?.querySelectorAll('.dxt2 tr:not(:first-child)') || []).map(row => ({
+        display: getComputedStyle(row).display,
+        labels: Array.from(row.querySelectorAll('td')).map(cell => cell.dataset.label),
+      })),
       text: paper?.innerText || '',
     };
   });
@@ -117,6 +121,9 @@ test('quote and invoice previews remain readable at phone and desktop widths in 
       expect(mobile.paperScrollWidth).toBeLessThanOrEqual(mobile.paperWidth + 2);
       expect(mobile.contentScrollWidth).toBeLessThanOrEqual(mobile.contentWidth + 2);
       expect(mobile.overlayScrollWidth).toBeLessThanOrEqual(mobile.viewport + 2);
+      expect(mobile.itemRows).toHaveLength(doc.lines.length);
+      expect(mobile.itemRows.every(row => row.display === 'grid')).toBeTruthy();
+      expect(mobile.itemRows[0].labels).toContain('Quantity');
 
       if (kind === 'invoice' && layout === 'classic') {
         await fs.mkdir(path.join(root, 'test-results'), { recursive: true });

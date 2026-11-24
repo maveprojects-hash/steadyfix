@@ -459,6 +459,17 @@ for marker in [
         raise SystemExit(f"Industry switch save-confirmation marker missing: {marker}")
 print("Industry switch confirmation, error feedback and button recovery: PASS")
 
+# Industry profiles must drive real workspace navigation, not only the dashboard banner.
+for marker in [
+    "config.dashboard_priority_tabs",
+    "config.disabled_modules",
+    "config.module_labels",
+    "buildNav();draw();",
+]:
+    if marker not in html:
+        raise SystemExit(f"Industry workspace navigation marker missing: {marker}")
+print("Industry workspace module order, visibility and terminology: PASS")
+
 # Header cleanup: only one Quick Access trigger exists, with responsive compact layout.
 if html.count('id="industryQuickAccessBtn"') != 1:
     raise SystemExit("Expected exactly one Quick Access button; remove legacy duplicate")

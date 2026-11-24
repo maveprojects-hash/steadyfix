@@ -13,14 +13,15 @@ create role anon nologin;
 create role authenticated nologin;
 create schema auth;
 grant usage on schema auth to authenticated;
+create table public.user_sites (user_id uuid not null, site_id uuid not null, primary key (user_id, site_id));
 create or replace function auth.uid() returns uuid language sql stable as
   $$ select nullif(current_setting('test.user_id', true),'')::uuid $$;
 create or replace function public.auth_company() returns uuid language sql stable as
   $$ select nullif(current_setting('test.company_id', true),'')::uuid $$;
 create or replace function public.auth_role() returns text language sql stable as
   $$ select current_setting('test.role', true) $$;
-create or replace function public.auth_site_ok(p_site_id uuid) returns boolean language sql stable as
-  $$ select p_site_id = nullif(current_setting('test.site_id', true),'')::uuid $$;
+create or replace function public.auth_site_ok(p_site_id uuid) returns boolean language sql stable security definer set search_path=public as
+  $ select p_site_id is null or public.auth_role() in ('owner','manager') or exists (select 1 from public.user_sites where user_id=auth.uid() and site_id=p_site_id) $;
 
 create table public.documents (
   id uuid primary key default gen_random_uuid(),
@@ -92,6 +93,8 @@ values
  ('$Q5','$COMPANY','$OTHER_SITE','quote','Q-005','Other site','draft','ZAR',15,'[]',100,15,115,0,0,0);
 SQL
 
+"${PSQL[@]}" -c "insert into public.user_sites(user_id,site_id) values ('$USER','$SITE');"
+
 auth_call() {
   local quote="$1" number="$2"
   "${PSQL[@]}" -c "set role authenticated; set test.user_id='$USER'; set test.company_id='$COMPANY'; set test.role='owner'; set test.site_id='$SITE'; select public.convert_quote_to_invoice('$quote','$number');"
@@ -137,21 +140,27 @@ status="$("${PSQL[@]}" -Atc "select status from public.documents where id='$Q3'"
 count="$("${PSQL[@]}" -Atc "select count(*) from public.documents where kind='invoice' and converted_from='$Q3'")"
 [[ "$status" == "draft" && "$count" == "0" ]]
 
-# Tenant and site guards reject conversion of quotes outside the caller's scope.
+# Tenant isolation is enforced by the documents RLS policy. Site access helper semantics
+# mirror production: owners/managers can access all company sites; staff need a user_sites row.
 if auth_call_without_role "$Q5" "INV-NO-ROLE" >"$TMP/no-role" 2>&1; then
   echo "Expected missing-role authorization to fail closed" >&2
   exit 1
 fi
-# Failed authorization must leave source quote untouched and create no invoice.
 status="$("${PSQL[@]}" -Atc "select status from public.documents where id='$Q5'")"
 count="$("${PSQL[@]}" -Atc "select count(*) from public.documents where kind='invoice' and converted_from='$Q5'")"
 [[ "$status" == "draft" && "$count" == "0" ]]
+
+site_allowed="$("${PSQL[@]}" -Atc "set role authenticated; set test.user_id='$USER'; set test.company_id='$COMPANY'; set test.role='technician'; set test.site_id='$SITE'; select public.auth_site_ok('$OTHER_SITE');" | tail -n1)"
+site_member_allowed="$("${PSQL[@]}" -Atc "set role authenticated; set test.user_id='$USER'; set test.company_id='$COMPANY'; set test.role='technician'; set test.site_id='$SITE'; select public.auth_site_ok('$SITE');" | tail -n1)"
+[[ "$site_allowed" == "f" && "$site_member_allowed" == "t" ]]
+
 if auth_call "$Q4" "INV-004" >"$TMP/tenant" 2>&1; then
   echo "Expected tenant-scoped quote lookup to fail" >&2
   exit 1
 fi
-if auth_call "$Q5" "INV-005" >"$TMP/site" 2>&1; then
-  echo "Expected site authorization guard to fail" >&2
-  exit 1
-fi
-echo "Quote conversion PostgreSQL regression: PASS (idempotency, concurrency, rollback, missing-role, tenant/site guards)"
+# An owner may convert a quote at another site within the same company, matching live auth_site_ok().
+owner_other_site="$(auth_call "$Q5" "INV-005")"
+grep -q '"already_converted": false' <<<"$owner_other_site"
+count="$("${PSQL[@]}" -Atc "select count(*) from public.documents where kind='invoice' and converted_from='$Q5' and site_id='$OTHER_SITE'")"
+[[ "$count" == "1" ]]
+echo "Quote conversion PostgreSQL regression: PASS (idempotency, concurrency, rollback, RLS tenant isolation, role/site helper semantics)"

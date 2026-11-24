@@ -649,3 +649,26 @@ for marker in [
         raise SystemExit(f"Quote/invoice write is missing company/site scope: {marker}")
 print("Quote/invoice edits, status changes, duplication and deletion company/site scope: PASS")
 
+
+
+# iAssistant data reads and approved writes must be explicitly tenant/site scoped.
+assistant_endpoint = (root / "supabase/functions/smart-endpoint/index.ts").read_text(encoding="utf-8")
+for marker in [
+    'select("*").eq("company_id", ctx.company_id).limit(200)',
+    'select("*").eq("company_id", ctx.company_id).limit(500)',
+    '.eq("company_id", company_id).order("created_at"',
+    '.eq("company_id", ctx.company_id).select("id")',
+]:
+    if marker not in assistant_endpoint:
+        raise SystemExit(f"iAssistant server tenant scope missing: {marker}")
+
+for marker in [
+    "update(ch).eq('id',p.rowId).eq('company_id',me.company_id)",
+    "if(sc.site&&site)q=q.eq('site_id',site)",
+    "select('id,note').eq('company_id',me.company_id)",
+    "delete().eq('id',id).eq('company_id',me.company_id)",
+    "update(u).eq('id',c.rid).eq('company_id',me.company_id)",
+]:
+    if marker not in html:
+        raise SystemExit(f"iAssistant browser tenant/site safeguard missing: {marker}")
+print("iAssistant search, attention, memory and approved-write tenant/site scope: PASS")

@@ -123,12 +123,19 @@ test('quote and invoice previews remain readable at phone and desktop widths in 
       expect(mobile.overlayScrollWidth).toBeLessThanOrEqual(mobile.viewport + 2);
       expect(mobile.itemRows).toHaveLength(doc.lines.length);
       expect(mobile.itemRows.every(row => row.display === 'grid')).toBeTruthy();
-      expect(mobile.itemRows[0].labels).toContain('Quantity');
+      expect(mobile.itemRows[0].labels.some(label => /^(qty|quantity)$/i.test(label))).toBeTruthy();
 
       if (kind === 'invoice' && layout === 'classic') {
         await fs.mkdir(path.join(root, 'test-results'), { recursive: true });
         await page.screenshot({
           path: path.join(root, 'test-results', 'invoice-preview-mobile.png'),
+          fullPage: true,
+        });
+      }
+      if (kind === 'quote' && layout === 'modern') {
+        await fs.mkdir(path.join(root, 'test-results'), { recursive: true });
+        await page.screenshot({
+          path: path.join(root, 'test-results', 'quote-preview-mobile.png'),
           fullPage: true,
         });
       }

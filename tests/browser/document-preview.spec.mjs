@@ -155,7 +155,10 @@ test('quote and invoice previews remain readable at phone and desktop widths in 
 
 test('PDF download and native file-share handoff contain a rendered non-blank page', async ({ page }) => {
   await loadHarness(page, { width: 1280, height: 900 });
-  await page.addScriptTag({ path: path.join(root, 'node_modules/html2pdf.js/dist/html2pdf.bundle.min.js') });
+  await page.route('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js', route => route.fulfill({
+    path: path.join(root, 'node_modules/html2pdf.js/dist/html2pdf.bundle.min.js'),
+    contentType: 'application/javascript',
+  }));
   await page.addScriptTag({ path: path.join(root, 'node_modules/pdfjs-dist/build/pdf.min.js') });
   const pdfWorkerSource = await fs.readFile(path.join(root, 'node_modules/pdfjs-dist/build/pdf.worker.min.js'), 'utf8');
   await page.evaluate(workerSource => {
@@ -209,17 +212,27 @@ test('PDF download and native file-share handoff contain a rendered non-blank pa
         if (pixels[i] < 245 || pixels[i + 1] < 245 || pixels[i + 2] < 245) nonWhite++;
       }
       pageMetrics.push({ width: viewport.width, height: viewport.height, nonWhiteRatio: nonWhite / (canvas.width * canvas.height) });
+      if (pageNumber === 1) {
+        const evidence = document.createElement('div');
+        evidence.id = 'pdf-output-evidence';
+        evidence.style.cssText = 'background:#fff;padding:12px;margin:12px auto;max-width:820px';
+        canvas.style.cssText = 'display:block;width:100%;height:auto;background:#fff';
+        evidence.appendChild(canvas);
+        document.body.appendChild(evidence);
+      }
     }
     return { pages: pdf.numPages, pageMetrics };
   }, pdfBytes.toString('base64'));
 
   expect(rendered.pages).toBeGreaterThanOrEqual(1);
+  console.log('PDF_RENDER_EVIDENCE', JSON.stringify(rendered));
   expect(rendered.pageMetrics.length).toBe(rendered.pages);
   for (const pageMetric of rendered.pageMetrics) {
     expect(pageMetric.width).toBeGreaterThan(500);
     expect(pageMetric.height).toBeGreaterThan(700);
     expect(pageMetric.nonWhiteRatio).toBeGreaterThan(0.01);
   }
+  await page.screenshot({ path: path.join(root, 'test-results', 'invoice-pdf-render.png'), fullPage: true });
 
   await page.evaluate(() => {
     window.__sfNativeShare = null;

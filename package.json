@@ -1,0 +1,13 @@
+{
+  "name": "steadyfix-cmms-browser-qa",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:browser": "playwright test tests/browser/document-preview.spec.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "html2pdf.js": "0.10.1",
+    "pdfjs-dist": "3.11.174"
+  }
+}

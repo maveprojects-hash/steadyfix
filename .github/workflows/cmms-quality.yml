@@ -8,6 +8,8 @@ on:
       - "communication.css"
       - "supabase/migrations/**"
       - "tests/**"
+      - "package.json"
+      - "playwright.config.mjs"
       - ".github/workflows/cmms-quality.yml"
   push:
     paths:
@@ -50,3 +52,16 @@ jobs:
         run: python3 tests/check_cmms.py
       - name: Run transactional quote conversion PostgreSQL regression
         run: bash tests/test_quote_conversion_rpc.sh
+      - name: Install browser QA dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium for document output tests
+        run: npx playwright install --with-deps chromium
+      - name: Run responsive preview, PDF download and native-share browser tests
+        run: npm run test:browser
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: document-browser-evidence
+          path: test-results/
+          if-no-files-found: ignore

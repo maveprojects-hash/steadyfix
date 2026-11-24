@@ -102,7 +102,7 @@ async function runTool(name, input, st) {
   const sch = needTable ? schema[table] : null;
 
   if (name === "search_records") {
-    let q = sb.from(table).select("*").limit(200);
+    let q = sb.from(table).select("*").eq("company_id", ctx.company_id).limit(200);
     if (sch.site && ctx.site_id) q = q.eq("site_id", ctx.site_id);
     const known = new Set(["id", ...(sch.fields || []).map((f) => f.k)]);
     for (const [k, v] of Object.entries(input.where || {})) if (known.has(k)) q = q.eq(k, v);
@@ -173,7 +173,7 @@ async function runTool(name, input, st) {
   if (name === "attention_summary") {
     const t = ctx.today, in30 = new Date(Date.parse(t) + 30 * 864e5).toISOString().slice(0, 10), out = {};
     const get = async (label, table, build) => {
-      try { let q = sb.from(table).select("*").limit(500); if (schema[table] && schema[table].site && ctx.site_id) q = q.eq("site_id", ctx.site_id); const { data, error } = await q; out[label] = error ? "unavailable" : build(data || []); } catch (e) { out[label] = "unavailable"; }
+      try { let q = sb.from(table).select("*").eq("company_id", ctx.company_id).limit(500); if (schema[table] && schema[table].site && ctx.site_id) q = q.eq("site_id", ctx.site_id); const { data, error } = await q; out[label] = error ? "unavailable" : build(data || []); } catch (e) { out[label] = "unavailable"; }
     };
     await Promise.all([
       get("overdue_work_tasks", "work_orders", (r) => r.filter((x) => !["done", "cancelled"].includes(x.status) && x.due_date && x.due_date < t).length),

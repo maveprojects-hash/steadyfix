@@ -601,3 +601,25 @@ for marker in [
 if "logistics_tracking_events').select('*')" in workspace:
     raise SystemExit("Logistics workspace must not fetch all tracking events on initial render")
 print("Logistics shipment pagination and lazy tracking history: PASS")
+
+# Quotes and invoices: enforce active company/site scope in document lists and exports.
+doc_list_start = html.find("async function docList(kind)")
+doc_list_end = html.find("async function invNew(kind)", doc_list_start)
+doc_list_code = html[doc_list_start:doc_list_end]
+for marker in [
+    "eq('company_id',me.company_id)",
+    "eq('site_id',site)",
+    "sb.from('customers').select('*').eq('company_id',me.company_id)",
+]:
+    if marker not in doc_list_code:
+        raise SystemExit(f"Quote/invoice list is missing tenant/site scope: {marker}")
+number_code = html[html.find("async function nextNum(kind)"):html.find("async function docList(kind)")]
+if "eq('company_id',me.company_id)" not in number_code:
+    raise SystemExit("Quote/invoice numbering is not scoped to the active company")
+export_start = html.find("async function progDocs()")
+export_end = html.find("async function exportXero()", export_start)
+export_code = html[export_start:export_end]
+for marker in ["eq('company_id',me.company_id)", "eq('site_id',site)", "eq('kind','invoice')"]:
+    if marker not in export_code:
+        raise SystemExit(f"Invoice accounting export is missing tenant/site scope: {marker}")
+print("Quote/invoice list, numbering and accounting export company/site scope: PASS")

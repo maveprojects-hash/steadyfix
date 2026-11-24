@@ -441,8 +441,11 @@ for marker in quick_access_markers:
 print("Industry Quick Access dropdown rendering, navigation, keyboard and dismissal: PASS")
 
 # Changing a primary industry must refresh dashboard-dependent industry content.
-if "Always refresh dashboard and industry profile after a successful switch" not in html:
-    raise SystemExit("Industry switch must refresh the dashboard after saving")
+save_start = html.index("async function savePrimaryIndustry(slug){")
+save_end = html.index("\nasync function saveIndustryProfile()", save_start)
+save_function = html[save_start:save_end]
+if "await loadIndustryProfile();renderIndustrySelector();buildNav();draw();" not in save_function:
+    raise SystemExit("Industry switch must reload profile and redraw dashboard after saving")
 print("Industry switch dashboard refresh regression guard: PASS")
 
 # Industry switch must confirm a database row was updated and surface failures.
@@ -455,6 +458,18 @@ for marker in [
     if marker not in html:
         raise SystemExit(f"Industry switch save-confirmation marker missing: {marker}")
 print("Industry switch confirmation, error feedback and button recovery: PASS")
+
+# Industry profiles must drive real workspace navigation, not only the dashboard banner.
+for marker in [
+    "config.dashboard_priority_tabs",
+    "config.disabled_modules",
+    "config.module_labels",
+    "buildNav();draw();",
+    "renderIndustrySelector();buildNav();if(cur==='dash')await draw();",
+]:
+    if marker not in html:
+        raise SystemExit(f"Industry workspace navigation marker missing: {marker}")
+print("Industry workspace module order, visibility and terminology: PASS")
 
 # Header cleanup: only one Quick Access trigger exists, with responsive compact layout.
 if html.count('id="industryQuickAccessBtn"') != 1:

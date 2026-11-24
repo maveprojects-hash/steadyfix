@@ -461,7 +461,7 @@ print("Industry switch confirmation, error feedback and button recovery: PASS")
 
 # Full industry profile editor validates and confirms the saved company row.
 profile_start = html.index("async function saveIndustryProfile(){")
-profile_end = html.index("\\nasync function industryProfile()", profile_start)
+profile_end = html.index("\nasync function industryProfile()", profile_start)
 profile_save = html[profile_start:profile_end]
 for marker in [
     "secondary.some(x=>!INDUSTRIES.some(i=>i.slug===x))",

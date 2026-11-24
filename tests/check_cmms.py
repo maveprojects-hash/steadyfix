@@ -465,6 +465,7 @@ for marker in [
     "config.disabled_modules",
     "config.module_labels",
     "buildNav();draw();",
+    "renderIndustrySelector();buildNav();if(cur==='dash')await draw();",
 ]:
     if marker not in html:
         raise SystemExit(f"Industry workspace navigation marker missing: {marker}")

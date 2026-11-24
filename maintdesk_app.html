@@ -844,7 +844,7 @@ async function aiApply(p){
   if(changes.module_labels&&typeof changes.module_labels==='object')for(const[k,v]of Object.entries(changes.module_labels)){if(!allowed.has(k)||typeof v!=='string'||v.length>60)throw new Error('A custom label is invalid.');if(v.trim())labels[k]=v.trim();else delete labels[k]}
   const next={...current,disabled_modules:disabled,module_labels:labels};
   const{error}=await sb.from('company_industry_profiles').update({configuration_overrides:next}).eq('company_id',me.company_id);
-  if(error)throw new Error(error.message);await loadIndustryProfile();renderIndustrySelector();return;
+  if(error)throw new Error(error.message);await loadIndustryProfile();renderIndustrySelector();buildNav();if(cur==='dash')await draw();return;
  }
  const sc=aiSchema()[p.table];if(!sc)throw new Error('That area is not supported.');const ok=new Set(sc.fields.map(f=>f.k)),m=MOD[p.table];
  const clean=o=>{const r={};for(const[k,v]of Object.entries(o||{})){if(!ok.has(k))continue;const f=m&&m.f.find(x=>x.k==k);r[k]=f&&f.t=='n'&&v!==''&&v!=null?+v:v}if(m)m.f.forEach(f=>{if(f.t=='li'&&Array.isArray(r[f.k])&&f.o&&f.o.tot)r[f.o.tot]=liSum(r[f.k])});return r};

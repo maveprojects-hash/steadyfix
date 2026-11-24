@@ -18,6 +18,8 @@ on:
       - "communication.css"
       - "supabase/migrations/**"
       - "tests/**"
+      - "package.json"
+      - "playwright.config.mjs"
       - ".github/workflows/cmms-quality.yml"
 
 permissions:

@@ -444,7 +444,7 @@ print("Industry Quick Access dropdown rendering, navigation, keyboard and dismis
 save_start = html.index("async function savePrimaryIndustry(slug){")
 save_end = html.index("\\nasync function saveIndustryProfile()", save_start)
 save_function = html[save_start:save_end]
-if "await loadIndustryProfile();renderIndustrySelector();draw();" not in save_function:
+if "await loadIndustryProfile();renderIndustrySelector();buildNav();draw();" not in save_function:
     raise SystemExit("Industry switch must reload profile and redraw dashboard after saving")
 print("Industry switch dashboard refresh regression guard: PASS")
 

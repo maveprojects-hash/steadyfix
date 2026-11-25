@@ -13,7 +13,7 @@ const MAX_STEPS = 6;
 const CONFIGURABLE_MODULES = ["work_orders","assets","service_contracts","stock_items","purchase_orders","customers","inv","suppliers","pm_schedules","chk","fleet","rep","ohs","damage_reports","shutdowns","logistics_ops"];
 const ALLOWED = [
   "work_orders", "pm_schedules", "purchase_orders", "shutdowns", "damage_reports", "expenses", "customers",
-  "suppliers", "vehicles", "ohs_inspections", "ohs_hazards", "ohs_incidents", "ohs_ppe", "ohs_training",
+  "suppliers", "vehicles", "workshop_jobs", "ohs_inspections", "ohs_hazards", "ohs_incidents", "ohs_ppe", "ohs_training",
   "ohs_regs", "fire_equipment", "fire_inspections", "checklist_templates",
 ];
 

@@ -680,3 +680,24 @@ for marker in [
     if marker not in html:
         raise SystemExit(f"iAssistant browser tenant/site safeguard missing: {marker}")
 print("iAssistant search, attention, memory and approved-write tenant/site scope: PASS")
+
+
+# iAssistant must derive site context from the authenticated, RLS-filtered database session.
+profile_anchor = assistant_endpoint.find('const prof = await sb.from("profiles")')
+site_anchor = assistant_endpoint.find('const requestedSiteId = typeof body.site_id')
+context_anchor = assistant_endpoint.find('const ctx = {')
+if min(profile_anchor, site_anchor, context_anchor) < 0 or not profile_anchor < site_anchor < context_anchor:
+    raise SystemExit("iAssistant must verify the authenticated profile before resolving the selected site")
+for marker in [
+    'sb.from("sites").select("id,name")',
+    '.eq("id", requestedSiteId).maybeSingle()',
+    'if (!siteResult.data) return json({ error: "The selected site is unavailable for this account.',
+    'site_id: activeSite?.id || null',
+    'site_name: String(activeSite?.name || "their site")',
+    'today: new Date().toISOString().slice(0, 10)',
+]:
+    if marker not in assistant_endpoint:
+        raise SystemExit(f"iAssistant authoritative site-context safeguard missing: {marker}")
+if 'body.site_name' in assistant_endpoint or 'body.today' in assistant_endpoint:
+    raise SystemExit("iAssistant must not trust browser-supplied site names or dates")
+print("iAssistant authenticated site-context verification: PASS")

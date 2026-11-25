@@ -2,7 +2,7 @@
 
 /* Industry identity palettes: shared across the browser app and desktop wrapper. */
 const SF_INDUSTRY_THEMES = {
-  automation: { accent:'#00a6c7', highlight:'#67e8f9', nav:'#102d3a', bg:'#e6f2f5', panel:'#ffffff', line:'#c5dce3', ink:'#17313a', muted:'#56717b' },
+  automation: { accent:'#d62828', highlight:'#2878c8', nav:'#172b4d', bg:'#eaf0f8', panel:'#ffffff', line:'#c8d5e6', ink:'#1d2d46', muted:'#586b86' },
   'fleet-management': { accent:'#d97706', highlight:'#fbbf24', nav:'#342313', bg:'#f5eee5', panel:'#fffdf9', line:'#e3d2bd', ink:'#35291c', muted:'#766451' },
   workshops: { accent:'#dc4b35', highlight:'#ff8068', nav:'#351d1a', bg:'#f5ece9', panel:'#fffdfc', line:'#e6cbc5', ink:'#382522', muted:'#78605a' },
   'logistics-transport': { accent:'#0d9488', highlight:'#5eead4', nav:'#102d2b', bg:'#e8f3f1', panel:'#ffffff', line:'#c6dfda', ink:'#193632', muted:'#58736d' },

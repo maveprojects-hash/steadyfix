@@ -818,6 +818,7 @@ for marker in [
     'const SERVER_FIELD_ALLOWLIST = {',
     'sensors: ["name", "kind", "unit", "alert_min", "alert_max"]',
     'readings: ["sensor_id", "sensor_name", "sensor_kind", "value", "unit", "read_at"]',
+    'vehicles: ["name", "reg_no", "odometer_km", "next_service_km", "status", "make_model", "vin", "next_service_date", "license_expiry", "speed_limit", "last_lat", "last_lng", "last_speed", "last_seen"]',
     '.filter((field) => field && safe.has(field.k))',
 ]:
     if marker not in assistant_endpoint:

@@ -1032,3 +1032,24 @@ for marker in [
     if marker not in industry_js.read_text(encoding="utf-8"):
         raise SystemExit(f"Missing industry starter checklist implementation: {marker}")
 print("Food & Beverage and Manufacturing starter checklist implementation: PASS")
+
+# Fleet and Workshops expose separate, opt-in site-scoped checklist packs.
+for marker in [
+    "const WORKSHOP_LISTS=",
+    "Workshop vehicle intake and condition assessment",
+    "Repair quality-control and customer handover",
+    "async function seedWorkshop()",
+    "async function seedFleet()",
+]:
+    if marker not in app_js:
+        raise SystemExit(f"Missing Fleet / Workshop checklist implementation: {marker}")
+for marker in [
+    "if(slug==='workshops')",
+    "if(slug==='fleet-management')",
+    "Add workshop checklists",
+    "Add fleet checklists",
+]:
+    if marker not in industry_js:
+        raise SystemExit(f"Missing industry workspace checklist shortcut: {marker}")
+print("Fleet and Workshops opt-in checklist packs: PASS")
+

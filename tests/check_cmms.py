@@ -740,7 +740,8 @@ assistant_endpoint = (root / "supabase/functions/smart-endpoint/index.ts").read_
 for marker in [
     'const selectedColumns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"',
     '.select(selectedColumns).eq("company_id", ctx.company_id).limit(200)',
-    'select("*").eq("company_id", ctx.company_id).limit(500)',
+    'const columns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"',
+    '.select(columns).eq("company_id", ctx.company_id).limit(500)',
     '.eq("company_id", company_id).order("created_at"',
     '.eq("company_id", ctx.company_id).select("id")',
 ]:
@@ -907,6 +908,16 @@ for marker in [
 
 if "F('unit','Unit','t')" not in assistant_ui:
     raise SystemExit("Assistant stock lookup schema must expose the stock unit")
+for marker in [
+    'const columns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"',
+    'get("sensor_alerts", "sensors"',
+    'sb.from("readings")',
+    '.in("sensor_id", sensorIds).order("read_at", { ascending: false }).limit(5000)',
+    'sensor.alert_min',
+    'sensor.alert_max',
+]:
+    if marker not in assistant_endpoint:
+        raise SystemExit(f"iAssistant attention summary is missing site-scoped sensor alert support: {marker}")
 for marker in [
     'get("low_stock_items", "stock_items"',
     'await build(data || [])',

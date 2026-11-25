@@ -9,11 +9,15 @@ async function chooseIndustryWorkspace(slug){
   if(slug!==current){
     if(!isMgr()){alert('Only a company owner or manager can change the company industry workspace.');return}
     if(!confirm('Switch the company workspace to '+target.name+'? The current industry will be kept as a secondary activity where possible.'))return;
-    const secondary=[...new Set((INDUSTRY_PROFILE.secondary_industry_slugs||[]).filter(x=>x!==slug))];
+    const secondary=[...new Set((INDUSTRY_PROFILE?.secondary_industry_slugs||[]).filter(x=>x!==slug))];
     if(current&&!secondary.includes(current)&&secondary.length<8)secondary.push(current);
-    const {error}=await sb.from('company_industry_profiles').update({primary_industry_slug:slug,secondary_industry_slugs:secondary}).eq('company_id',me.company_id);
-    if(error){alert('Could not switch industry: '+error.message);return}
-    await loadIndustryProfile();renderIndustrySelector();
+    try{
+      const {data,error}=await sb.from('company_industry_profiles').update({primary_industry_slug:slug,secondary_industry_slugs:secondary}).eq('company_id',me.company_id).select('company_id,primary_industry_slug').maybeSingle();
+      if(error)throw error;
+      if(!data||data.primary_industry_slug!==slug)throw new Error('No company industry profile row was updated. Check manager access and company profile setup.');
+      await loadIndustryProfile();renderIndustrySelector();
+      buildNav();
+    }catch(error){alert('Could not switch industry: '+(error?.message||'Unknown error'));await loadIndustryProfile().catch(()=>{});renderIndustrySelector();buildNav();return}
   }
   cur='industry_workspace';draw();
 }

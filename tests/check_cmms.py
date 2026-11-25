@@ -996,3 +996,13 @@ for marker in [
     if marker not in main_app:
         raise SystemExit(f"Industry workspace screen routing regression marker missing: {marker}")
 print("Industry hub and selected workspace screen routing: PASS")
+
+
+# The master CMMS opens on the established Hospitality-style base unless a company selects another industry.
+if "primary_industry_slug:'hospitality-tourism'" not in html:
+    raise SystemExit("New/unconfigured company fallback must use the Hospitality base workspace")
+if "[{slug:'hospitality-tourism',name:'Hospitality & Tourism'}]" not in login_html:
+    raise SystemExit("Onboarding fallback must retain the established Hospitality base")
+if "x.slug==='hospitality-tourism'?'selected':'')" not in login_html:
+    raise SystemExit("Hospitality must be the default onboarding selection while customers can choose another industry")
+print("Hospitality base workspace default and customer-selectable industry onboarding: PASS")

@@ -738,7 +738,8 @@ print("Quote/invoice edits, status changes, duplication and deletion company/sit
 # iAssistant data reads and approved writes must be explicitly tenant/site scoped.
 assistant_endpoint = (root / "supabase/functions/smart-endpoint/index.ts").read_text(encoding="utf-8")
 for marker in [
-    'select("*").eq("company_id", ctx.company_id).limit(200)',
+    'const selectedColumns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"',
+    '.select(selectedColumns).eq("company_id", ctx.company_id).limit(200)',
     'select("*").eq("company_id", ctx.company_id).limit(500)',
     '.eq("company_id", company_id).order("created_at"',
     '.eq("company_id", ctx.company_id).select("id")',

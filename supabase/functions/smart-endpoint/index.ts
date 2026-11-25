@@ -33,7 +33,7 @@ const TOOLS = [
     input_schema: { type: "object", properties: { note: { type: "string" } }, required: ["note"] } },
   { name: "forget_memory", description: "Remove a saved note by its id when the user asks you to forget it.",
     input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
-  { name: "attention_summary", description: "Counts of what needs attention today: overdue jobs, overdue PMs, open incidents, overdue fire equipment service, expiring training and so on.",
+  { name: "attention_summary", description: "Counts of what needs attention today: overdue jobs, overdue PMs, low-stock and reorder items at the selected site, open incidents, overdue fire equipment service, expiring training and so on.",
     input_schema: { type: "object", properties: {} } },
 ];
 

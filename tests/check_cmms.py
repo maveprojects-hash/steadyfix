@@ -171,6 +171,7 @@ for marker in [
     "document.body.dataset.industryTheme",
     "meta[name=\"theme-color\"]",
     "automation: {",
+    "automation: { accent:'#d62828', highlight:'#2878c8', nav:'#172b4d'",
     "'fleet-management':",
     "workshops:",
     "'logistics-transport':",

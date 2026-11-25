@@ -852,6 +852,8 @@ if "sb.from('sensors').select('*')" in assistant_ui or "s.device_key" in assista
     raise SystemExit("Monitoring UI must not fetch or render device keys from ordinary sensor rows")
 if 'table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"' not in assistant_endpoint:
     raise SystemExit("iAssistant sensor queries must not select private device_key values")
+if 'table === "vehicles"' not in assistant_endpoint or 'last_seen,created_at' not in assistant_endpoint:
+    raise SystemExit("iAssistant vehicle queries must not select private GPS device_key values")
 sensor_column_migration = root / "supabase" / "migrations" / "20261125090500_sensor_column_privileges.sql"
 if not sensor_column_migration.exists():
     raise SystemExit("Missing sensor least-privilege column grant migration")

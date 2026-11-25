@@ -319,7 +319,7 @@ async function loadIndustryProfile(){
  if(catalog.error)throw catalog.error;
  if(profile.error)throw profile.error;
  INDUSTRIES=catalog.data||[];
- INDUSTRY_PROFILE=profile.data||{company_id:me.company_id,primary_industry_slug:'general-maintenance',secondary_industry_slugs:[],business_description:'',configuration_overrides:{},config_version:1};
+ INDUSTRY_PROFILE=profile.data||{company_id:me.company_id,primary_industry_slug:'hospitality-tourism',secondary_industry_slugs:[],business_description:'',configuration_overrides:{},config_version:1};
 }
 function renderIndustrySelector(){
  const el=$('industryProfileSelect');if(!el)return;

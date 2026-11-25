@@ -1049,7 +1049,7 @@ for marker in [
     "Add workshop checklists",
     "Add fleet checklists",
 ]:
-    if marker not in industry_js:
+    if marker not in industry_code:
         raise SystemExit(f"Missing industry workspace checklist shortcut: {marker}")
 print("Fleet and Workshops opt-in checklist packs: PASS")
 

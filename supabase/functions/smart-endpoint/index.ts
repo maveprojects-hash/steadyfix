@@ -108,11 +108,31 @@ async function runTool(name, input, st) {
     let q = sb.from(table).select("*").eq("company_id", ctx.company_id).limit(200);
     if (sch.site && ctx.site_id) q = q.eq("site_id", ctx.site_id);
     const known = new Set(["id", ...(sch.fields || []).map((f) => f.k)]);
-    for (const [k, v] of Object.entries(input.where || {})) if (known.has(k)) q = q.eq(k, v);
+    // Stock quantity is stored per site in stock_levels, not on the stock_items catalogue row.
+    const derivedFields = table === "stock_items" ? new Set(["on_hand"]) : new Set();
+    for (const [k, v] of Object.entries(input.where || {})) if (known.has(k) && !derivedFields.has(k)) q = q.eq(k, v);
     let r = await q.order("created_at", { ascending: false });
     if (r.error) r = await q;
     if (r.error) return `Error: ${r.error.message}`;
     let rows = r.data || [];
+    if (table === "stock_items" && rows.length) {
+      const itemIds = rows.map((x) => x.id).filter(Boolean);
+      if (itemIds.length) {
+        let levelsQuery = sb.from("stock_levels").select("item_id,on_hand")
+          .eq("company_id", ctx.company_id).in("item_id", itemIds);
+        if (ctx.site_id) levelsQuery = levelsQuery.eq("site_id", ctx.site_id);
+        const levelsResult = await levelsQuery;
+        if (levelsResult.error) return `Error reading site stock levels: ${levelsResult.error.message}`;
+        const totals = new Map();
+        for (const level of levelsResult.data || []) {
+          totals.set(String(level.item_id), (totals.get(String(level.item_id)) || 0) + Number(level.on_hand || 0));
+        }
+        rows = rows.map((row) => ({ ...row, on_hand: totals.get(String(row.id)) || 0 }));
+      }
+      if (input.where && input.where.on_hand !== undefined) {
+        rows = rows.filter((row) => Number(row.on_hand) === Number(input.where.on_hand));
+      }
+    }
     if (input.contains) { const w = String(input.contains).toLowerCase(); rows = rows.filter((x) => Object.values(x).some((v) => typeof v === "string" && v.toLowerCase().includes(w))); }
     const keep = ["id", ...(sch.fields || []).map((f) => f.k)];
     rows = rows.slice(0, Math.min(Number(input.limit) || 15, 25)).map((x) => Object.fromEntries(keep.filter((k) => x[k] !== undefined && x[k] !== null && x[k] !== "").map((k) => [k, typeof x[k] === "string" ? x[k].slice(0, 300) : x[k]])));

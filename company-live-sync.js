@@ -56,12 +56,12 @@
       channel = channel.on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table,
-        filter: 'company_id=eq.' + me.company_id
+        table
       }, payload => {
         if (!payload?.new && !payload?.old) return;
         const row = payload.new || payload.old;
-        if (row.company_id !== me.company_id) return;
+        // Realtime enforces the table's RLS policies; also reject an explicitly different tenant.
+        if (row.company_id && row.company_id !== me.company_id) return;
         scheduleRefresh();
       });
     });

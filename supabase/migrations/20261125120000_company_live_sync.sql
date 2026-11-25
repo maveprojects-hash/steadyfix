@@ -10,7 +10,7 @@ create or replace function private.broadcast_cmms_company_change()
 returns trigger
 language plpgsql
 security definer
-set search_path = pg_catalog, public, private, realtime
+set search_path = pg_catalog
 as $$
 declare
   v_company_id uuid;
@@ -35,6 +35,21 @@ begin
     'company:' || v_company_id::text || ':cmms-live',
     true
   );
+
+  if tg_op = 'UPDATE' and old.company_id is distinct from new.company_id
+     and old.company_id is not null then
+    perform realtime.send(
+      jsonb_build_object(
+        'company_id', old.company_id,
+        'table', tg_table_name,
+        'operation', 'TENANT_MOVE'
+      ),
+      'cmms_change',
+      'company:' || old.company_id::text || ':cmms-live',
+      true
+    );
+  end if;
+
   return null;
 end;
 $$;
@@ -58,37 +73,29 @@ create policy cmms_company_live_sync_read
     )
   );
 
+-- Cover every current tenant-owned public table, including new departments and
+-- industry configuration tables, without exposing row contents on the channel.
 do $$
 declare
   v_table text;
-  v_tables text[] := array[
-    'work_orders','pm_schedules','stock_items','purchase_orders','shutdowns',
-    'sensors','assets','shifts','budgets','expenses','customers','suppliers',
-    'damage_reports','ohs_inspections','ohs_hazards','ohs_incidents','ohs_ppe',
-    'ohs_training','ohs_regs','fire_equipment','fire_inspections','vehicles',
-    'workshop_jobs','work_order_time_entries','work_order_material_issues',
-    'work_order_customer_signoffs','logistics_shipments','logistics_tracking_events',
-    'logistics_pod_signoffs','documents'
-  ];
 begin
-  foreach v_table in array v_tables loop
-    if exists (
-      select 1
-      from pg_class c
-      join pg_namespace n on n.oid = c.relnamespace
-      join pg_attribute a on a.attrelid = c.oid and a.attname = 'company_id'
-        and a.attnum > 0 and not a.attisdropped
-      where n.nspname = 'public'
-        and c.relname = v_table
-        and c.relkind in ('r','p')
-        and c.relrowsecurity
-    ) then
-      execute format('drop trigger if exists cmms_company_live_change on public.%I', v_table);
-      execute format(
-        'create trigger cmms_company_live_change after insert or update or delete on public.%I for each row execute function private.broadcast_cmms_company_change()',
-        v_table
-      );
-    end if;
+  for v_table in
+    select c.relname
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    join pg_attribute a on a.attrelid = c.oid and a.attname = 'company_id'
+      and a.attnum > 0 and not a.attisdropped
+    where n.nspname = 'public'
+      and c.relkind in ('r','p')
+      and c.relrowsecurity
+      and c.relname not in ('messages','notifications','company_conversations','conversation_members')
+    order by c.relname
+  loop
+    execute format('drop trigger if exists cmms_company_live_change on public.%I', v_table);
+    execute format(
+      'create trigger cmms_company_live_change after insert or update or delete on public.%I for each row execute function private.broadcast_cmms_company_change()',
+      v_table
+    );
   end loop;
 end $$;
 

@@ -50,6 +50,7 @@ How you work:
 - Use search_records to look things up before answering questions about their data. Never invent records, people, dates or numbers.
 - To create or change records call propose_create or propose_update. To tailor a company workspace, call propose_industry_customization only when the authenticated user is an owner or manager. These tools only queue proposals: the user taps Approve first. Say what you queued and ask them to approve it. Never say anything was created or changed before approval.
 - Stock records are searchable for availability and reorder questions, but are read-only through the assistant. Never propose stock quantity, cost or adjustment changes; direct the user to the audited Stock adjustment workflow.
+- Sensor registrations and recorded measurements are searchable for monitoring questions, but are read-only through the assistant. Never change sensor settings, device credentials or readings. The assistant only reports measurements already recorded in the system; it does not guarantee a live device feed.
 - Workspace customization may only hide supported shortcut modules or rename them. Never claim it changes access permissions, creates new software modules, or alters another company's setup.
 - Never delete anything. If asked to delete, explain they can delete it themselves in the app.
 - Use only the tables and fields in the schema. Dates are yyyy-mm-dd. Select fields must use one of the listed options exactly. For reference fields, find the id with search_records first.
@@ -102,7 +103,7 @@ async function runTool(name, input, st) {
   const needTable = ["search_records", "propose_create", "propose_update"].includes(name);
   if (needTable && (!ALLOWED.includes(table) || !schema[table])) return `Error: table "${table}" is not available. Use one of: ${Object.keys(schema).filter((t) => ALLOWED.includes(t)).join(", ")}`;
   const sch = needTable ? schema[table] : null;
-  if ((name === "propose_create" || name === "propose_update") && READ_ONLY_TABLES.includes(table)) return "Error: stock records can be searched, but stock quantity and value changes must use the audited stock adjustment workflow.";
+  if ((name === "propose_create" || name === "propose_update") && READ_ONLY_TABLES.includes(table)) return table === "stock_items" ? "Error: stock records can be searched, but stock quantity and value changes must use the audited stock adjustment workflow." : "Error: sensor configuration and measurement records are read-only in the assistant.";
 
   if (name === "search_records" && table === "readings") {
     let sensorQuery = sb.from("sensors").select("id,name,kind,unit")

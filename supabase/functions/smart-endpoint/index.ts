@@ -33,7 +33,7 @@ const TOOLS = [
     input_schema: { type: "object", properties: { note: { type: "string" } }, required: ["note"] } },
   { name: "forget_memory", description: "Remove a saved note by its id when the user asks you to forget it.",
     input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
-  { name: "attention_summary", description: "Counts of what needs attention today: overdue jobs, overdue PMs, open incidents, overdue fire equipment service, expiring training and so on.",
+  { name: "attention_summary", description: "Counts of what needs attention today: overdue jobs, overdue PMs, low-stock and reorder items at the selected site, open incidents, overdue fire equipment service, expiring training and so on.",
     input_schema: { type: "object", properties: {} } },
 ];
 
@@ -196,7 +196,7 @@ async function runTool(name, input, st) {
   if (name === "attention_summary") {
     const t = ctx.today, in30 = new Date(Date.parse(t) + 30 * 864e5).toISOString().slice(0, 10), out = {};
     const get = async (label, table, build) => {
-      try { let q = sb.from(table).select("*").eq("company_id", ctx.company_id).limit(500); if (schema[table] && schema[table].site && ctx.site_id) q = q.eq("site_id", ctx.site_id); const { data, error } = await q; out[label] = error ? "unavailable" : build(data || []); } catch (e) { out[label] = "unavailable"; }
+      try { let q = sb.from(table).select("*").eq("company_id", ctx.company_id).limit(500); if (schema[table] && schema[table].site && ctx.site_id) q = q.eq("site_id", ctx.site_id); const { data, error } = await q; out[label] = error ? "unavailable" : await build(data || []); } catch (e) { out[label] = "unavailable"; }
     };
     await Promise.all([
       get("overdue_work_tasks", "work_orders", (r) => r.filter((x) => !["done", "cancelled"].includes(x.status) && x.due_date && x.due_date < t).length),
@@ -209,6 +209,30 @@ async function runTool(name, input, st) {
       get("fire_equipment_service_overdue", "fire_equipment", (r) => r.filter((x) => x.next_service && x.next_service < t).length),
       get("fire_equipment_faulty", "fire_equipment", (r) => r.filter((x) => ["faulty", "needs_service"].includes(x.condition)).length),
       get("training_expiring_30_days", "ohs_training", (r) => r.filter((x) => x.expires_on && x.expires_on <= in30).length),
+      get("low_stock_items", "stock_items", async (items) => {
+        if (!items.length) return { count: 0, items: [] };
+        const itemIds = items.map((x) => x.id).filter(Boolean);
+        if (!itemIds.length) return { count: 0, items: [] };
+        let levelsQuery = sb.from("stock_levels").select("item_id,on_hand")
+          .eq("company_id", ctx.company_id).in("item_id", itemIds);
+        if (ctx.site_id) levelsQuery = levelsQuery.eq("site_id", ctx.site_id);
+        const { data: levels, error: levelsError } = await levelsQuery;
+        if (levelsError) return "unavailable";
+        const totals = new Map();
+        for (const level of levels || []) {
+          totals.set(String(level.item_id), (totals.get(String(level.item_id)) || 0) + Number(level.on_hand || 0));
+        }
+        const low = items.filter((item) => item.min_level != null &&
+          (totals.get(String(item.id)) || 0) <= Number(item.min_level));
+        return {
+          count: low.length,
+          items: low.slice(0, 20).map((item) => ({
+            name: item.name, sku: item.sku || null,
+            on_hand: totals.get(String(item.id)) || 0,
+            min_level: Number(item.min_level), unit: item.unit || null
+          }))
+        };
+      }),
       get("regulations_needing_action", "ohs_regs", (r) => r.filter((x) => x.compliance === "action_needed").length),
     ]);
     return JSON.stringify(out);

@@ -109,6 +109,49 @@ for marker in [
     if marker not in comm_js:
         raise SystemExit(f"Missing communication behaviour: {marker}")
 
+# Shared live operational sync for web and desktop clients.
+live_sync = root / "company-live-sync.js"
+if not live_sync.exists():
+    raise SystemExit("Missing company-wide live sync client module")
+subprocess.run(["node", "--check", str(live_sync)], check=True)
+live_code = live_sync.read_text(encoding="utf-8")
+for marker in [
+    "startCompanyLiveSync",
+    "postgres_changes",
+    "event: '*'",
+    "company_id=eq.",
+    "refreshActiveView",
+    "visibilitychange",
+    "focusout",
+    "stopCompanyLiveSync",
+]:
+    if marker not in live_code:
+        raise SystemExit(f"Missing shared live-sync behaviour: {marker}")
+for marker in [
+    'company-live-sync.js',
+    "startCompanyLiveSync();draw()",
+]:
+    if marker not in html:
+        raise SystemExit(f"CMMS boot does not start shared live sync: {marker}")
+
+live_migration = next((root / "supabase" / "migrations").glob("*_company_live_sync.sql"))
+live_sql = live_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "supabase_realtime",
+    "c.relrowsecurity",
+    "a.attname = 'company_id'",
+    "alter publication",
+    "work_orders",
+    "assets",
+    "stock_items",
+    "purchase_orders",
+    "workshop_jobs",
+    "logistics_shipments",
+]:
+    if marker.lower() not in live_sql:
+        raise SystemExit(f"Missing tenant-safe live publication setup: {marker}")
+
+
 communication_migration = next((root / "supabase" / "migrations").glob("*_company_communication_centre.sql"))
 comm_sql = communication_migration.read_text(encoding="utf-8").lower()
 for marker in [

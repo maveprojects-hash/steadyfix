@@ -29,6 +29,12 @@ required_ui = [
     "notificationEffectSettings",
     "steadyfix.cmms.notification-preferences",
     "row.created_by=me.id",
+    "const standardIndustries=new Set(['hospitality-tourism','property-management-facilities','construction-project-management'])",
+    "const workspaceRoutes=new Set(typeof sfIndustryModules==='function'?sfIndustryModules(slug).map(m=>m[3]):[])",
+    "cur=='logistics_ops'?await sfLogisticsWorkspace()",
+    "cur=='service_contracts'?await sfServiceContracts()",
+    "['logistics_ops','Parcel operations']",
+    "['service_contracts','Service contracts']",
 ]
 for marker in required_ui:
     if marker not in html:

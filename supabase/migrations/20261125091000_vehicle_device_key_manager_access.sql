@@ -19,7 +19,7 @@ grant insert (
 
 grant update (
   name, reg_no, odometer_km, next_service_km, status, make_model, vin,
-  next_service_date, speed_limit, last_lat, last_lng, last_speed, last_seen
+  next_service_date, license_expiry, speed_limit, last_lat, last_lng, last_speed, last_seen
 ) on table public.vehicles to authenticated;
 
 grant delete on table public.vehicles to authenticated;

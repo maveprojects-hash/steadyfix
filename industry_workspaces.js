@@ -3,15 +3,15 @@
 /* Industry identity palettes: shared across the browser app and desktop wrapper. */
 const SF_INDUSTRY_THEMES = {
   automation: { accent:'#d62828', highlight:'#2878c8', nav:'#172b4d', bg:'#eaf0f8', panel:'#ffffff', line:'#c8d5e6', ink:'#1d2d46', muted:'#586b86' },
-  'fleet-management': { accent:'#d97706', highlight:'#fbbf24', nav:'#342313', bg:'#f5eee5', panel:'#fffdf9', line:'#e3d2bd', ink:'#35291c', muted:'#766451' },
-  workshops: { accent:'#dc4b35', highlight:'#ff8068', nav:'#351d1a', bg:'#f5ece9', panel:'#fffdfc', line:'#e6cbc5', ink:'#382522', muted:'#78605a' },
+  'fleet-management': { accent:'#c46a13', highlight:'#f2b84b', nav:'#352311', bg:'#f8f0e5', panel:'#fffdf9', line:'#e7d5bc', ink:'#35291c', muted:'#766451' },
+  workshops: { accent:'#c04472', highlight:'#f39abb', nav:'#351b2a', bg:'#f7edf2', panel:'#fffdfc', line:'#e8cbd8', ink:'#382330', muted:'#78606b' },
   'logistics-transport': { accent:'#0d9488', highlight:'#5eead4', nav:'#102d2b', bg:'#e8f3f1', panel:'#ffffff', line:'#c6dfda', ink:'#193632', muted:'#58736d' },
   'hospitality-tourism': { accent:'#7954b8', highlight:'#c4a7f4', nav:'#271e39', bg:'#f0edf6', panel:'#ffffff', line:'#d8cde8', ink:'#30263f', muted:'#6c617b' },
   'food-beverage': { accent:'#47864b', highlight:'#9bd18e', nav:'#203322', bg:'#edf3eb', panel:'#ffffff', line:'#cfddca', ink:'#263528', muted:'#617363' },
-  'property-management-facilities': { accent:'#3974b8', highlight:'#8ec5ff', nav:'#192c42', bg:'#eaf0f6', panel:'#ffffff', line:'#cbd8e6', ink:'#203246', muted:'#5c6f82' },
+  'property-management-facilities': { accent:'#2878c8', highlight:'#8ec5ff', nav:'#192c42', bg:'#eaf0f6', panel:'#ffffff', line:'#cbd8e6', ink:'#203246', muted:'#5c6f82' },
   'construction-project-management': { accent:'#b7791f', highlight:'#f6c453', nav:'#342a18', bg:'#f4f0e6', panel:'#fffefa', line:'#e2d6bd', ink:'#332b1e', muted:'#75684f' },
-  'manufacturing-industrial': { accent:'#a66a12', highlight:'#f2bd58', nav:'#302817', bg:'#f2efe7', panel:'#fffefa', line:'#ddd4c1', ink:'#332d20', muted:'#716957' },
-  'general-maintenance': { accent:'#1f5f8b', highlight:'#e59f0f', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' }
+  'manufacturing-industrial': { accent:'#52647f', highlight:'#9fb4d4', nav:'#202b3b', bg:'#edf0f5', panel:'#fffefa', line:'#d1d9e5', ink:'#273449', muted:'#64748b' },
+  'general-maintenance': { accent:'#167caa', highlight:'#e59f0f', nav:'#18313d', bg:'#e9f1f4', panel:'#ffffff', line:'#cbdde3', ink:'#1b3038', muted:'#58717a' }
 };
 
 function applyIndustryTheme() {
@@ -59,7 +59,8 @@ async function sfIndustryHub(){
   let html='<h2>Choose your industry workspace</h2><div class="p"><b>One STEADYFIX CMMS. Different industry setups.</b><div class="note">Choose the type of business you operate. STEADYFIX keeps one secure base application and organises its departments, terminology and day-to-day tools around that industry. Owners and managers can change the company primary workspace.</div></div><div class="dg">';
   (INDUSTRIES||[]).forEach(ind=>{
     const focus=(ind.default_configuration&&ind.default_configuration.focus_areas)||[], examples=ind.business_examples||[], active=ind.slug===current;
-    html+='<div class="card"><div class="ct"><div>'+esc(ind.name)+'</div>'+(active?'<span class="chip g">Current workspace</span>':'')+'</div>';
+    const theme=SF_INDUSTRY_THEMES[ind.slug]||SF_INDUSTRY_THEMES['general-maintenance'];
+    html+='<div class="card" data-industry-card="'+esc(ind.slug)+'" style="border-left:6px solid '+theme.ac+';background:linear-gradient(110deg,'+theme.bg+' 0%,var(--pn) 72%)"><div class="ct"><div style="color:'+theme.ac+'">'+esc(ind.name)+'</div><span class="chip" style="background:'+theme.nav+';color:#fff">'+esc(ind.slug.replace(/-/g,' '))+'</span>'+(active?'<span class="chip g">Current workspace</span>':'')+'</div>';
     html+='<div class="note">'+esc(ind.description||'')+'</div>';
     if(examples.length)html+='<div class="rl"><b>Typical businesses:</b> '+esc(examples.slice(0,4).join(' · '))+'</div>';
     if(focus.length)html+='<div class="rl"><b>Day-to-day focus:</b> '+esc(focus.slice(0,5).join(' · '))+'</div>';
@@ -91,12 +92,19 @@ async function sfIndustryWorkspace(){
   const slug=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug||'hospitality-tourism';
   const ind=(INDUSTRIES||[]).find(x=>x.slug===slug);if(!ind)return sfIndustryHub();
   let html='<div class="bar2 noprint"><button onclick="openIndustryHub()">← All industries</button><button onclick="goTab(\'dash\')">Main dashboard</button></div>';
-  html+='<h2>'+esc(ind.name)+' workspace</h2><div class="p"><b>'+esc(ind.description||'')+'</b><div class="note">This is the company selected industry workspace. The base CMMS records and security remain shared; these shortcuts organise the functions most relevant to this type of operation.</div>';
-  const focus=(ind.default_configuration&&ind.default_configuration.focus_areas)||[];
-  if(focus.length)html+='<div class="rl"><b>Industry focus:</b> '+esc(focus.join(' · '))+'</div>';
+  const theme=SF_INDUSTRY_THEMES[slug]||SF_INDUSTRY_THEMES['general-maintenance'];
+  html+='<h2 style="color:'+theme.ac+'">'+esc(ind.name)+' workspace</h2><div class="p" style="border-top:4px solid '+theme.ac+';background:linear-gradient(110deg,'+theme.bg+' 0%,var(--pn) 75%)"><b>'+esc(ind.description||'')+'</b><div class="note">This workspace uses the selected industry identity and its relevant operating shortcuts. Shared CMMS records, permissions and billing remain in the core application; only the industry-specific workflows listed below are presented as specialist operations.</div>';
+  const config=Object.assign({},ind.default_configuration||{},INDUSTRY_PROFILE?.configuration_overrides||{});
+  const focus=Array.isArray(config.focus_areas)?config.focus_areas:[];
+  const examples=Array.isArray(ind.business_examples)?ind.business_examples:[];
+  const terminology=config.terminology&&typeof config.terminology==='object'?config.terminology:{};
+  if(focus.length)html+='<div class="rl"><b>Industry operating scope:</b> '+esc(focus.join(' · '))+'</div>';
+  if(examples.length)html+='<div class="rl"><b>Business types:</b> '+esc(examples.join(' · '))+'</div>';
+  const terms=Object.entries(terminology);
+  if(terms.length)html+='<div class="rl"><b>Industry terminology:</b> '+terms.map(([key,value])=>'<span>'+esc(key.replace(/_/g,' '))+': '+esc(value)+'</span>').join(' · ')+'</div>';
   html+='</div><div class="dg">';
   const overrides=sfIndustryModuleOverrides();
-  sfIndustryModules(slug).filter(m=>!overrides.disabled.has(m[3])).forEach(m=>{const label=overrides.labels[m[3]]||m[1];html+='<div class="card"><div class="ct"><div>'+m[0]+' '+esc(label)+'</div></div><div class="note">'+esc(m[2])+'</div><div class="ca"><button class="b" onclick="goTab(\''+m[3]+'\')">Open</button></div></div>'});
+  sfIndustryModules(slug).filter(m=>!overrides.disabled.has(m[3])).forEach(m=>{const label=overrides.labels[m[3]]||m[1];html+='<div class="card" style="border-left-color:'+theme.ac+'"><div class="ct"><div style="color:'+theme.ac+'">'+m[0]+' '+esc(label)+'</div></div><div class="note">'+esc(m[2])+'</div><div class="ca"><button class="b" style="background:'+theme.ac+';border-color:'+theme.ac+'" onclick="goTab(\''+m[3]+'\')">Open</button></div></div>'});
   if(!sfIndustryModules(slug).some(m=>!overrides.disabled.has(m[3])))html+='<div class="p">All workspace shortcuts are currently hidden. A company manager can restore them in Industry profile.</div>';
   html+='</div>';
   if(slug==='logistics-transport')html+='<div class="p"><b>Connected logistics workflow</b><div class="note">Create a consignment, issue its waybill, record tracking scans as it moves through depots, and capture the receiving person and proof-of-delivery reference at delivery. Fleet GPS and vehicle maintenance remain available alongside parcel operations.</div></div>';

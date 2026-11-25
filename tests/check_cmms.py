@@ -892,7 +892,7 @@ for grant in re.findall(r"grant (?:select|insert|update) \((.*?)\) on table publ
     if "device_key" in grant:
         raise SystemExit("Vehicle device_key must not be included in authenticated column grants")
 for marker in [
-    "sb.from('vehicles').select('id,company_id,site_id,name,reg_no,odometer_km,next_service_km,status,make_model,vin,next_service_date,speed_limit,last_lat,last_lng,last_speed,last_seen,created_at')",
+    "sb.from('vehicles').select('id,company_id,site_id,name,reg_no,odometer_km,next_service_km,status,make_model,vin,next_service_date,license_expiry,speed_limit,last_lat,last_lng,last_speed,last_seen,created_at')",
     "sb.rpc('get_vehicle_device_keys',{p_site_id:site})",
     "deviceKey=x.device_key||''",
 ]:

@@ -11,8 +11,9 @@ const MODEL = env("ASSISTANT_MODEL") || "claude-haiku-5-5";
 const DAILY_LIMIT = Number(env("ASSISTANT_DAILY_LIMIT")) || 60;
 const MAX_STEPS = 6;
 const CONFIGURABLE_MODULES = ["work_orders","assets","service_contracts","stock_items","purchase_orders","customers","inv","suppliers","pm_schedules","chk","fleet","rep","ohs","damage_reports","shutdowns","logistics_ops"];
+const READ_ONLY_TABLES = ["stock_items"];
 const ALLOWED = [
-  "work_orders", "pm_schedules", "purchase_orders", "shutdowns", "damage_reports", "expenses", "customers",
+  "work_orders", "assets", "stock_items", "pm_schedules", "purchase_orders", "shutdowns", "damage_reports", "expenses", "customers",
   "suppliers", "vehicles", "workshop_jobs", "ohs_inspections", "ohs_hazards", "ohs_incidents", "ohs_ppe", "ohs_training",
   "ohs_regs", "fire_equipment", "fire_inspections", "checklist_templates",
 ];
@@ -48,6 +49,7 @@ How you work:
 - Be brief and clear, written for a phone screen. Short lists are fine. No long essays.
 - Use search_records to look things up before answering questions about their data. Never invent records, people, dates or numbers.
 - To create or change records call propose_create or propose_update. To tailor a company workspace, call propose_industry_customization only when the authenticated user is an owner or manager. These tools only queue proposals: the user taps Approve first. Say what you queued and ask them to approve it. Never say anything was created or changed before approval.
+- Stock records are searchable for availability and reorder questions, but are read-only through the assistant. Never propose stock quantity, cost or adjustment changes; direct the user to the audited Stock adjustment workflow.
 - Workspace customization may only hide supported shortcut modules or rename them. Never claim it changes access permissions, creates new software modules, or alters another company's setup.
 - Never delete anything. If asked to delete, explain they can delete it themselves in the app.
 - Use only the tables and fields in the schema. Dates are yyyy-mm-dd. Select fields must use one of the listed options exactly. For reference fields, find the id with search_records first.
@@ -100,6 +102,7 @@ async function runTool(name, input, st) {
   const needTable = ["search_records", "propose_create", "propose_update"].includes(name);
   if (needTable && (!ALLOWED.includes(table) || !schema[table])) return `Error: table "${table}" is not available. Use one of: ${Object.keys(schema).filter((t) => ALLOWED.includes(t)).join(", ")}`;
   const sch = needTable ? schema[table] : null;
+  if ((name === "propose_create" || name === "propose_update") && READ_ONLY_TABLES.includes(table)) return "Error: stock records can be searched, but stock quantity and value changes must use the audited stock adjustment workflow.";
 
   if (name === "search_records") {
     let q = sb.from(table).select("*").eq("company_id", ctx.company_id).limit(200);

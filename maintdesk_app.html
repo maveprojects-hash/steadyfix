@@ -214,6 +214,18 @@ header #site{min-width:130px;max-width:220px}header #site{display:none!important
 header>a{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:7px 12px;border:1px solid rgba(242,169,0,.35);border-radius:10px;background:rgba(242,169,0,.08);text-decoration:none;white-space:nowrap}
 @media(max-width:700px){header{gap:9px;padding:10px 12px}.sf-industry-quick{flex-direction:row;flex-wrap:nowrap;align-items:center;gap:8px;flex-basis:100%;min-width:0}.sf-industry-quick h1{font-size:clamp(14px,4.3vw,19px);flex:1 1 auto!important;min-width:0;white-space:nowrap}.sf-industry-quick-wrap{width:auto;flex:0 0 auto;max-width:none}.sf-industry-quick-btn{width:auto;min-width:0;justify-content:center;gap:6px;padding:7px 10px;font-size:11px;white-space:nowrap}header #site{flex:1;min-width:0;max-width:none}header>a{flex:1}}
 @media(max-width:420px){header{padding:9px 10px}.sf-industry-quick h1{font-size:17px}header #site,header>a{font-size:12px}}
+
+/* Industry workspace identity follows the company's selected profile across all departments. */
+header{border-bottom:3px solid var(--ac)}
+.sf-industry-quick-btn{border-color:color-mix(in srgb,var(--am) 58%,transparent);background:color-mix(in srgb,var(--am) 13%,transparent)}
+.sf-industry-quick-btn:hover{background:color-mix(in srgb,var(--am) 22%,transparent);border-color:var(--am)}
+.sf-industry-quick-btn:focus-visible{outline-color:var(--am)}
+.sf-industry-quick-option:hover,.sf-industry-quick-option:focus-visible{background:color-mix(in srgb,var(--am) 15%,transparent)}
+.sf-industry-quick-option[aria-selected=true]{background:color-mix(in srgb,var(--am) 20%,transparent);color:var(--am)}
+.sf-quick-group-industry{border-top-color:color-mix(in srgb,var(--am) 24%,transparent)}
+#v>h2:first-child{padding-bottom:7px;border-bottom:3px solid color-mix(in srgb,var(--ac) 72%,transparent)}
+#v .k{border-left-color:var(--ac)}
+#v button:focus-visible,#v a:focus-visible{outline-color:var(--am)}
 </style><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1b2831"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><link rel="stylesheet" href="communication.css"></head><body>
 <header><div class="sf-industry-quick"><h1>STEADYFIX CMMS<span class="sl">Maintain excellence.</span></h1><a href="maintdesk_login.html">Team &amp; sites</a></div><div class="notif-wrap"><button id="notifBtn" class="notif-btn" type="button" onclick="openCommunicationCentre()" aria-label="Notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span id="notifCount" hidden>0</span></button><div id="notifPanel" class="notif-panel" hidden><div class="notif-head"><b>Notifications</b><button type="button" onclick="markAllNotificationsRead()">Mark all read</button></div><div id="notifList" class="notif-list">Loading…</div><div class="notif-foot"><button type="button" onclick="enableDesktopNotifications()">Enable desktop alerts</button></div></div></div><select id="industryProfileSelect" hidden aria-hidden="true" tabindex="-1"></select><select id="site" hidden aria-hidden="true" tabindex="-1"></select><div class="sf-industry-quick-wrap"><button id="industryQuickAccessBtn" class="sf-industry-quick-btn" type="button" onclick="toggleIndustryQuickAccess()" aria-haspopup="listbox" aria-expanded="false" aria-controls="industryQuickAccessMenu"><span>Industry quick access</span><span class="sf-industry-quick-chevron" aria-hidden="true">▾</span></button><div id="industryQuickAccessMenu" class="sf-industry-quick-menu" role="listbox" aria-label="Choose industry workspace" hidden></div></div></header>
 <nav id="nav"></nav><main id="v">Loading…</main>
@@ -445,7 +457,7 @@ function buildNav(){
 }
 
 let MT;
-async function draw(){clearInterval(MT);if(LOCK&&!['sub','sup','set','inbox','act'].includes(cur))cur='sub';[...$('nav').children].forEach(b=>b.classList.toggle('on',b.dataset.t==cur));{const a=$('nav').querySelector('.on');if(a&&a.scrollIntoView)try{a.scrollIntoView({inline:'center',block:'nearest'})}catch(e){}}V.innerHTML='Loading…';
+async function draw(){if(typeof applyIndustryTheme==='function')applyIndustryTheme();clearInterval(MT);if(LOCK&&!['sub','sup','set','inbox','act'].includes(cur))cur='sub';[...$('nav').children].forEach(b=>b.classList.toggle('on',b.dataset.t==cur));{const a=$('nav').querySelector('.on');if(a&&a.scrollIntoView)try{a.scrollIntoView({inline:'center',block:'nearest'})}catch(e){}}V.innerHTML='Loading…';
  try{V.innerHTML=cur=='industry'?await industryProfile():cur=='industry_hub'?await sfIndustryHub():cur=='industry_workspace'?await sfIndustryWorkspace():cur=='comms'?await communicationCentre():cur=='dash'?await dash():cur=='rep'?await rep():cur=='mon'?await mon():cur=='soft'?await soft():cur=='bud'?await bud():cur=='inv'?await inv():cur=='sup'?await sup():cur=='inbox'?await inbox():cur=='ohs'?await ohs():cur=='fleet'?await fleet():cur=='act'?await activity():cur=='shifts'?await ros():cur=='set'?settings():cur=='chk'?await chk():cur=='sub'?await sub():await mod(cur);if(cur=='comms')renderNotificationSettings();if(cur=='sub')pay();if(cur=='mon')MT=setInterval(()=>{const a=document.activeElement;if(cur!='mon'||(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName))||document.querySelector('details[open]'))return;draw()},30000)}catch(e){V.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}}
 
 const goTab=t=>{cur=t;draw()};

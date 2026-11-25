@@ -787,6 +787,7 @@ if '"workshop_jobs"' not in allowed_block:
     raise SystemExit("iAssistant UI offers workshop job cards but the server tool allowlist blocks workshop_jobs")
 print("iAssistant workshop job-card tool availability: PASS")
 
+assistant_ui = (root / "maintdesk_app.html").read_text(encoding="utf-8")
 if '"assets"' not in allowed_block or '"stock_items"' not in allowed_block:
     raise SystemExit("iAssistant must be able to search assets and stock records")
 if 'const READ_ONLY_TABLES = ["stock_items"]' not in assistant_endpoint:

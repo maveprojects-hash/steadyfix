@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "maintdesk_app.html"
+      - "maintdesk_login.html"
+      - "industry_workspaces.js"
       - "communication.js"
       - "communication.css"
       - "supabase/migrations/**"

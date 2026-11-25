@@ -710,3 +710,17 @@ allowed_block = assistant_endpoint[allowed_start:allowed_end] if allowed_start >
 if '"workshop_jobs"' not in allowed_block:
     raise SystemExit("iAssistant UI offers workshop job cards but the server tool allowlist blocks workshop_jobs")
 print("iAssistant workshop job-card tool availability: PASS")
+
+
+# iAssistant must not report an approved update as successful when no scoped row was changed.
+assistant_ui = (root / "maintdesk_app.html").read_text(encoding="utf-8")
+approval_start = assistant_ui.find("async function aiApply(p){")
+approval_end = assistant_ui.find("async function aiApprove(id,quiet)", approval_start)
+approval_block = assistant_ui[approval_start:approval_end] if approval_start >= 0 and approval_end >= 0 else ""
+for marker in [
+    "await q.select('id').maybeSingle()",
+    "if(!updated)throw new Error('The record was not found or is no longer available for this company/site. Nothing was changed.')",
+]:
+    if marker not in approval_block:
+        raise SystemExit(f"iAssistant approval confirmation safeguard missing: {marker}")
+print("iAssistant approved-update database confirmation: PASS")

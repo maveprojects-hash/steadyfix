@@ -787,6 +787,29 @@ if '"workshop_jobs"' not in allowed_block:
     raise SystemExit("iAssistant UI offers workshop job cards but the server tool allowlist blocks workshop_jobs")
 print("iAssistant workshop job-card tool availability: PASS")
 
+assistant_ui = (root / "maintdesk_app.html").read_text(encoding="utf-8")
+if '"assets"' not in allowed_block or '"stock_items"' not in allowed_block:
+    raise SystemExit("iAssistant must be able to search assets and stock records")
+if 'const READ_ONLY_TABLES = ["stock_items"]' not in assistant_endpoint:
+    raise SystemExit("iAssistant stock records must remain read-only outside the audited adjustment workflow")
+if 'READ_ONLY_TABLES.includes(table)' not in assistant_endpoint:
+    raise SystemExit("iAssistant server must reject direct stock create/update proposals")
+if "Stock quantities and values must be changed through the audited Stock adjustment workflow." not in assistant_ui:
+    raise SystemExit("iAssistant UI must prevent direct stock writes")
+if "const AIT=['work_orders','assets','stock_items'" not in assistant_ui:
+    raise SystemExit("iAssistant UI does not expose asset and stock lookup schemas")
+
+for marker in [
+    'sb.from("stock_levels").select("item_id,on_hand")',
+    '.eq("company_id", ctx.company_id)',
+    'levelsQuery.eq("site_id", ctx.site_id)',
+    'derivedFields = table === "stock_items"',
+    'row.on_hand',
+]:
+    if marker not in assistant_endpoint:
+        raise SystemExit(f"iAssistant stock lookup is missing scoped quantity support: {marker}")
+
+
 
 # iAssistant must not report an approved update as successful when no scoped row was changed.
 assistant_ui = (root / "maintdesk_app.html").read_text(encoding="utf-8")

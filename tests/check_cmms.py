@@ -740,7 +740,8 @@ assistant_endpoint = (root / "supabase/functions/smart-endpoint/index.ts").read_
 for marker in [
     'const selectedColumns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"',
     '.select(selectedColumns).eq("company_id", ctx.company_id).limit(200)',
-    'select("*").eq("company_id", ctx.company_id).limit(500)',
+    'const columns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"',
+    '.select(columns).eq("company_id", ctx.company_id).limit(500)',
     '.eq("company_id", company_id).order("created_at"',
     '.eq("company_id", ctx.company_id).select("id")',
 ]:

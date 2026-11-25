@@ -1007,3 +1007,12 @@ if "[{slug:'hospitality-tourism',name:'Hospitality & Tourism'}]" not in login_ht
 if "x.slug==='hospitality-tourism'?'selected':'')" not in login_html:
     raise SystemExit("Hospitality must be the default onboarding selection while customers can choose another industry")
 print("Hospitality base workspace default and customer-selectable industry onboarding: PASS")
+ 
+# Industry default migration is additive and must not rewrite existing company selections.
+from pathlib import Path
+migration_default_sql = Path("supabase/migrations/20261125160000_hospitality_default_for_new_companies.sql").read_text()
+if "alter column primary_industry_slug set default 'hospitality-tourism'" not in migration_default_sql:
+    raise SystemExit("New company industry database default must be Hospitality & Tourism")
+if "values (new.id, 'hospitality-tourism')" not in migration_default_sql:
+    raise SystemExit("New company creation trigger must create a Hospitality industry profile")
+print("Database-level Hospitality default for new companies: PASS")

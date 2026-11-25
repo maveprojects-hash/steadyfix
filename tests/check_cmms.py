@@ -738,7 +738,8 @@ print("Quote/invoice edits, status changes, duplication and deletion company/sit
 # iAssistant data reads and approved writes must be explicitly tenant/site scoped.
 assistant_endpoint = (root / "supabase/functions/smart-endpoint/index.ts").read_text(encoding="utf-8")
 for marker in [
-    'const selectedColumns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"',
+    'const selectedColumns = table === "sensors"',
+    'table === "vehicles"',
     '.select(selectedColumns).eq("company_id", ctx.company_id).limit(200)',
     'const columns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"',
     '.select(columns).eq("company_id", ctx.company_id).limit(500)',
@@ -851,8 +852,10 @@ for marker in [
         raise SystemExit(f"Monitoring manager-only credential control is missing: {marker}")
 if "sb.from('sensors').select('*')" in assistant_ui or "s.device_key" in assistant_ui:
     raise SystemExit("Monitoring UI must not fetch or render device keys from ordinary sensor rows")
-if 'table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"' not in assistant_endpoint:
+if 'table === "sensors"' not in assistant_endpoint or 'alert_max,created_at' not in assistant_endpoint:
     raise SystemExit("iAssistant sensor queries must not select private device_key values")
+if 'table === "vehicles"' not in assistant_endpoint or 'last_seen,created_at' not in assistant_endpoint:
+    raise SystemExit("iAssistant vehicle queries must not select private GPS device_key values")
 sensor_column_migration = root / "supabase" / "migrations" / "20261125090500_sensor_column_privileges.sql"
 if not sensor_column_migration.exists():
     raise SystemExit("Missing sensor least-privilege column grant migration")
@@ -869,6 +872,36 @@ for marker in [
 for grant in re.findall(r"grant (?:select|insert|update) \((.*?)\) on table public.sensors", sensor_column_sql, re.S):
     if "device_key" in grant:
         raise SystemExit("Sensor device_key must not be included in authenticated column grants")
+vehicle_security_migration = root / "supabase" / "migrations" / "20261125091000_vehicle_device_key_manager_access.sql"
+if not vehicle_security_migration.exists():
+    raise SystemExit("Missing vehicle device-key access-control migration")
+vehicle_security_sql = vehicle_security_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "revoke all privileges on table public.vehicles from authenticated",
+    "add column if not exists license_expiry date",
+    "grant select (",
+    "grant insert (",
+    "grant update (",
+    "grant delete on table public.vehicles to authenticated",
+    "create or replace function public.get_vehicle_device_keys",
+    "public.auth_role() not in ('owner','manager')",
+    "grant execute on function public.get_vehicle_device_keys(uuid) to authenticated",
+    "revoke all on function public.get_vehicle_device_keys(uuid) from public, anon",
+]:
+    if marker not in vehicle_security_sql:
+        raise SystemExit(f"Vehicle credential access control is missing: {marker}")
+for grant in re.findall(r"grant (?:select|insert|update) \((.*?)\) on table public.vehicles", vehicle_security_sql, re.S):
+    if "device_key" in grant:
+        raise SystemExit("Vehicle device_key must not be included in authenticated column grants")
+for marker in [
+    "sb.from('vehicles').select('id,company_id,site_id,name,reg_no,odometer_km,next_service_km,status,make_model,vin,next_service_date,license_expiry,speed_limit,last_lat,last_lng,last_speed,last_seen,created_at')",
+    "sb.rpc('get_vehicle_device_keys',{p_site_id:site})",
+    "deviceKey=x.device_key||''",
+]:
+    if marker not in assistant_ui:
+        raise SystemExit(f"Fleet manager-only device key retrieval is missing: {marker}")
+if "sb.from('vehicles').select('*')" in assistant_ui or '"p_key":"${x.device_key}"' in assistant_ui:
+    raise SystemExit("Fleet UI must not fetch or render vehicle keys from ordinary vehicle rows")
 if "['sensors','readings'].includes(p.table)" not in assistant_ui:
     raise SystemExit("iAssistant UI must prevent sensor writes")
 if '"assets"' not in allowed_block or '"stock_items"' not in allowed_block:

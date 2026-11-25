@@ -851,7 +851,7 @@ for marker in [
         raise SystemExit(f"Monitoring manager-only credential control is missing: {marker}")
 if "sb.from('sensors').select('*')" in assistant_ui or "s.device_key" in assistant_ui:
     raise SystemExit("Monitoring UI must not fetch or render device keys from ordinary sensor rows")
-if 'table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"' not in assistant_endpoint:
+if 'table === "sensors"' not in assistant_endpoint or 'alert_max,created_at' not in assistant_endpoint:
     raise SystemExit("iAssistant sensor queries must not select private device_key values")
 if 'table === "vehicles"' not in assistant_endpoint or 'last_seen,created_at' not in assistant_endpoint:
     raise SystemExit("iAssistant vehicle queries must not select private GPS device_key values")

@@ -724,3 +724,14 @@ for marker in [
     if marker not in approval_block:
         raise SystemExit(f"iAssistant approval confirmation safeguard missing: {marker}")
 print("iAssistant approved-update database confirmation: PASS")
+
+
+# Industry hub and selected workspace must be reachable through the main screen router.
+main_app = (root / "maintdesk_app.html").read_text(encoding="utf-8")
+for marker in [
+    "cur=='industry_hub'?await sfIndustryHub()",
+    "cur=='industry_workspace'?await sfIndustryWorkspace()",
+]:
+    if marker not in main_app:
+        raise SystemExit(f"Industry workspace screen routing regression marker missing: {marker}")
+print("Industry hub and selected workspace screen routing: PASS")

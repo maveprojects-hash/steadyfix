@@ -439,6 +439,14 @@ for marker in quick_access_markers:
     if marker not in html:
         raise SystemExit(f"Quick Access dropdown regression marker missing: {marker}")
 print("Industry Quick Access dropdown rendering, navigation, keyboard and dismissal: PASS")
+# Quick Access industry changes must verify persistence and rebuild industry-dependent navigation.
+choose_start = workspace_code.index("async function chooseIndustryWorkspace(slug){")
+choose_end = workspace_code.index("\nasync function sfIndustryHub()", choose_start)
+choose_function = workspace_code[choose_start:choose_end]
+for marker in ["select('company_id,primary_industry_slug').maybeSingle()", "data.primary_industry_slug!==slug", "await loadIndustryProfile();renderIndustrySelector();", "buildNav();", "cur='industry_workspace';draw();"]:
+    if marker not in choose_function:
+        raise SystemExit(f"Quick Access industry-switch regression marker missing: {marker}")
+print("Quick Access industry persistence verification and navigation refresh: PASS")
 
 # Changing a primary industry must refresh dashboard-dependent industry content.
 save_start = html.index("async function savePrimaryIndustry(slug){")

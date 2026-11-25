@@ -738,7 +738,8 @@ print("Quote/invoice edits, status changes, duplication and deletion company/sit
 # iAssistant data reads and approved writes must be explicitly tenant/site scoped.
 assistant_endpoint = (root / "supabase/functions/smart-endpoint/index.ts").read_text(encoding="utf-8")
 for marker in [
-    'select("*").eq("company_id", ctx.company_id).limit(200)',
+    'const selectedColumns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"',
+    '.select(selectedColumns).eq("company_id", ctx.company_id).limit(200)',
     'select("*").eq("company_id", ctx.company_id).limit(500)',
     '.eq("company_id", company_id).order("created_at"',
     '.eq("company_id", ctx.company_id).select("id")',
@@ -801,7 +802,7 @@ for marker in [
 ]:
     if marker not in assistant_endpoint:
         raise SystemExit(f"iAssistant sensor monitoring lookup is missing safe scoping: {marker}")
-if "That feed is the next build step" in assistant_ui or "Live readings are already supported" not in assistant_ui:
+if "That feed is the next build step" in assistant_ui or "Live readings are received through each device private key" not in assistant_ui:
     raise SystemExit("Monitoring setup note must accurately describe the existing live reading ingestion path")
 if "Sensor registrations and recorded measurements are searchable" not in assistant_endpoint:
     raise SystemExit("iAssistant must describe sensor monitoring as read-only and avoid claiming live ingestion")
@@ -820,6 +821,37 @@ for marker in [
         raise SystemExit(f"iAssistant sensor field privacy guard missing: {marker}")
 if 'device_key' in assistant_endpoint[assistant_endpoint.index('const SERVER_FIELD_ALLOWLIST'):assistant_endpoint.index('const prof =')]:
     raise SystemExit("iAssistant sensor server allowlist must not expose device_key")
+sensor_security_migration = root / "supabase" / "migrations" / "20261125090000_sensor_device_key_manager_access.sql"
+if not sensor_security_migration.exists():
+    raise SystemExit("Missing sensor device-key access-control migration")
+sensor_security_sql = sensor_security_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "revoke select (device_key)",
+    "drop policy if exists tenant_site on public.sensors",
+    "create policy tenant_site_read",
+    "create policy tenant_site_manager_write",
+    "public.auth_role() in ('owner','manager')",
+    "create or replace function public.get_sensor_device_keys",
+    "grant execute on function public.get_sensor_device_keys(uuid) to authenticated",
+    "revoke all on function public.get_sensor_device_keys(uuid) from public, anon",
+]:
+    if marker not in sensor_security_sql:
+        raise SystemExit(f"Sensor credential access control is missing: {marker}")
+for marker in [
+    "select('id,site_id,name,kind,unit,alert_min,alert_max,created_at')",
+    "sb.rpc('get_sensor_device_keys',{p_site_id:site})",
+    "isMgr()?",
+    "Connect this device",
+    "async function addS(){if(!isMgr())return;",
+    "async function updS(id,f,v,t){if(!isMgr())return;",
+    "async function delS(id){if(!isMgr())return;",
+]:
+    if marker not in assistant_ui:
+        raise SystemExit(f"Monitoring manager-only credential control is missing: {marker}")
+if "sb.from('sensors').select('*')" in assistant_ui or "s.device_key" in assistant_ui:
+    raise SystemExit("Monitoring UI must not fetch or render device keys from ordinary sensor rows")
+if 'table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"' not in assistant_endpoint:
+    raise SystemExit("iAssistant sensor queries must not select private device_key values")
 if "['sensors','readings'].includes(p.table)" not in assistant_ui:
     raise SystemExit("iAssistant UI must prevent sensor writes")
 if '"assets"' not in allowed_block or '"stock_items"' not in allowed_block:

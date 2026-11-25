@@ -788,9 +788,37 @@ if '"workshop_jobs"' not in allowed_block:
 print("iAssistant workshop job-card tool availability: PASS")
 
 assistant_ui = (root / "maintdesk_app.html").read_text(encoding="utf-8")
+if '"sensors"' not in allowed_block or '"readings"' not in allowed_block:
+    raise SystemExit("iAssistant must be able to search sensor configuration and readings")
+if 'const READ_ONLY_TABLES = ["stock_items", "sensors", "readings"]' not in assistant_endpoint:
+    raise SystemExit("iAssistant must keep sensor configuration and readings read-only")
+for marker in [
+    'sb.from("sensors").select("id,name,kind,unit")',
+    'sb.from("readings").select("id,sensor_id,value,read_at")',
+    '.eq("company_id", ctx.company_id).in("sensor_id", ids)',
+    'sensorQuery.eq("site_id", ctx.site_id)',
+    'sensor_name: sensor.name',
+]:
+    if marker not in assistant_endpoint:
+        raise SystemExit(f"iAssistant sensor monitoring lookup is missing safe scoping: {marker}")
+if "T.readings={label:'Sensor readings'" not in assistant_ui:
+    raise SystemExit("iAssistant sensor readings schema is missing")
+
+for marker in [
+    'const SERVER_FIELD_ALLOWLIST = {',
+    'sensors: ["name", "kind", "unit", "alert_min", "alert_max"]',
+    'readings: ["sensor_id", "sensor_name", "sensor_kind", "value", "unit", "read_at"]',
+    '.filter((field) => field && safe.has(field.k))',
+]:
+    if marker not in assistant_endpoint:
+        raise SystemExit(f"iAssistant sensor field privacy guard missing: {marker}")
+if 'device_key' in assistant_endpoint[assistant_endpoint.index('const SERVER_FIELD_ALLOWLIST'):assistant_endpoint.index('const prof =')]:
+    raise SystemExit("iAssistant sensor server allowlist must not expose device_key")
+if "['sensors','readings'].includes(p.table)" not in assistant_ui:
+    raise SystemExit("iAssistant UI must prevent sensor writes")
 if '"assets"' not in allowed_block or '"stock_items"' not in allowed_block:
     raise SystemExit("iAssistant must be able to search assets and stock records")
-if 'const READ_ONLY_TABLES = ["stock_items"]' not in assistant_endpoint:
+if 'const READ_ONLY_TABLES = ["stock_items", "sensors", "readings"]' not in assistant_endpoint:
     raise SystemExit("iAssistant stock records must remain read-only outside the audited adjustment workflow")
 if 'READ_ONLY_TABLES.includes(table)' not in assistant_endpoint:
     raise SystemExit("iAssistant server must reject direct stock create/update proposals")

@@ -818,7 +818,7 @@ if "['sensors','readings'].includes(p.table)" not in assistant_ui:
     raise SystemExit("iAssistant UI must prevent sensor writes")
 if '"assets"' not in allowed_block or '"stock_items"' not in allowed_block:
     raise SystemExit("iAssistant must be able to search assets and stock records")
-if 'const READ_ONLY_TABLES = ["stock_items"]' not in assistant_endpoint:
+if 'const READ_ONLY_TABLES = ["stock_items", "sensors", "readings"]' not in assistant_endpoint:
     raise SystemExit("iAssistant stock records must remain read-only outside the audited adjustment workflow")
 if 'READ_ONLY_TABLES.includes(table)' not in assistant_endpoint:
     raise SystemExit("iAssistant server must reject direct stock create/update proposals")

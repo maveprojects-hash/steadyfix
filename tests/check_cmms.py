@@ -142,13 +142,10 @@ for marker in [
     "cmms_company_live_sync_read",
     "realtime.topic()",
     "p.active = true",
+    "a.attname = 'company_id'",
+    "c.relrowsecurity",
     "after insert or update or delete",
-    "work_orders",
-    "assets",
-    "stock_items",
-    "purchase_orders",
-    "workshop_jobs",
-    "logistics_shipments",
+    "messages','notifications','company_conversations','conversation_members",
 ]:
     if marker.lower() not in live_sql:
         raise SystemExit(f"Missing tenant-safe live publication setup: {marker}")

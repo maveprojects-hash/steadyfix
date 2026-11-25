@@ -65,8 +65,8 @@ function auth(){
 async function setup(){
  app.classList.remove('company-home');
  const{data:industryRows}=await sb.from('industry_catalog').select('slug,name').eq('is_active',true).order('sort_order');
- const choices=(industryRows&&industryRows.length?industryRows:[{slug:'general-maintenance',name:'General Maintenance & Multi-service'}]);
- const industryOptions=choices.map(x=>'<option value="'+x.slug+'" '+(x.slug==='general-maintenance'?'selected':'')+'>'+x.name+'</option>').join('');
+ const choices=(industryRows&&industryRows.length?industryRows:[{slug:'hospitality-tourism',name:'Hospitality & Tourism'}]);
+ const industryOptions=choices.map(x=>'<option value="'+x.slug+'" '+(x.slug==='hospitality-tourism'?'selected':'')+'>'+x.name+'</option>').join('');
  app.innerHTML=head('Set up your account','Create a new company, or join one with an invite code.')+
  '<input id="nm" placeholder="Your full name"><div class="err" id="e"></div>'+
  '<input id="co" placeholder="Company name"><input id="st" placeholder="First site name (e.g. Head office)">'+

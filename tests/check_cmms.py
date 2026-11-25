@@ -802,7 +802,7 @@ for marker in [
 ]:
     if marker not in assistant_endpoint:
         raise SystemExit(f"iAssistant sensor monitoring lookup is missing safe scoping: {marker}")
-if "That feed is the next build step" in assistant_ui or "Live readings are already supported" not in assistant_ui:
+if "That feed is the next build step" in assistant_ui or "Live readings are received through each device private key" not in assistant_ui:
     raise SystemExit("Monitoring setup note must accurately describe the existing live reading ingestion path")
 if "Sensor registrations and recorded measurements are searchable" not in assistant_endpoint:
     raise SystemExit("iAssistant must describe sensor monitoring as read-only and avoid claiming live ingestion")

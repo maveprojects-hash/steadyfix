@@ -11,9 +11,9 @@ const MODEL = env("ASSISTANT_MODEL") || "claude-haiku-5-5";
 const DAILY_LIMIT = Number(env("ASSISTANT_DAILY_LIMIT")) || 60;
 const MAX_STEPS = 6;
 const CONFIGURABLE_MODULES = ["work_orders","assets","service_contracts","stock_items","purchase_orders","customers","inv","suppliers","pm_schedules","chk","fleet","rep","ohs","damage_reports","shutdowns","logistics_ops"];
-const READ_ONLY_TABLES = ["stock_items"];
+const READ_ONLY_TABLES = ["stock_items", "sensors", "readings"];
 const ALLOWED = [
-  "work_orders", "assets", "stock_items", "pm_schedules", "purchase_orders", "shutdowns", "damage_reports", "expenses", "customers",
+  "work_orders", "assets", "stock_items", "sensors", "readings", "pm_schedules", "purchase_orders", "shutdowns", "damage_reports", "expenses", "customers",
   "suppliers", "vehicles", "workshop_jobs", "ohs_inspections", "ohs_hazards", "ohs_incidents", "ohs_ppe", "ohs_training",
   "ohs_regs", "fire_equipment", "fire_inspections", "checklist_templates",
 ];
@@ -104,6 +104,35 @@ async function runTool(name, input, st) {
   const sch = needTable ? schema[table] : null;
   if ((name === "propose_create" || name === "propose_update") && READ_ONLY_TABLES.includes(table)) return "Error: stock records can be searched, but stock quantity and value changes must use the audited stock adjustment workflow.";
 
+  if (name === "search_records" && table === "readings") {
+    let sensorQuery = sb.from("sensors").select("id,name,kind,unit")
+      .eq("company_id", ctx.company_id);
+    if (ctx.site_id) sensorQuery = sensorQuery.eq("site_id", ctx.site_id);
+    const sensorResult = await sensorQuery.limit(500);
+    if (sensorResult.error) return `Error reading site sensors: ${sensorResult.error.message}`;
+    let sensors = sensorResult.data || [];
+    if (input.where && input.where.sensor_id) sensors = sensors.filter((x) => String(x.id) === String(input.where.sensor_id));
+    if (input.contains) {
+      const needle = String(input.contains).toLowerCase();
+      sensors = sensors.filter((x) => [x.name, x.kind, x.unit].some((v) => String(v || "").toLowerCase().includes(needle)));
+    }
+    const ids = sensors.map((x) => x.id);
+    if (!ids.length) return JSON.stringify({ count: 0, rows: [] });
+    let readingsQuery = sb.from("readings").select("id,sensor_id,value,read_at")
+      .eq("company_id", ctx.company_id).in("sensor_id", ids)
+      .order("read_at", { ascending: false });
+    if (input.where && input.where.value !== undefined) readingsQuery = readingsQuery.eq("value", input.where.value);
+    if (input.where && input.where.read_at !== undefined) readingsQuery = readingsQuery.eq("read_at", input.where.read_at);
+    const readingsResult = await readingsQuery.limit(Math.min(Number(input.limit) || 25, 100));
+    if (readingsResult.error) return `Error reading sensor measurements: ${readingsResult.error.message}`;
+    const sensorById = new Map(sensors.map((x) => [String(x.id), x]));
+    const rows = (readingsResult.data || []).map((r) => {
+      const sensor = sensorById.get(String(r.sensor_id)) || {};
+      return { id: r.id, sensor_id: r.sensor_id, sensor_name: sensor.name || null,
+        sensor_kind: sensor.kind || null, value: Number(r.value), unit: sensor.unit || null, read_at: r.read_at };
+    });
+    return JSON.stringify({ count: rows.length, rows });
+  }
   if (name === "search_records") {
     let q = sb.from(table).select("*").eq("company_id", ctx.company_id).limit(200);
     if (sch.site && ctx.site_id) q = q.eq("site_id", ctx.site_id);

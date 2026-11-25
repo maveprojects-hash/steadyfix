@@ -220,8 +220,21 @@ Deno.serve(async (req) => {
     for (const t of ALLOWED) if (body.schema && body.schema[t]) schema[t] = body.schema[t];
 
     const prof = await sb.from("profiles").select("company_id,role,full_name").eq("id", user.id).single();
+    if (prof.error) return json({ error: "Could not verify your company profile." }, 403);
     const company_id = prof.data && prof.data.company_id;
     if (!company_id) return json({ error: "No company found for this login." }, 400);
+
+    // Resolve the active site through the authenticated user's RLS-protected session.
+    // Never trust a browser-supplied site name or use an unverified site identifier as context.
+    const requestedSiteId = typeof body.site_id === "string" ? body.site_id.trim() : "";
+    let activeSite = null;
+    if (requestedSiteId) {
+      const siteResult = await sb.from("sites").select("id,name")
+        .eq("id", requestedSiteId).maybeSingle();
+      if (siteResult.error) return json({ error: "Could not verify the selected site." }, 403);
+      if (!siteResult.data) return json({ error: "The selected site is unavailable for this account. Refresh the app and try again." }, 403);
+      activeSite = siteResult.data;
+    }
 
     const start = new Date(); start.setUTCHours(0, 0, 0, 0);
     const used = await sb.from("assistant_usage").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", start.toISOString());
@@ -244,7 +257,7 @@ Deno.serve(async (req) => {
       configuration_overrides: industryProfileRow.configuration_overrides || {},
       config_version: industryProfileRow.config_version,
     } : null;
-    const ctx = { today: String(body.today || new Date().toISOString().slice(0, 10)).slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: body.site_id || null, site_name: String(body.site_name || "").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
+    const ctx = { today: new Date().toISOString().slice(0, 10), user_name: String(prof.data.full_name || "").slice(0, 80), role: String(prof.data.role || "").slice(0, 20), site_id: activeSite?.id || null, site_name: String(activeSite?.name || "their site").slice(0, 80), company_id, user_id: user.id, industry_profile: industryProfile };
     const st = { sb, schema, ctx, memory: mem.data || [], proposals: [], remembered: [] };
 
     const convo = messages.map((m) => ({ role: m.role, content: m.content }));

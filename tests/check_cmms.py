@@ -153,6 +153,38 @@ for marker in [
         raise SystemExit(f"Missing tenant-safe live publication setup: {marker}")
 
 
+# Industry-specific colour identity is applied to the entire shared CMMS.
+industry_js = root / "industry_workspaces.js"
+if not industry_js.exists():
+    raise SystemExit("Missing industry workspace module")
+subprocess.run(["node", "--check", str(industry_js)], check=True)
+industry_code = industry_js.read_text(encoding="utf-8")
+for marker in [
+    "SF_INDUSTRY_THEMES",
+    "function applyIndustryTheme()",
+    "document.body.dataset.industryTheme",
+    "meta[name=\"theme-color\"]",
+    "automation: {",
+    "'fleet-management':",
+    "workshops:",
+    "'logistics-transport':",
+    "'hospitality-tourism':",
+    "'food-beverage':",
+    "'property-management-facilities':",
+    "'manufacturing-industrial':",
+    "'general-maintenance':",
+]:
+    if marker not in industry_code:
+        raise SystemExit(f"Missing industry visual identity: {marker}")
+for marker in [
+    "applyIndustryTheme==='function'",
+    "border-bottom:3px solid var(--ac)",
+    "color-mix(in srgb,var(--am)",
+]:
+    if marker not in html:
+        raise SystemExit(f"Industry palette is not applied in the CMMS UI: {marker}")
+
+
 communication_migration = next((root / "supabase" / "migrations").glob("*_company_communication_centre.sql"))
 comm_sql = communication_migration.read_text(encoding="utf-8").lower()
 for marker in [

@@ -908,6 +908,16 @@ for marker in [
 if "F('unit','Unit','t')" not in assistant_ui:
     raise SystemExit("Assistant stock lookup schema must expose the stock unit")
 for marker in [
+    'const columns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"',
+    'get("sensor_alerts", "sensors"',
+    'sb.from("readings")',
+    '.in("sensor_id", sensorIds).order("read_at", { ascending: false }).limit(5000)',
+    'sensor.alert_min',
+    'sensor.alert_max',
+]:
+    if marker not in assistant_endpoint:
+        raise SystemExit(f"iAssistant attention summary is missing site-scoped sensor alert support: {marker}")
+for marker in [
     'get("low_stock_items", "stock_items"',
     'await build(data || [])',
     'sb.from("stock_levels").select("item_id,on_hand")',

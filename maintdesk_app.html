@@ -379,7 +379,7 @@ async function industryProfile(){
   '<label class="el">Other activities / secondary industries<select id="industrySecondary" multiple size="5">'+secondaryOptions+'</select></label>'+
   '<div class="note">Choose more than one secondary activity where applicable. The primary industry is excluded automatically.</div>'+
   '<label class="el">Describe your company and how it operates<textarea id="industryDescription" maxlength="4000" placeholder="For example: We service copier machines at customer sites, manage service contracts, track device meter readings and keep toner and spare parts in stock.">'+esc(p.business_description||'')+'</textarea></label>'+
-  '<button class="b" onclick="saveIndustryProfile()">Save company profile</button></div>'+
+  '<button class="b" id="industrySaveBtn" onclick="saveIndustryProfile()">Save company profile</button></div>'+
   '<div class="p"><b>'+(primary?esc(primary.name):'Industry template')+'</b><div class="note">'+esc(primary?.description||'')+'</div>'+
   (examples.length?'<div class="note"><b>Typical operations:</b> '+examples.map(esc).join(' · ')+'</div>':'')+
   (focus.length?'<div class="note"><b>Operational focus areas:</b> '+focus.map(esc).join(' · ')+'</div>':'')+

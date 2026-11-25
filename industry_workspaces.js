@@ -87,6 +87,35 @@ function sfIndustryModules(slug){
   return all[slug]||all['general-maintenance'];
 }
 
+async function sfAddIndustryStarterChecklists(){
+  const slug=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug;
+  const packs={
+    'food-beverage':[
+      ['Kitchen equipment opening checks','daily',['Confirm refrigeration and freezer units are running and free from visible damage','Check cooking equipment, extraction and ventilation for visible faults','Check dishwashing and sanitation equipment is operational','Check floors, drains and work areas are clean and unobstructed','Record defects and raise a maintenance work order','Confirm urgent equipment faults have been escalated']],
+      ['Food venue weekly maintenance walk-through','weekly',['Inspect refrigeration door seals, hinges and condensate drains','Inspect cooking equipment, controls and safety guards','Inspect extraction filters and ventilation access','Inspect taps, sinks, drains and hot-water equipment','Inspect cold-room doors, lighting and floor condition','Review open maintenance tasks and overdue servicing']]
+    ],
+    'manufacturing-industrial':[
+      ['Production shift-start equipment checks','daily',['Inspect machine guards, interlocks and emergency stops before operation','Check for abnormal noise, vibration, leaks or visible damage','Confirm critical utilities and services are available','Check lubrication points and levels against the equipment instructions','Record defects and isolate unsafe equipment under site procedures','Raise or update a maintenance work order for every defect']],
+      ['Plant weekly preventive maintenance walk-through','weekly',['Inspect motors, pumps, belts and couplings for visible wear','Inspect electrical enclosures for visible damage; do not open live equipment','Check compressed air, water and other utility lines for leaks','Inspect safety guards, access routes and emergency stop labels','Review breakdowns, repeat faults and outstanding corrective work','Confirm planned maintenance and shutdown tasks have owners and dates']],
+      ['Planned shutdown readiness review','weekly',['Confirm shutdown scope and affected production areas','Confirm required permits, isolations and lockout procedures are planned','Confirm maintenance personnel and specialist contractors are assigned','Confirm critical spares, tools and lifting equipment are available','Confirm restart checks and responsible sign-off roles are defined']]
+    ]
+  };
+  const pack=packs[slug];
+  if(!pack)return alert('There are no industry starter checklists for this workspace yet.');
+  const button=document.getElementById('sfIndustryChecklistBtn');if(button)button.disabled=true;
+  try{
+    const existingResult=await sb.from('checklist_templates').select('name').eq('site_id',site);
+    if(existingResult.error)throw existingResult.error;
+    const existing=new Set((existingResult.data||[]).map(x=>x.name));
+    const additions=pack.filter(([name])=>!existing.has(name)).map(([name,frequency,items])=>({company_id:me.company_id,site_id:site,name,frequency,items}));
+    if(!additions.length){alert('These industry starter checklists are already set up for this site. Open Checklists to use or edit them.');return;}
+    const result=await sb.from('checklist_templates').insert(additions);
+    if(result.error)throw result.error;
+    alert(additions.length+' industry-specific checklist(s) added. Open Checklists to complete, edit and sign them off.');
+  }catch(error){alert('Could not add the industry checklists: '+(error?.message||'Unknown error'));}
+  finally{if(button)button.disabled=false;}
+}
+
 async function sfIndustryWorkspace(){
   if(!INDUSTRIES||!INDUSTRIES.length)await loadIndustryProfile();
   const slug=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug||'hospitality-tourism';
@@ -107,6 +136,7 @@ async function sfIndustryWorkspace(){
   sfIndustryModules(slug).filter(m=>!overrides.disabled.has(m[3])).forEach(m=>{const label=overrides.labels[m[3]]||m[1];html+='<div class="card" style="border-left-color:'+theme.ac+'"><div class="ct"><div style="color:'+theme.ac+'">'+m[0]+' '+esc(label)+'</div></div><div class="note">'+esc(m[2])+'</div><div class="ca"><button class="b" style="background:'+theme.ac+';border-color:'+theme.ac+'" onclick="goTab(\''+m[3]+'\')">Open</button></div></div>'});
   if(!sfIndustryModules(slug).some(m=>!overrides.disabled.has(m[3])))html+='<div class="p">All workspace shortcuts are currently hidden. A company manager can restore them in Industry profile.</div>';
   html+='</div>';
+  if(slug==='food-beverage'||slug==='manufacturing-industrial')html+='<div class="p"><b>Industry starter checklists</b><div class="note">'+(slug==='food-beverage'?'Kitchen equipment opening checks and a weekly food-venue maintenance walk-through.':'Production shift-start checks, plant preventive maintenance and shutdown readiness.')+' These are editable operational checklists, not a substitute for your site procedures or statutory inspections.</div><div class="ca"><button class="b" id="sfIndustryChecklistBtn" onclick="sfAddIndustryStarterChecklists()">Add starter checklists</button><button onclick="goTab(\'chk\')">Open Checklists</button></div></div>';
   if(slug==='logistics-transport')html+='<div class="p"><b>Connected logistics workflow</b><div class="note">Create a consignment, issue its waybill, record tracking scans as it moves through depots, and capture the receiving person and proof-of-delivery reference at delivery. Fleet GPS and vehicle maintenance remain available alongside parcel operations.</div></div>';
   return html;
 }

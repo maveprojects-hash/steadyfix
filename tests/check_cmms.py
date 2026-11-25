@@ -701,3 +701,12 @@ for marker in [
 if 'body.site_name' in assistant_endpoint or 'body.today' in assistant_endpoint:
     raise SystemExit("iAssistant must not trust browser-supplied site names or dates")
 print("iAssistant authenticated site-context verification: PASS")
+
+
+# The assistant UI exposes workshop job cards, so the server allowlist must expose them too.
+allowed_start = assistant_endpoint.find("const ALLOWED = [")
+allowed_end = assistant_endpoint.find("];", allowed_start)
+allowed_block = assistant_endpoint[allowed_start:allowed_end] if allowed_start >= 0 and allowed_end >= 0 else ""
+if '"workshop_jobs"' not in allowed_block:
+    raise SystemExit("iAssistant UI offers workshop job cards but the server tool allowlist blocks workshop_jobs")
+print("iAssistant workshop job-card tool availability: PASS")

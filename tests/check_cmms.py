@@ -942,7 +942,13 @@ for marker in [
 if "F('unit','Unit','t')" not in assistant_ui:
     raise SystemExit("Assistant stock lookup schema must expose the stock unit")
 for marker in [
-    'const columns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"',
+    'table === "vehicles"',
+    'id,name,reg_no,odometer_km,next_service_km,next_service_date,license_expiry,status',
+    'get("fleet_attention", "vehicles"',
+    'vehicle.next_service_km',
+    'vehicle.license_expiry',
+    'licence_expiring_30_days',
+    'const columns = table === "sensors"',
     'get("sensor_alerts", "sensors"',
     'sb.from("readings")',
     '.in("sensor_id", sensorIds).order("read_at", { ascending: false }).limit(5000)',

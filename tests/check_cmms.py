@@ -852,6 +852,22 @@ if "sb.from('sensors').select('*')" in assistant_ui or "s.device_key" in assista
     raise SystemExit("Monitoring UI must not fetch or render device keys from ordinary sensor rows")
 if 'table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"' not in assistant_endpoint:
     raise SystemExit("iAssistant sensor queries must not select private device_key values")
+sensor_column_migration = root / "supabase" / "migrations" / "20261125090500_sensor_column_privileges.sql"
+if not sensor_column_migration.exists():
+    raise SystemExit("Missing sensor least-privilege column grant migration")
+sensor_column_sql = sensor_column_migration.read_text(encoding="utf-8").lower()
+for marker in [
+    "revoke all privileges on table public.sensors from authenticated",
+    "grant select (",
+    "grant insert (",
+    "grant update (",
+    "grant delete on table public.sensors to authenticated",
+]:
+    if marker not in sensor_column_sql:
+        raise SystemExit(f"Sensor column privilege hardening is missing: {marker}")
+for grant in re.findall(r"grant (?:select|insert|update) \((.*?)\) on table public\\.sensors", sensor_column_sql, re.S):
+    if "device_key" in grant:
+        raise SystemExit("Sensor device_key must not be included in authenticated column grants")
 if "['sensors','readings'].includes(p.table)" not in assistant_ui:
     raise SystemExit("iAssistant UI must prevent sensor writes")
 if '"assets"' not in allowed_block or '"stock_items"' not in allowed_block:

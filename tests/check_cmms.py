@@ -803,6 +803,17 @@ for marker in [
         raise SystemExit(f"iAssistant sensor monitoring lookup is missing safe scoping: {marker}")
 if "T.readings={label:'Sensor readings'" not in assistant_ui:
     raise SystemExit("iAssistant sensor readings schema is missing")
+
+for marker in [
+    'const SERVER_FIELD_ALLOWLIST = {',
+    'sensors: ["name", "kind", "unit", "alert_min", "alert_max"]',
+    'readings: ["sensor_id", "sensor_name", "sensor_kind", "value", "unit", "read_at"]',
+    '.filter((field) => field && safe.has(field.k))',
+]:
+    if marker not in assistant_endpoint:
+        raise SystemExit(f"iAssistant sensor field privacy guard missing: {marker}")
+if 'device_key' in assistant_endpoint[assistant_endpoint.index('const SERVER_FIELD_ALLOWLIST'):assistant_endpoint.index('const prof =')]:
+    raise SystemExit("iAssistant sensor server allowlist must not expose device_key")
 if "['sensors','readings'].includes(p.table)" not in assistant_ui:
     raise SystemExit("iAssistant UI must prevent sensor writes")
 if '"assets"' not in allowed_block or '"stock_items"' not in allowed_block:

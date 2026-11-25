@@ -822,6 +822,19 @@ for marker in [
 ]:
     if marker not in approval_block:
         raise SystemExit(f"iAssistant approval confirmation safeguard missing: {marker}")
+
+if "F('unit','Unit','t')" not in assistant_ui:
+    raise SystemExit("Assistant stock lookup schema must expose the stock unit")
+for marker in [
+    'get("low_stock_items", "stock_items"',
+    'await build(data || [])',
+    'sb.from("stock_levels").select("item_id,on_hand")',
+    'levelsQuery.eq("site_id", ctx.site_id)',
+    'min_level',
+]:
+    if marker not in assistant_endpoint:
+        raise SystemExit(f"Assistant attention summary is missing low-stock support: {marker}")
+
 print("iAssistant approved-update database confirmation: PASS")
 
 

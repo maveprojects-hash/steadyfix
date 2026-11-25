@@ -119,7 +119,7 @@ for marker in [
     "startCompanyLiveSync",
     "postgres_changes",
     "event: '*'",
-    "company_id=eq.",
+    "Realtime enforces the table's RLS policies",
     "refreshActiveView",
     "visibilitychange",
     "focusout",

@@ -445,7 +445,7 @@ function buildNav(){
  const ab=$('aib');if(ab)ab.style.display=LOCK?'none':'';
  const ok=t=>t[0]=='industry'?isMgr()&&!LOCK:(t[0]=='inbox'||t[0]=='act')?!!me.is_admin:LOCK?['sub','sup','set'].includes(t[0]):(isMgr()||!['bud','inv','sub'].includes(t[0]));
  const active=INDUSTRIES.find(x=>x.slug===INDUSTRY_PROFILE?.primary_industry_slug);
- const slug=active?.slug||'general-maintenance';
+ const slug=active?.slug||'hospitality-tourism';
  const config=Object.assign({},active?.default_configuration||{},INDUSTRY_PROFILE?.configuration_overrides||{});
  const priority=Array.isArray(config.dashboard_priority_tabs)?config.dashboard_priority_tabs:[];
  const disabled=new Set(Array.isArray(config.disabled_modules)?config.disabled_modules:[]);

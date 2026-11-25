@@ -798,6 +798,16 @@ if "Stock quantities and values must be changed through the audited Stock adjust
 if "const AIT=['work_orders','assets','stock_items'" not in assistant_ui:
     raise SystemExit("iAssistant UI does not expose asset and stock lookup schemas")
 
+for marker in [
+    'sb.from("stock_levels").select("item_id,on_hand")',
+    '.eq("company_id", ctx.company_id)',
+    'levelsQuery.eq("site_id", ctx.site_id)',
+    'derivedFields = table === "stock_items"',
+    'row.on_hand',
+]:
+    if marker not in assistant_endpoint:
+        raise SystemExit(f"iAssistant stock lookup is missing scoped quantity support: {marker}")
+
 
 
 # iAssistant must not report an approved update as successful when no scoped row was changed.

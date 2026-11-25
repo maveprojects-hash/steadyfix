@@ -293,7 +293,25 @@ Deno.serve(async (req) => {
     const messages = cleanMessages(body.messages);
     if (!messages.length) return json({ error: "Type a message first." }, 400);
     const schema = {};
-    for (const t of ALLOWED) if (body.schema && body.schema[t]) schema[t] = body.schema[t];
+    // Never trust browser-supplied field definitions for sensitive sensor tables.
+    // In particular, sensor device_key values must never enter the model context.
+    const SERVER_FIELD_ALLOWLIST = {
+      sensors: ["name", "kind", "unit", "alert_min", "alert_max"],
+      readings: ["sensor_id", "sensor_name", "sensor_kind", "value", "unit", "read_at"],
+    };
+    for (const t of ALLOWED) {
+      if (!body.schema || !body.schema[t]) continue;
+      const requested = body.schema[t];
+      if (SERVER_FIELD_ALLOWLIST[t]) {
+        const safe = new Set(SERVER_FIELD_ALLOWLIST[t]);
+        schema[t] = {
+          ...requested,
+          site: 1,
+          fields: (Array.isArray(requested.fields) ? requested.fields : [])
+            .filter((field) => field && safe.has(field.k)),
+        };
+      } else schema[t] = requested;
+    }
 
     const prof = await sb.from("profiles").select("company_id,role,full_name").eq("id", user.id).single();
     if (prof.error) return json({ error: "Could not verify your company profile." }, 403);

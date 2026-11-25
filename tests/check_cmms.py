@@ -1029,6 +1029,6 @@ for marker in [
     "checklist_templates').insert(additions)",
     "sfIndustryChecklistBtn",
 ]:
-    if marker not in updated:
+    if marker not in industry_js.read_text(encoding="utf-8"):
         raise SystemExit(f"Missing industry starter checklist implementation: {marker}")
 print("Food & Beverage and Manufacturing starter checklist implementation: PASS")

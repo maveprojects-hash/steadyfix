@@ -2,19 +2,20 @@
 
 /* Industry identity palettes: shared across the browser app and desktop wrapper. */
 const SF_INDUSTRY_THEMES = {
-  automation: { accent:'#00a6c7', highlight:'#67e8f9', nav:'#102d3a', bg:'#e6f2f5', panel:'#ffffff', line:'#c5dce3', ink:'#17313a', muted:'#56717b' },
+  automation: { accent:'#d62828', highlight:'#2878c8', nav:'#172b4d', bg:'#eaf0f8', panel:'#ffffff', line:'#c8d5e6', ink:'#1d2d46', muted:'#586b86' },
   'fleet-management': { accent:'#d97706', highlight:'#fbbf24', nav:'#342313', bg:'#f5eee5', panel:'#fffdf9', line:'#e3d2bd', ink:'#35291c', muted:'#766451' },
   workshops: { accent:'#dc4b35', highlight:'#ff8068', nav:'#351d1a', bg:'#f5ece9', panel:'#fffdfc', line:'#e6cbc5', ink:'#382522', muted:'#78605a' },
   'logistics-transport': { accent:'#0d9488', highlight:'#5eead4', nav:'#102d2b', bg:'#e8f3f1', panel:'#ffffff', line:'#c6dfda', ink:'#193632', muted:'#58736d' },
   'hospitality-tourism': { accent:'#7954b8', highlight:'#c4a7f4', nav:'#271e39', bg:'#f0edf6', panel:'#ffffff', line:'#d8cde8', ink:'#30263f', muted:'#6c617b' },
   'food-beverage': { accent:'#47864b', highlight:'#9bd18e', nav:'#203322', bg:'#edf3eb', panel:'#ffffff', line:'#cfddca', ink:'#263528', muted:'#617363' },
   'property-management-facilities': { accent:'#3974b8', highlight:'#8ec5ff', nav:'#192c42', bg:'#eaf0f6', panel:'#ffffff', line:'#cbd8e6', ink:'#203246', muted:'#5c6f82' },
+  'construction-project-management': { accent:'#b7791f', highlight:'#f6c453', nav:'#342a18', bg:'#f4f0e6', panel:'#fffefa', line:'#e2d6bd', ink:'#332b1e', muted:'#75684f' },
   'manufacturing-industrial': { accent:'#a66a12', highlight:'#f2bd58', nav:'#302817', bg:'#f2efe7', panel:'#fffefa', line:'#ddd4c1', ink:'#332d20', muted:'#716957' },
   'general-maintenance': { accent:'#1f5f8b', highlight:'#e59f0f', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' }
 };
 
 function applyIndustryTheme() {
-  const slug = INDUSTRY_PROFILE?.primary_industry_slug || 'general-maintenance';
+  const slug = INDUSTRY_PROFILE?.primary_industry_slug || 'hospitality-tourism';
   const theme = SF_INDUSTRY_THEMES[slug] || SF_INDUSTRY_THEMES['general-maintenance'];
   const root = document.documentElement;
   root.style.setProperty('--ac', theme.accent);
@@ -78,6 +79,7 @@ function sfIndustryModules(slug){
     'hospitality-tourism':[['🏨','Property assets','Rooms, plant, equipment and facilities','assets'],['🛠️','Maintenance requests','Guest and staff maintenance tasks','work_orders'],['🔁','Preventive maintenance','Recurring room, plant and facility tasks','pm_schedules'],['☑️','Operating checklists','Daily, weekly and monthly checks','chk'],['📦','Stores & stock','Maintenance stock and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['🦺','Safety & fire','Inspections, incidents and fire equipment','ohs']],
     'food-beverage':[['🍽️','Venue equipment','Kitchen, refrigeration and dining equipment','assets'],['🛠️','Maintenance tasks','Repairs and breakdowns','work_orders'],['🔁','Planned servicing','Recurring equipment maintenance','pm_schedules'],['☑️','Hygiene & operating checks','Repeatable operating and maintenance checklists','chk'],['📦','Stock & supplies','Maintenance consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['🦺','Safety','Workplace and fire safety','ohs']],
     'property-management-facilities':[['🏢','Properties & assets','Buildings, blocks, campuses and facility assets','assets'],['🛠️','Service requests','Tenant, occupant and facilities work orders','work_orders'],['🔁','Preventive maintenance','Recurring building and plant maintenance','pm_schedules'],['☑️','Inspections','Property and facilities checklists','chk'],['⚠️','Damage reports','Record damage and corrective actions','damage_reports'],['📦','Stock & supplies','Maintenance stock','stock_items'],['🤝','Suppliers','Contractors and service providers','suppliers']],
+    'construction-project-management':[['🏗️','Project work packages','Plan and assign construction tasks, site work and delivery responsibilities','work_orders'],['🏢','Plant, tools & equipment','Register site plant, tools and construction equipment','assets'],['📅','Planned works','Schedule recurring and milestone-related maintenance activities','pm_schedules'],['💰','Project budgets & costs','Review budgets, cost lines and recorded expenses','bud'],['🛒','Materials procurement','Order construction materials and supplier services','purchase_orders'],['📦','Materials & stock','Track consumables, spares and site stock','stock_items'],['🤝','Contractors & suppliers','Manage subcontractors, trades and suppliers','suppliers'],['🦺','Site safety','Manage site safety inspections and incidents','ohs'],['☑️','Quality & site inspections','Run site checklists and quality inspections','chk'],['⚠️','Site issues & damage','Record site damage, defects and corrective actions','damage_reports']],
     'manufacturing-industrial':[['🏭','Plant & equipment','Production assets and utilities','assets'],['🛠️','Maintenance work','Breakdown and planned maintenance tasks','work_orders'],['🔁','Preventive maintenance','Recurring plant servicing','pm_schedules'],['📦','Parts & stock','Spare parts and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['⏸️','Shutdowns','Planned shutdown records','shutdowns'],['🦺','Safety','Inspections and incidents','ohs']],
     'general-maintenance':[['🛠️','Work orders','General maintenance and service tasks','work_orders'],['🏢','Assets','Equipment and facilities register','assets'],['🔁','Preventive maintenance','Recurring maintenance schedules','pm_schedules'],['📦','Stock','Parts and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['☑️','Checklists','Repeatable inspections and checks','chk'],['🤝','Suppliers','Suppliers and contractors','suppliers']]
   };
@@ -86,7 +88,7 @@ function sfIndustryModules(slug){
 
 async function sfIndustryWorkspace(){
   if(!INDUSTRIES||!INDUSTRIES.length)await loadIndustryProfile();
-  const slug=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug||'general-maintenance';
+  const slug=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug||'hospitality-tourism';
   const ind=(INDUSTRIES||[]).find(x=>x.slug===slug);if(!ind)return sfIndustryHub();
   let html='<div class="bar2 noprint"><button onclick="openIndustryHub()">← All industries</button><button onclick="goTab(\'dash\')">Main dashboard</button></div>';
   html+='<h2>'+esc(ind.name)+' workspace</h2><div class="p"><b>'+esc(ind.description||'')+'</b><div class="note">This is the company selected industry workspace. The base CMMS records and security remain shared; these shortcuts organise the functions most relevant to this type of operation.</div>';

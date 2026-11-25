@@ -29,6 +29,12 @@ required_ui = [
     "notificationEffectSettings",
     "steadyfix.cmms.notification-preferences",
     "row.created_by=me.id",
+    "const standardIndustries=new Set(['hospitality-tourism','property-management-facilities','construction-project-management'])",
+    "const workspaceRoutes=new Set(typeof sfIndustryModules==='function'?sfIndustryModules(slug).map(m=>m[3]):[])",
+    "cur=='logistics_ops'?await sfLogisticsWorkspace()",
+    "cur=='service_contracts'?await sfServiceContracts()",
+    "['logistics_ops','Parcel operations']",
+    "['service_contracts','Service contracts']",
 ]
 for marker in required_ui:
     if marker not in html:
@@ -165,12 +171,14 @@ for marker in [
     "document.body.dataset.industryTheme",
     "meta[name=\"theme-color\"]",
     "automation: {",
+    "automation: { accent:'#d62828', highlight:'#2878c8', nav:'#172b4d'",
     "'fleet-management':",
     "workshops:",
     "'logistics-transport':",
     "'hospitality-tourism':",
     "'food-beverage':",
     "'property-management-facilities':",
+    "'construction-project-management':",
     "'manufacturing-industrial':",
     "'general-maintenance':",
 ]:
@@ -262,6 +270,7 @@ for marker in [
     "async function loadIndustryProfile()",
     "async function saveIndustryProfile()",
     "async function industryProfile()",
+    'id="industrySaveBtn"',
     "cur=='industry'?await industryProfile()",
     "t[0]=='industry'?isMgr()&&!LOCK",
     "company_industry_profiles",
@@ -378,6 +387,7 @@ for marker in [
     "SF_CONFIGURABLE_MODULES",
     "sfIndustryModuleOverrides",
     "sfResetIndustryCustomizations",
+    "'construction-project-management':[['🏗️','Project work packages'",
 ]:
     if marker not in workspace_code:
         raise SystemExit(f"Missing industry operations UI capability: {marker}")
@@ -453,7 +463,7 @@ module_source = workspace_code[module_start:module_end]
 industry_routes = set(re.findall(r"\['[^']*','[^']*','[^']*','([a-z_]+)'\]", module_source))
 mod_source = html.split("const MOD={", 1)[1].split("};\nconst TABS=", 1)[0]
 base_modules = set(re.findall(r"^\s*([a-z_]+):\{", mod_source, re.MULTILINE))
-custom_views = {"service_contracts", "logistics_ops", "ohs", "fleet", "inv", "chk", "rep"}
+custom_views = {"service_contracts", "logistics_ops", "ohs", "fleet", "inv", "chk", "rep", "bud"}
 unresolved_routes = sorted(industry_routes - base_modules - custom_views)
 if unresolved_routes:
     raise SystemExit(f"Industry workspace shortcuts have no registered destination: {unresolved_routes}")
@@ -987,3 +997,22 @@ for marker in [
     if marker not in main_app:
         raise SystemExit(f"Industry workspace screen routing regression marker missing: {marker}")
 print("Industry hub and selected workspace screen routing: PASS")
+
+
+# The master CMMS opens on the established Hospitality-style base unless a company selects another industry.
+if "primary_industry_slug:'hospitality-tourism'" not in html:
+    raise SystemExit("New/unconfigured company fallback must use the Hospitality base workspace")
+if "[{slug:'hospitality-tourism',name:'Hospitality & Tourism'}]" not in login_html:
+    raise SystemExit("Onboarding fallback must retain the established Hospitality base")
+if "x.slug==='hospitality-tourism'?'selected':'')" not in login_html:
+    raise SystemExit("Hospitality must be the default onboarding selection while customers can choose another industry")
+print("Hospitality base workspace default and customer-selectable industry onboarding: PASS")
+ 
+# Industry default migration is additive and must not rewrite existing company selections.
+from pathlib import Path
+migration_default_sql = Path("supabase/migrations/20261125160000_hospitality_default_for_new_companies.sql").read_text()
+if "alter column primary_industry_slug set default 'hospitality-tourism'" not in migration_default_sql:
+    raise SystemExit("New company industry database default must be Hospitality & Tourism")
+if "values (new.id, 'hospitality-tourism')" not in migration_default_sql:
+    raise SystemExit("New company creation trigger must create a Hospitality industry profile")
+print("Database-level Hospitality default for new companies: PASS")

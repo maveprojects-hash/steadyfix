@@ -65,8 +65,8 @@ function auth(){
 async function setup(){
  app.classList.remove('company-home');
  const{data:industryRows}=await sb.from('industry_catalog').select('slug,name').eq('is_active',true).order('sort_order');
- const choices=(industryRows&&industryRows.length?industryRows:[{slug:'general-maintenance',name:'General Maintenance & Multi-service'}]);
- const industryOptions=choices.map(x=>'<option value="'+x.slug+'" '+(x.slug==='general-maintenance'?'selected':'')+'>'+x.name+'</option>').join('');
+ const choices=(industryRows&&industryRows.length?industryRows:[{slug:'hospitality-tourism',name:'Hospitality & Tourism'}]);
+ const industryOptions=choices.map(x=>'<option value="'+x.slug+'" '+(x.slug==='hospitality-tourism'?'selected':'')+'>'+x.name+'</option>').join('');
  app.innerHTML=head('Set up your account','Create a new company, or join one with an invite code.')+
  '<input id="nm" placeholder="Your full name"><div class="err" id="e"></div>'+
  '<input id="co" placeholder="Company name"><input id="st" placeholder="First site name (e.g. Head office)">'+
@@ -74,12 +74,33 @@ async function setup(){
  '<p>Choose the closest fit. You can add other business activities later.</p>'+
  '<button id="mk">Create company</button><p style="text-align:center">or</p><input id="tk" placeholder="Invite code"><button id="jn">Join with invite</button><button class="l" id="loginBack" type="button">Already registered? Back to log in</button>';
  $('loginBack').onclick=()=>{mode='login';auth()};
- $('mk').onclick=async()=>{err();if(!$('nm').value||!$('co').value)return err('Enter your name and company name.');
-  const{data:companyId,error}=await sb.rpc('signup_company',{p_company:$('co').value,p_site:$('st').value,p_name:$('nm').value});
-  if(error)return err(error.message);
-  const{error:industryError}=await sb.from('company_industry_profiles').update({primary_industry_slug:$('industry').value}).eq('company_id',companyId);
-  if(industryError)return err('Your company was created, but the industry profile could not be saved. Please contact support: '+industryError.message);
-  route()};
+ let createdCompanyId=null,companyCreateBusy=false;
+ const saveCreatedCompanyIndustry=async()=>{
+  const saveButton=$('mk');if(!createdCompanyId||companyCreateBusy)return;
+  companyCreateBusy=true;saveButton.disabled=true;saveButton.textContent='Saving industry…';err();
+  try{
+   const{data,error}=await sb.from('company_industry_profiles').update({primary_industry_slug:$('industry').value}).eq('company_id',createdCompanyId).select('company_id').maybeSingle();
+   if(error)throw error;
+   if(!data)throw new Error('The company was created, but its industry profile was not updated. Please retry or contact support.');
+   route();
+  }catch(e){err('Your company is already created. Retry saving its industry selection: '+(e.message||e));saveButton.textContent='Retry saving industry';}
+  finally{companyCreateBusy=false;saveButton.disabled=false;}
+ };
+ $('mk').onclick=async()=>{
+  err();if(companyCreateBusy)return;
+  if(createdCompanyId)return saveCreatedCompanyIndustry();
+  if(!$('nm').value||!$('co').value)return err('Enter your name and company name.');
+  const saveButton=$('mk');companyCreateBusy=true;saveButton.disabled=true;saveButton.textContent='Creating company…';
+  try{
+   const{data:companyId,error}=await sb.rpc('signup_company',{p_company:$('co').value,p_site:$('st').value,p_name:$('nm').value});
+   if(error)throw error;
+   if(!companyId)throw new Error('Company creation did not return a company ID. Please contact support before retrying.');
+   createdCompanyId=companyId;
+   companyCreateBusy=false;
+   return await saveCreatedCompanyIndustry();
+  }catch(e){err(e.message||String(e));}
+  finally{companyCreateBusy=false;saveButton.disabled=false;if(!createdCompanyId)saveButton.textContent='Create company';}
+ };
  $('jn').onclick=async()=>{err();if(!$('nm').value||!$('tk').value)return err('Enter your name and invite code.');
   const{error}=await sb.rpc('accept_invite',{p_token:$('tk').value.trim(),p_name:$('nm').value});error?err(error.message):route()}}
 

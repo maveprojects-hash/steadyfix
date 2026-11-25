@@ -1041,7 +1041,7 @@ for marker in [
     "async function seedWorkshop()",
     "async function seedFleet()",
 ]:
-    if marker not in app_js:
+    if marker not in html:
         raise SystemExit(f"Missing Fleet / Workshop checklist implementation: {marker}")
 for marker in [
     "if(slug==='workshops')",

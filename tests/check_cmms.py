@@ -269,6 +269,7 @@ for marker in [
     "async function loadIndustryProfile()",
     "async function saveIndustryProfile()",
     "async function industryProfile()",
+    'id="industrySaveBtn"',
     "cur=='industry'?await industryProfile()",
     "t[0]=='industry'?isMgr()&&!LOCK",
     "company_industry_profiles",

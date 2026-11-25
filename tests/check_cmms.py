@@ -117,9 +117,9 @@ subprocess.run(["node", "--check", str(live_sync)], check=True)
 live_code = live_sync.read_text(encoding="utf-8")
 for marker in [
     "startCompanyLiveSync",
-    "postgres_changes",
-    "event: '*'",
-    "Realtime enforces the table's RLS policies",
+    "broadcast",
+    "cmms_change",
+    "config: { private: true }",
     "refreshActiveView",
     "visibilitychange",
     "focusout",
@@ -137,16 +137,15 @@ for marker in [
 live_migration = next((root / "supabase" / "migrations").glob("*_company_live_sync.sql"))
 live_sql = live_migration.read_text(encoding="utf-8").lower()
 for marker in [
-    "supabase_realtime",
-    "c.relrowsecurity",
+    "private.broadcast_cmms_company_change",
+    "realtime.send",
+    "cmms_company_live_sync_read",
+    "realtime.topic()",
+    "p.active = true",
     "a.attname = 'company_id'",
-    "alter publication",
-    "work_orders",
-    "assets",
-    "stock_items",
-    "purchase_orders",
-    "workshop_jobs",
-    "logistics_shipments",
+    "c.relrowsecurity",
+    "after insert or update or delete",
+    "messages','notifications','company_conversations','conversation_members",
 ]:
     if marker.lower() not in live_sql:
         raise SystemExit(f"Missing tenant-safe live publication setup: {marker}")

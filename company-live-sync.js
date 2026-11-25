@@ -1,17 +1,8 @@
 /* STEADYFIX CMMS — tenant-scoped live operational sync.
- * The database remains the source of truth. Realtime events invalidate the
- * active view so every signed-in client reloads the same committed records.
+ * The database remains the source of truth. Each committed change emits a
+ * minimal private company event; clients reload through their normal RLS reads.
  */
 (() => {
-  const TABLES = [
-    'work_orders','pm_schedules','stock_items','purchase_orders','shutdowns',
-    'sensors','assets','shifts','budgets','expenses','customers','suppliers',
-    'damage_reports','ohs_inspections','ohs_hazards','ohs_incidents','ohs_ppe',
-    'ohs_training','ohs_regs','fire_equipment','fire_inspections','vehicles',
-    'workshop_jobs','work_order_time_entries','work_order_material_issues',
-    'work_order_customer_signoffs','logistics_shipments','logistics_tracking_events',
-    'logistics_pod_signoffs','documents'
-  ];
   let channel = null;
   let refreshTimer = null;
   let refreshPending = false;
@@ -51,30 +42,22 @@
     if (typeof me === 'undefined' || !me?.id || !me?.company_id || !sb) return;
     if (channel) sb.removeChannel(channel);
 
-    channel = sb.channel('cmms-live-company-' + me.company_id);
-    TABLES.forEach(table => {
-      channel = channel.on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table
-      }, payload => {
-        if (!payload?.new && !payload?.old) return;
-        const row = payload.new || payload.old;
-        // Realtime enforces the table's RLS policies; also reject an explicitly different tenant.
-        if (row.company_id && row.company_id !== me.company_id) return;
+    const topic = 'company:' + me.company_id + ':cmms-live';
+    channel = sb.channel(topic, { config: { private: true } })
+      .on('broadcast', { event: 'cmms_change' }, message => {
+        const event = message?.payload || message;
+        if (event?.company_id && event.company_id !== me.company_id) return;
         scheduleRefresh();
+      })
+      .subscribe((status, error) => {
+        if (status === 'SUBSCRIBED') {
+          console.info('CMMS private company live sync connected');
+          if (refreshPending) scheduleRefresh();
+        } else {
+          console.warn('CMMS private company live sync:', status, error || '');
+        }
       });
-    });
-
-    channel.subscribe((status, error) => {
-      if (status === 'SUBSCRIBED') {
-        console.info('CMMS live operational sync connected for company', me.company_id);
-        if (refreshPending) scheduleRefresh();
-      } else {
-        console.warn('CMMS live operational sync:', status, error || '');
-      }
-    });
-
+    
     if (!window.__sfLiveSyncListeners) {
       window.__sfLiveSyncListeners = true;
       document.addEventListener('visibilitychange', () => {

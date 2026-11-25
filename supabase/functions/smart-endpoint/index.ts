@@ -33,7 +33,7 @@ const TOOLS = [
     input_schema: { type: "object", properties: { note: { type: "string" } }, required: ["note"] } },
   { name: "forget_memory", description: "Remove a saved note by its id when the user asks you to forget it.",
     input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
-  { name: "attention_summary", description: "Counts of what needs attention today: overdue jobs, overdue PMs, low-stock and reorder items at the selected site, open incidents, overdue fire equipment service, expiring training and so on.",
+  { name: "attention_summary", description: "Counts of what needs attention today: overdue jobs, overdue PMs, low-stock and reorder items, sensor readings outside configured alert thresholds, open incidents, overdue fire equipment service, expiring training and so on.",
     input_schema: { type: "object", properties: {} } },
 ];
 
@@ -227,7 +227,13 @@ async function runTool(name, input, st) {
   if (name === "attention_summary") {
     const t = ctx.today, in30 = new Date(Date.parse(t) + 30 * 864e5).toISOString().slice(0, 10), out = {};
     const get = async (label, table, build) => {
-      try { let q = sb.from(table).select("*").eq("company_id", ctx.company_id).limit(500); if (schema[table] && schema[table].site && ctx.site_id) q = q.eq("site_id", ctx.site_id); const { data, error } = await q; out[label] = error ? "unavailable" : await build(data || []); } catch (e) { out[label] = "unavailable"; }
+      try {
+        const columns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*";
+        let q = sb.from(table).select(columns).eq("company_id", ctx.company_id).limit(500);
+        if (schema[table] && schema[table].site && ctx.site_id) q = q.eq("site_id", ctx.site_id);
+        const { data, error } = await q;
+        out[label] = error ? "unavailable" : await build(data || []);
+      } catch (e) { out[label] = "unavailable"; }
     };
     await Promise.all([
       get("overdue_work_tasks", "work_orders", (r) => r.filter((x) => !["done", "cancelled"].includes(x.status) && x.due_date && x.due_date < t).length),
@@ -240,6 +246,36 @@ async function runTool(name, input, st) {
       get("fire_equipment_service_overdue", "fire_equipment", (r) => r.filter((x) => x.next_service && x.next_service < t).length),
       get("fire_equipment_faulty", "fire_equipment", (r) => r.filter((x) => ["faulty", "needs_service"].includes(x.condition)).length),
       get("training_expiring_30_days", "ohs_training", (r) => r.filter((x) => x.expires_on && x.expires_on <= in30).length),
+      get("sensor_alerts", "sensors", async (sensors) => {
+        if (!sensors.length) return { count: 0, alerts: [] };
+        const sensorIds = sensors.map((sensor) => sensor.id).filter(Boolean);
+        if (!sensorIds.length) return { count: 0, alerts: [] };
+        const { data: readings, error: readingsError } = await sb.from("readings")
+          .select("sensor_id,value,read_at").eq("company_id", ctx.company_id)
+          .in("sensor_id", sensorIds).order("read_at", { ascending: false }).limit(5000);
+        if (readingsError) return "unavailable";
+        const latest = new Map();
+        for (const reading of readings || []) {
+          const id = String(reading.sensor_id);
+          if (!latest.has(id)) latest.set(id, reading);
+        }
+        const alerts = [];
+        for (const sensor of sensors) {
+          const reading = latest.get(String(sensor.id));
+          if (!reading) continue;
+          const value = Number(reading.value);
+          const below = sensor.alert_min != null && value < Number(sensor.alert_min);
+          const above = sensor.alert_max != null && value > Number(sensor.alert_max);
+          if (!below && !above) continue;
+          alerts.push({
+            sensor: sensor.name, kind: sensor.kind, value, unit: sensor.unit || null,
+            alert: below ? "below minimum" : "above maximum",
+            threshold: below ? Number(sensor.alert_min) : Number(sensor.alert_max),
+            read_at: reading.read_at
+          });
+        }
+        return { count: alerts.length, alerts: alerts.slice(0, 20) };
+      }),
       get("low_stock_items", "stock_items", async (items) => {
         if (!items.length) return { count: 0, items: [] };
         const itemIds = items.map((x) => x.id).filter(Boolean);

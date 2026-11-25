@@ -1,17 +1,19 @@
 -- Keep GPS bearer keys private to company owners and managers.
 -- Vehicle status and non-secret operational fields remain available to authorized site users.
 
+alter table public.vehicles add column if not exists license_expiry date;
+
 revoke all privileges on table public.vehicles from authenticated;
 
 grant select (
   id, company_id, site_id, name, reg_no, odometer_km, next_service_km,
-  status, make_model, vin, next_service_date, speed_limit,
+  status, make_model, vin, next_service_date, license_expiry, speed_limit,
   last_lat, last_lng, last_speed, last_seen, created_at
 ) on table public.vehicles to authenticated;
 
 grant insert (
   company_id, site_id, name, reg_no, odometer_km, next_service_km,
-  status, make_model, vin, next_service_date, speed_limit,
+  status, make_model, vin, next_service_date, license_expiry, speed_limit,
   last_lat, last_lng, last_speed, last_seen
 ) on table public.vehicles to authenticated;
 

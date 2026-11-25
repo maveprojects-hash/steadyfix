@@ -138,7 +138,7 @@ async function runTool(name, input, st) {
     const selectedColumns = table === "sensors"
       ? "id,name,kind,unit,alert_min,alert_max,created_at"
       : table === "vehicles"
-        ? "id,company_id,site_id,name,reg_no,odometer_km,next_service_km,status,make_model,vin,next_service_date,speed_limit,last_lat,last_lng,last_speed,last_seen,created_at"
+        ? "id,company_id,site_id,name,reg_no,odometer_km,next_service_km,status,make_model,vin,next_service_date,license_expiry,speed_limit,last_lat,last_lng,last_speed,last_seen,created_at"
         : "*";
     let q = sb.from(table).select(selectedColumns).eq("company_id", ctx.company_id).limit(200);
     if (sch.site && ctx.site_id) q = q.eq("site_id", ctx.site_id);

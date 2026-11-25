@@ -876,6 +876,7 @@ if not vehicle_security_migration.exists():
 vehicle_security_sql = vehicle_security_migration.read_text(encoding="utf-8").lower()
 for marker in [
     "revoke all privileges on table public.vehicles from authenticated",
+    "add column if not exists license_expiry date",
     "grant select (",
     "grant insert (",
     "grant update (",

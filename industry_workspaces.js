@@ -15,7 +15,7 @@ const SF_INDUSTRY_THEMES = {
 };
 
 function applyIndustryTheme() {
-  const slug = INDUSTRY_PROFILE?.primary_industry_slug || 'general-maintenance';
+  const slug = INDUSTRY_PROFILE?.primary_industry_slug || 'hospitality-tourism';
   const theme = SF_INDUSTRY_THEMES[slug] || SF_INDUSTRY_THEMES['general-maintenance'];
   const root = document.documentElement;
   root.style.setProperty('--ac', theme.accent);
@@ -88,7 +88,7 @@ function sfIndustryModules(slug){
 
 async function sfIndustryWorkspace(){
   if(!INDUSTRIES||!INDUSTRIES.length)await loadIndustryProfile();
-  const slug=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug||'general-maintenance';
+  const slug=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug||'hospitality-tourism';
   const ind=(INDUSTRIES||[]).find(x=>x.slug===slug);if(!ind)return sfIndustryHub();
   let html='<div class="bar2 noprint"><button onclick="openIndustryHub()">← All industries</button><button onclick="goTab(\'dash\')">Main dashboard</button></div>';
   html+='<h2>'+esc(ind.name)+' workspace</h2><div class="p"><b>'+esc(ind.description||'')+'</b><div class="note">This is the company selected industry workspace. The base CMMS records and security remain shared; these shortcuts organise the functions most relevant to this type of operation.</div>';

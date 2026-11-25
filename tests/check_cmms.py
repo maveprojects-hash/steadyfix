@@ -1016,3 +1016,19 @@ if "alter column primary_industry_slug set default 'hospitality-tourism'" not in
 if "values (new.id, 'hospitality-tourism')" not in migration_default_sql:
     raise SystemExit("New company creation trigger must create a Hospitality industry profile")
 print("Database-level Hospitality default for new companies: PASS")
+
+# Food & Beverage and Manufacturing workspaces can add editable, site-scoped starter checklists.
+for marker in [
+    "async function sfAddIndustryStarterChecklists()",
+    "'food-beverage':",
+    "'manufacturing-industrial':",
+    "Kitchen equipment opening checks",
+    "Production shift-start equipment checks",
+    "Planned shutdown readiness review",
+    "eq('site_id',site)",
+    "checklist_templates').insert(additions)",
+    "sfIndustryChecklistBtn",
+]:
+    if marker not in industry_js.read_text(encoding="utf-8"):
+        raise SystemExit(f"Missing industry starter checklist implementation: {marker}")
+print("Food & Beverage and Manufacturing starter checklist implementation: PASS")

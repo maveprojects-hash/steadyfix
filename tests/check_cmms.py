@@ -741,7 +741,8 @@ for marker in [
     'const selectedColumns = table === "sensors"',
     'table === "vehicles"',
     '.select(selectedColumns).eq("company_id", ctx.company_id).limit(200)',
-    'const columns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"',
+    'const columns = table === "sensors"',
+    'table === "vehicles"',
     '.select(columns).eq("company_id", ctx.company_id).limit(500)',
     '.eq("company_id", company_id).order("created_at"',
     '.eq("company_id", ctx.company_id).select("id")',
@@ -817,6 +818,7 @@ for marker in [
     'const SERVER_FIELD_ALLOWLIST = {',
     'sensors: ["name", "kind", "unit", "alert_min", "alert_max"]',
     'readings: ["sensor_id", "sensor_name", "sensor_kind", "value", "unit", "read_at"]',
+    'vehicles: ["name", "reg_no", "odometer_km", "next_service_km", "status", "make_model", "vin", "next_service_date", "license_expiry", "speed_limit", "last_lat", "last_lng", "last_speed", "last_seen"]',
     '.filter((field) => field && safe.has(field.k))',
 ]:
     if marker not in assistant_endpoint:
@@ -942,7 +944,13 @@ for marker in [
 if "F('unit','Unit','t')" not in assistant_ui:
     raise SystemExit("Assistant stock lookup schema must expose the stock unit")
 for marker in [
-    'const columns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*"',
+    'table === "vehicles"',
+    'id,name,reg_no,odometer_km,next_service_km,next_service_date,license_expiry,status',
+    'get("fleet_attention", "vehicles"',
+    'vehicle.next_service_km',
+    'vehicle.license_expiry',
+    'licence_expiring_30_days',
+    'const columns = table === "sensors"',
     'get("sensor_alerts", "sensors"',
     'sb.from("readings")',
     '.in("sensor_id", sensorIds).order("read_at", { ascending: false }).limit(5000)',

@@ -121,7 +121,9 @@ for marker in [
     "cmms_change",
     "config: { private: true }",
     "refreshActiveView",
+    "refreshInFlight",
     "visibilitychange",
+    "window.addEventListener('online'",
     "focusout",
     "stopCompanyLiveSync",
 ]:

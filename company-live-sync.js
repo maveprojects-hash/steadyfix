@@ -6,7 +6,7 @@
   let channel = null;
   let refreshTimer = null;
   let refreshPending = false;
-  let lastRefreshAt = 0;
+  let refreshInFlight = false;
 
   function isEditing() {
     const el = document.activeElement;
@@ -23,13 +23,18 @@
       refreshPending = true;
       return;
     }
+    if (refreshInFlight) {
+      refreshPending = true;
+      return;
+    }
     refreshPending = false;
-    const now = Date.now();
-    if (now - lastRefreshAt < 700) return;
-    lastRefreshAt = now;
+    refreshInFlight = true;
     Promise.resolve(draw()).catch(error =>
       console.warn('CMMS live view refresh failed:', error?.message || error)
-    );
+    ).finally(() => {
+      refreshInFlight = false;
+      if (refreshPending) scheduleRefresh();
+    });
   }
 
   function scheduleRefresh() {
@@ -52,7 +57,8 @@
       .subscribe((status, error) => {
         if (status === 'SUBSCRIBED') {
           console.info('CMMS private company live sync connected');
-          if (refreshPending) scheduleRefresh();
+          refreshPending = true;
+          scheduleRefresh();
         } else {
           console.warn('CMMS private company live sync:', status, error || '');
         }
@@ -61,7 +67,14 @@
     if (!window.__sfLiveSyncListeners) {
       window.__sfLiveSyncListeners = true;
       document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && refreshPending) scheduleRefresh();
+        if (!document.hidden) {
+          refreshPending = true;
+          scheduleRefresh();
+        }
+      });
+      window.addEventListener('online', () => {
+        refreshPending = true;
+        scheduleRefresh();
       });
       document.addEventListener('focusout', () => {
         if (refreshPending) setTimeout(() => {

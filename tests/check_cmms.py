@@ -502,6 +502,15 @@ for marker in [
         raise SystemExit(f"Industry workspace navigation marker missing: {marker}")
 print("Industry workspace module order, visibility and terminology: PASS")
 
+# Industry Quick Access destinations must be registered in the main screen router.
+for marker in [
+    "cur=='industry_hub'?await sfIndustryHub()",
+    "cur=='industry_workspace'?await sfIndustryWorkspace()",
+]:
+    if marker not in html:
+        raise SystemExit(f"Industry workspace screen routing regression marker missing: {marker}")
+print("Industry hub and selected workspace routes: PASS")
+
 # Header cleanup: only one Quick Access trigger exists, with responsive compact layout.
 if html.count('id="industryQuickAccessBtn"') != 1:
     raise SystemExit("Expected exactly one Quick Access button; remove legacy duplicate")

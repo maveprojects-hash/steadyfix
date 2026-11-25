@@ -33,7 +33,7 @@ const TOOLS = [
     input_schema: { type: "object", properties: { note: { type: "string" } }, required: ["note"] } },
   { name: "forget_memory", description: "Remove a saved note by its id when the user asks you to forget it.",
     input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
-  { name: "attention_summary", description: "Counts of what needs attention today: overdue jobs, overdue PMs, low-stock and reorder items, sensor readings outside configured alert thresholds, open incidents, overdue fire equipment service, expiring training and so on.",
+  { name: "attention_summary", description: "Counts of what needs attention today: overdue jobs, overdue PMs, low-stock and reorder items, fleet service due, vehicle licences expiring within 30 days, sensor readings outside configured alert thresholds, open incidents, overdue fire equipment service, expiring training and so on.",
     input_schema: { type: "object", properties: {} } },
 ];
 
@@ -232,7 +232,11 @@ async function runTool(name, input, st) {
     const t = ctx.today, in30 = new Date(Date.parse(t) + 30 * 864e5).toISOString().slice(0, 10), out = {};
     const get = async (label, table, build) => {
       try {
-        const columns = table === "sensors" ? "id,name,kind,unit,alert_min,alert_max,created_at" : "*";
+        const columns = table === "sensors"
+          ? "id,name,kind,unit,alert_min,alert_max,created_at"
+          : table === "vehicles"
+            ? "id,name,reg_no,odometer_km,next_service_km,next_service_date,license_expiry,status"
+            : "*";
         let q = sb.from(table).select(columns).eq("company_id", ctx.company_id).limit(500);
         if (schema[table] && schema[table].site && ctx.site_id) q = q.eq("site_id", ctx.site_id);
         const { data, error } = await q;
@@ -250,6 +254,29 @@ async function runTool(name, input, st) {
       get("fire_equipment_service_overdue", "fire_equipment", (r) => r.filter((x) => x.next_service && x.next_service < t).length),
       get("fire_equipment_faulty", "fire_equipment", (r) => r.filter((x) => ["faulty", "needs_service"].includes(x.condition)).length),
       get("training_expiring_30_days", "ohs_training", (r) => r.filter((x) => x.expires_on && x.expires_on <= in30).length),
+      get("fleet_attention", "vehicles", async (vehicles) => {
+        const serviceDue = vehicles.filter((vehicle) =>
+          (vehicle.next_service_km != null && vehicle.odometer_km != null &&
+            Number(vehicle.odometer_km) >= Number(vehicle.next_service_km)) ||
+          (vehicle.next_service_date && vehicle.next_service_date <= in30)
+        );
+        const licenceExpiring = vehicles.filter((vehicle) =>
+          vehicle.license_expiry && vehicle.license_expiry <= in30
+        );
+        return {
+          service_due: serviceDue.length,
+          licence_expiring_30_days: licenceExpiring.length,
+          service_due_vehicles: serviceDue.slice(0, 20).map((vehicle) => ({
+            name: vehicle.name, registration: vehicle.reg_no || null,
+            odometer_km: vehicle.odometer_km, next_service_km: vehicle.next_service_km,
+            next_service_date: vehicle.next_service_date
+          })),
+          licence_expiring_vehicles: licenceExpiring.slice(0, 20).map((vehicle) => ({
+            name: vehicle.name, registration: vehicle.reg_no || null,
+            license_expiry: vehicle.license_expiry
+          }))
+        };
+      }),
       get("sensor_alerts", "sensors", async (sensors) => {
         if (!sensors.length) return { count: 0, alerts: [] };
         const sensorIds = sensors.map((sensor) => sensor.id).filter(Boolean);

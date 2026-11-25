@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>STEADYFIX CMMS</title><meta name="robots" content="noindex">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script src="communication.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script src="communication.js"></script><script src="company-live-sync.js"></script>
 <style>
 :root{--bg:#e8eaed;--pn:#fff;--ink:#1b2831;--mut:#5d6b75;--ln:#cfd5da;--ac:#1f5f8b;--am:#e59f0f;--ok:#2e7d4f;--bad:#c23b2a;--nav:#1b2831}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif}
@@ -394,7 +394,7 @@ async function boot(){
  $('nav').onclick=e=>{const b=e.target.closest('button');if(b&&b.dataset.t){cur=b.dataset.t;draw()}};
  try{CO=(await sb.from('companies').select('name').eq('id',me.company_id).single()).data.name}catch(e){}
  try{await loadIndustryProfile();renderIndustrySelector();buildNav()}catch(e){console.warn('Industry profile unavailable:',e.message)}
- startNotifications();startCommsRealtime();draw()}
+ startNotifications();startCommsRealtime();startCompanyLiveSync();draw()}
 
 let LOCK=null,TRIAL=null,LOCKDESK=false;
 async function lockCheck(){

@@ -177,6 +177,7 @@ for marker in [
     "'hospitality-tourism':",
     "'food-beverage':",
     "'property-management-facilities':",
+    "'construction-project-management':",
     "'manufacturing-industrial':",
     "'general-maintenance':",
 ]:
@@ -384,6 +385,7 @@ for marker in [
     "SF_CONFIGURABLE_MODULES",
     "sfIndustryModuleOverrides",
     "sfResetIndustryCustomizations",
+    "'construction-project-management':[['🏗️','Project work packages'",
 ]:
     if marker not in workspace_code:
         raise SystemExit(f"Missing industry operations UI capability: {marker}")

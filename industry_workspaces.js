@@ -79,7 +79,7 @@ function sfIndustryModules(slug){
     'fleet-management':[['🚚','Fleet & tracking','Vehicles, GPS positions, utilisation and alerts','fleet'],['🧰','Maintenance work','Create and assign vehicle maintenance work','work_orders'],['🔁','Service schedules','Plan recurring vehicle maintenance','pm_schedules'],['📦','Parts & stock','Manage workshop parts and consumables','stock_items'],['🛒','Purchasing','Order parts and supplies','purchase_orders'],['☑️','Inspections','Vehicle and fleet checklists','chk'],['📊','Reports','Fleet and maintenance reporting','rep']],
     workshops:[['🔧','Workshop & job cards','Workshop bookings, vehicle job cards and repair progress','fleet'],['🧰','Work orders','Assign maintenance and repair tasks','work_orders'],['📦','Workshop stock','Parts and materials','stock_items'],['🛒','Parts purchasing','Supplier orders','purchase_orders'],['👥','Customers','Customer records','customers'],['💳','Quotes & invoicing','Customer billing','inv'],['☑️','Quality checklists','Inspection and sign-off lists','chk']],
     'logistics-transport':[['📦','Parcel operations','Create waybills, track consignments, record depot scans and capture proof of delivery','logistics_ops'],['🚛','Fleet & GPS tracking','Vehicle locations, movement and alerts','fleet'],['🧰','Depot maintenance','Work orders for vehicles, depots and equipment','work_orders'],['🔁','Maintenance schedules','Planned maintenance','pm_schedules'],['📦','Stock & supplies','Depot stock and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['☑️','Inspections','Vehicle and facility checks','chk'],['📊','Reports','Operations and maintenance reporting','rep']],
-    'hospitality-tourism':[['🏨','Property assets','Rooms, plant, equipment and facilities','assets'],['🛠️','Maintenance requests','Guest and staff maintenance tasks','work_orders'],['🔁','Preventive maintenance','Recurring room, plant and facility tasks','pm_schedules'],['☑️','Operating checklists','Daily, weekly and monthly checks','chk'],['📦','Stores & stock','Maintenance stock and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['🦺','Safety & fire','Inspections, incidents and fire equipment','ohs']],
+    'hospitality-tourism':[['🛏️','Guest rooms & facilities','Room and guest-area maintenance requests with asset context','hospitality_rooms'],['🛠️','Maintenance requests','Guest and staff maintenance tasks','work_orders'],['🔁','Preventive maintenance','Recurring room, plant and facility tasks','pm_schedules'],['☑️','Operating checklists','Daily, weekly and monthly checks','chk'],['📦','Stores & stock','Maintenance stock and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['🦺','Safety & fire','Inspections, incidents and fire equipment','ohs']],
     'food-beverage':[['🍽️','Venue equipment','Kitchen, refrigeration and dining equipment','assets'],['🛠️','Maintenance tasks','Repairs and breakdowns','work_orders'],['🔁','Planned servicing','Recurring equipment maintenance','pm_schedules'],['☑️','Hygiene & operating checks','Repeatable operating and maintenance checklists','chk'],['📦','Stock & supplies','Maintenance consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['🦺','Safety','Workplace and fire safety','ohs']],
     'property-management-facilities':[['🏢','Properties & assets','Buildings, blocks, campuses and facility assets','assets'],['🛠️','Service requests','Tenant, occupant and facilities work orders','work_orders'],['🔁','Preventive maintenance','Recurring building and plant maintenance','pm_schedules'],['☑️','Inspections','Property and facilities checklists','chk'],['⚠️','Damage reports','Record damage and corrective actions','damage_reports'],['📦','Stock & supplies','Maintenance stock','stock_items'],['🤝','Suppliers','Contractors and service providers','suppliers']],
     'construction-project-management':[['🏗️','Project work packages','Plan and assign construction tasks, site work and delivery responsibilities','work_orders'],['🏢','Plant, tools & equipment','Register site plant, tools and construction equipment','assets'],['📅','Planned works','Schedule recurring and milestone-related maintenance activities','pm_schedules'],['💰','Project budgets & costs','Review budgets, cost lines and recorded expenses','bud'],['🛒','Materials procurement','Order construction materials and supplier services','purchase_orders'],['📦','Materials & stock','Track consumables, spares and site stock','stock_items'],['🤝','Contractors & suppliers','Manage subcontractors, trades and suppliers','suppliers'],['🦺','Site safety','Manage site safety inspections and incidents','ohs'],['☑️','Quality & site inspections','Run site checklists and quality inspections','chk'],['⚠️','Site issues & damage','Record site damage, defects and corrective actions','damage_reports']],
@@ -141,6 +141,41 @@ async function sfAddIndustryStarterChecklists(){
     alert(additions.length+' industry-specific checklist(s) added. Open Checklists to complete, edit and sign them off.');
   }catch(error){alert('Could not add the industry checklists: '+(error?.message||'Unknown error'));}
   finally{if(button)button.disabled=false;}
+}
+
+let SF_HOSPITALITY_ASSETS=[],SF_HOSPITALITY_REQUESTS=[];
+async function sfHospitalityRooms(){
+  const [ar,wr]=await Promise.all([
+    sb.from('assets').select('id,name,category,status').eq('company_id',me.company_id).eq('site_id',site).order('name').limit(500),
+    sb.from('work_orders').select('id,title,priority,status,due_date,assigned_name,created_at').eq('company_id',me.company_id).eq('site_id',site).order('created_at',{ascending:false}).limit(500)
+  ]);
+  if(ar.error)throw ar.error;if(wr.error)throw wr.error;
+  SF_HOSPITALITY_ASSETS=ar.data||[];
+  SF_HOSPITALITY_REQUESTS=(wr.data||[]).filter(x=>/^Room\s*:/i.test(x.title||''));
+  const rooms=SF_HOSPITALITY_ASSETS.filter(x=>/room|suite|guest|lobby|reception|pool|restaurant|kitchen|public area/i.test((x.name||'')+' '+(x.category||'')));
+  const open=SF_HOSPITALITY_REQUESTS.filter(x=>!['done','cancelled'].includes(x.status));
+  const roomOptions=rooms.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.name)+(x.category?' · '+esc(x.category):'')+'</option>').join('');
+  const roomField=rooms.length?'<label class="el">Room / guest area<select id="sfHospitalityRoom"><option value="">Choose a room or area</option>'+roomOptions+'</select></label>':'<label class="el">Room / guest area<input id="sfHospitalityRoom" maxlength="120" placeholder="e.g. Room 204, reception or pool area"></label>';
+  const cards=SF_HOSPITALITY_REQUESTS.map(x=>'<div class="card"><div class="ct"><div>'+esc(x.title)+'</div><div class="chips">'+chip(x.status,cap(x.status))+'</div></div><div class="kv"><span>Priority</span><b>'+esc(x.priority||'medium')+'</b><span>Assigned to</span><b>'+esc(x.assigned_name||'Unassigned')+'</b><span>Due</span><b>'+esc(x.due_date||'Not set')+'</b></div><div class="ca"><button onclick="goTab(\'work_orders\')">Open work orders</button></div></div>').join('')||'<div class="p">No guest-room maintenance requests have been raised at this site.</div>';
+  return '<div class="bar2 noprint"><button onclick="goTab(\'industry_workspace\')">← Hospitality workspace</button><button onclick="goTab(\'assets\')">All property assets</button><button onclick="goTab(\'chk\')">Operating checklists</button></div>'+
+    '<h2>Guest rooms & facilities</h2><div class="note">A site-scoped maintenance desk for guest rooms and guest-facing areas. Raise a room issue, prioritise it and track it through the shared work-order register.</div>'+
+    '<div class="g"><div class="k"><b>'+rooms.length+'</b><span>Registered rooms / guest areas</span></div><div class="k"><b>'+open.length+'</b><span>Open room requests</span></div><div class="k"><b>'+SF_HOSPITALITY_REQUESTS.filter(x=>x.status==='done').length+'</b><span>Completed room requests</span></div></div>'+
+    '<details class="p noprint" open><summary>＋ Raise a guest-room maintenance request</summary><div class="f" style="margin-top:10px">'+roomField+
+    '<label class="el">Issue / maintenance required<input id="sfHospitalityIssue" maxlength="180" placeholder="e.g. Air conditioner not cooling"></label>'+
+    '<label class="el">Priority<select id="sfHospitalityPriority"><option value="medium">Medium</option><option value="low">Low</option><option value="high">High</option><option value="urgent">Urgent</option></select></label>'+
+    '<label class="el">Target date<input id="sfHospitalityDue" type="date"></label>'+
+    '<label class="el">Assigned technician / team<input id="sfHospitalityAssigned" maxlength="120" placeholder="Optional"></label></div>'+
+    '<button class="b" onclick="sfCreateHospitalityRequest()">Create maintenance request</button></details>'+
+    '<h3>Guest-room maintenance requests</h3><div class="dg">'+cards+'</div>';
+}
+async function sfCreateHospitalityRequest(){
+  const room=$('sfHospitalityRoom').value.trim(),issue=$('sfHospitalityIssue').value.trim();
+  if(!room)return alert('Choose or enter the room or guest area.');
+  if(!issue)return alert('Describe the maintenance issue.');
+  const row={company_id:me.company_id,site_id:site,created_by:me.id,title:'Room: '+room+' — '+issue,priority:$('sfHospitalityPriority').value,status:'open',due_date:$('sfHospitalityDue').value||null,assigned_name:$('sfHospitalityAssigned').value.trim()||null};
+  const {error}=await sb.from('work_orders').insert(row);
+  if(error)return alert('Could not create the room maintenance request: '+error.message);
+  draw();
 }
 
 async function sfIndustryWorkspace(){

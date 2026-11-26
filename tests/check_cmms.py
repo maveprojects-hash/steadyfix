@@ -32,6 +32,8 @@ required_ui = [
     "const specialist=true",
     "const workspaceRoutes=new Set(typeof sfIndustryModules==='function'?sfIndustryModules(slug).map(m=>m[3]):[])",
     "cur=='logistics_ops'?await sfLogisticsWorkspace()",
+    "cur=='food_equipment'?await sfFoodEquipmentDesk()",
+    "['food_equipment','Kitchen equipment']",
     "cur=='service_contracts'?await sfServiceContracts()",
     "['logistics_ops','Parcel operations']",
     "['service_contracts','Service contracts']",

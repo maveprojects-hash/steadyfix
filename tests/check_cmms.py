@@ -1030,7 +1030,7 @@ print("Database-level Hospitality default for new companies: PASS")
 
 # Industry workspace module definitions must remain separate from checklist template packs.
 module_map = industry_js.read_text(encoding="utf-8").split("function sfIndustryModules(slug){", 1)[1].split("async function sfAddIndustryStarterChecklists()", 1)[0]
-for marker in ["'Service job cards'", "'Fleet & tracking'", "'Parcel operations'", "'Property assets'"]:
+for marker in ["'Service job cards'", "'Fleet & tracking'", "'Parcel operations'", "'Properties & assets'"]:
     if marker not in module_map:
         raise SystemExit(f"Industry specialist module is missing from the module map: {marker}")
 for marker in ["Copier and office equipment service visit", "Depot opening and dispatch readiness", "Guest room and public area maintenance readiness", "Property common-area inspection", "Daily maintenance team readiness"]:

@@ -1028,6 +1028,27 @@ if "values (new.id, 'hospitality-tourism')" not in migration_default_sql:
     raise SystemExit("New company creation trigger must create a Hospitality industry profile")
 print("Database-level Hospitality default for new companies: PASS")
 
+# Industry workspace module definitions must remain separate from checklist template packs.
+module_map = industry_js.read_text(encoding="utf-8").split("function sfIndustryModules(slug){", 1)[1].split("async function sfAddIndustryStarterChecklists()", 1)[0]
+for marker in ["'Service job cards'", "'Fleet & tracking'", "'Parcel operations'", "'Property assets'"]:
+    if marker not in module_map:
+        raise SystemExit(f"Industry specialist module is missing from the module map: {marker}")
+for marker in ["Copier and office equipment service visit", "Depot opening and dispatch readiness", "Guest room and public area maintenance readiness", "Property common-area inspection", "Daily maintenance team readiness"]:
+    if marker in module_map:
+        raise SystemExit(f"Checklist data leaked into the industry module map: {marker}")
+for marker in ["'automation':", "'logistics-transport':", "'hospitality-tourism':", "'property-management-facilities':", "'general-maintenance':", "Copier and office equipment service visit", "Depot opening and dispatch readiness", "Guest room and public area maintenance readiness", "Property common-area inspection", "Daily maintenance team readiness"]:
+    if marker not in industry_js.read_text(encoding="utf-8"):
+        raise SystemExit(f"Missing industry starter checklist pack: {marker}")
+print("Industry module map and complete starter checklist pack separation: PASS")
+
+# Industry palettes must drive both navigation colours and the visible app background.
+for marker in ["root.style.setProperty('--ac2', theme.highlight)", "root.style.setProperty('--am', theme.accent)", "root.style.setProperty('--am2', theme.highlight)"]:
+    if marker not in industry_js.read_text(encoding="utf-8"):
+        raise SystemExit(f"Industry theme variable binding missing: {marker}")
+if "body[data-industry-theme]{background:linear-gradient(145deg,var(--bg) 0%,var(--pn) 78%)" not in main_app:
+    raise SystemExit("Industry-specific app background is not applied")
+print("Industry palette propagation to navigation and app background: PASS")
+
 # Food & Beverage and Manufacturing workspaces can add editable, site-scoped starter checklists.
 for marker in [
     "async function sfAddIndustryStarterChecklists()",

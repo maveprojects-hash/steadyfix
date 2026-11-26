@@ -178,7 +178,7 @@ for marker in [
     "'hospitality-tourism':",
     "'food-beverage':",
     "'property-management-facilities':",
-    "'automation':",
+    "automation:",
     "Copier and office equipment service visit",
     "Customer equipment installation and handover",
     "'logistics-transport':",
@@ -1036,7 +1036,7 @@ for marker in ["'Service job cards'", "'Fleet & tracking'", "'Parcel operations'
 for marker in ["Copier and office equipment service visit", "Depot opening and dispatch readiness", "Guest room and public area maintenance readiness", "Property common-area inspection", "Daily maintenance team readiness"]:
     if marker in module_map:
         raise SystemExit(f"Checklist data leaked into the industry module map: {marker}")
-for marker in ["'automation':", "'logistics-transport':", "'hospitality-tourism':", "'property-management-facilities':", "'general-maintenance':", "Copier and office equipment service visit", "Depot opening and dispatch readiness", "Guest room and public area maintenance readiness", "Property common-area inspection", "Daily maintenance team readiness"]:
+for marker in ["automation:", "'logistics-transport':", "'hospitality-tourism':", "'property-management-facilities':", "'general-maintenance':", "Copier and office equipment service visit", "Depot opening and dispatch readiness", "Guest room and public area maintenance readiness", "Property common-area inspection", "Daily maintenance team readiness"]:
     if marker not in industry_js.read_text(encoding="utf-8"):
         raise SystemExit(f"Missing industry starter checklist pack: {marker}")
 print("Industry module map and complete starter checklist pack separation: PASS")

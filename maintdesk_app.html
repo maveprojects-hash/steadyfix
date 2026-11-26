@@ -451,10 +451,9 @@ function buildNav(){
  const priority=Array.isArray(config.dashboard_priority_tabs)?config.dashboard_priority_tabs:[];
  const disabled=new Set(Array.isArray(config.disabled_modules)?config.disabled_modules:[]);
  const labels=config.module_labels&&typeof config.module_labels==='object'?config.module_labels:{};
- // Keep the familiar all-department layout for the core facilities/project industries.
- // Specialist sectors receive only their own operational categories plus shared account tools.
- const standardIndustries=new Set(['hospitality-tourism','property-management-facilities','construction-project-management']);
- const specialist= !standardIndustries.has(slug);
+ // Every industry receives only its mapped specialist operations plus shared account tools.
+ // There is no generic all-departments exception: industry selection controls the visible operational navigation.
+ const specialist=true;
  const workspaceRoutes=new Set(typeof sfIndustryModules==='function'?sfIndustryModules(slug).map(m=>m[3]):[]);
  const sharedRoutes=new Set(['dash','industry','comms','rep','inv','suppliers','sup','inbox','act','set','sub']);
  const tabs=TABS.filter(t=>ok(t)&&!disabled.has(t[0])&&(!specialist||sharedRoutes.has(t[0])||workspaceRoutes.has(t[0]))).slice().sort((a,b)=>{

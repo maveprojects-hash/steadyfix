@@ -176,11 +176,11 @@ for marker in [
     "automation: { accent:'#d62828', highlight:'#2878c8', nav:'#172b4d'",
     "'fleet-management':",
     "workshops:",
-    "workshops: { accent:'#23834b', highlight:'#8bd5a6'",
+    "workshops: { accent:'#b58a45', highlight:'#e8d8b5'",
     "'logistics-transport':",
-    "'logistics-transport': { accent:'#7650b8', highlight:'#c4a7f4'",
+    "'logistics-transport': { accent:'#1d6fa5', highlight:'#2b9bd6'",
     "'hospitality-tourism':",
-    "'hospitality-tourism': { accent:'#b84f68', highlight:'#f0a8b8'",
+    "'hospitality-tourism': { accent:'#1d6fa5', highlight:'#2b9bd6'",
     "'food-beverage':",
     "'food-beverage': { accent:'#9a7b22', highlight:'#e5d17a'",
     "'property-management-facilities':",
@@ -1051,7 +1051,7 @@ for marker in ["automation:", "'logistics-transport':", "'hospitality-tourism':"
 print("Industry module map and complete starter checklist pack separation: PASS")
 
 # Industry palettes must drive both navigation colours and the visible app background.
-for marker in ["root.style.setProperty('--ac2', theme.highlight)", "root.style.setProperty('--am', theme.accent)", "root.style.setProperty('--am2', theme.highlight)"]:
+for marker in ["root.style.setProperty('--ac2', theme.highlight)", "root.style.setProperty('--am', '#f2a900')", "root.style.setProperty('--am2', '#ffc53d')"]:
     if marker not in industry_js.read_text(encoding="utf-8"):
         raise SystemExit(f"Industry theme variable binding missing: {marker}")
 if "body[data-industry-theme]{background:linear-gradient(145deg,var(--bg) 0%,var(--pn) 78%)" not in main_app:

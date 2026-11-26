@@ -198,7 +198,7 @@ for marker in [
 for marker in [
     "applyIndustryTheme==='function'",
     "border-bottom:3px solid var(--ac)",
-    "color-mix(in srgb,var(--am)",
+    "color-mix(in srgb,var(--ac)",
 ]:
     if marker not in html:
         raise SystemExit(f"Industry palette is not applied in the CMMS UI: {marker}")

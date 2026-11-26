@@ -2,18 +2,16 @@
 
 /* Industry identity palettes: shared across the browser app and desktop wrapper. */
 const SF_INDUSTRY_THEMES = {
-  /* Custom identities requested by the CMMS owner. */
-  automation: { accent:'#d62828', highlight:'#2878c8', nav:'#17334d', bg:'#edf3f8', panel:'#ffffff', line:'#cbd8e4', ink:'#1d2d3b', muted:'#586b78' },
+  automation: { accent:'#d62828', highlight:'#2878c8', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' },
   workshops: { accent:'#b58a45', highlight:'#e8d8b5', nav:'#51432d', bg:'#f5f0e5', panel:'#fffdf8', line:'#e4d9c4', ink:'#352f25', muted:'#756b59' },
   'logistics-transport': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#17364a', bg:'#eef2f7', panel:'#ffffff', line:'#d5e0e9', ink:'#14212b', muted:'#64748b' },
-  /* All remaining industries retain the standard CMMS colour scheme. */
-  'fleet-management': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#0b141b', bg:'#eef2f7', panel:'#ffffff', line:'#e2e8f0', ink:'#14212b', muted:'#64748b' },
-  'hospitality-tourism': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#0b141b', bg:'#eef2f7', panel:'#ffffff', line:'#e2e8f0', ink:'#14212b', muted:'#64748b' },
-  'food-beverage': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#0b141b', bg:'#eef2f7', panel:'#ffffff', line:'#e2e8f0', ink:'#14212b', muted:'#64748b' },
-  'property-management-facilities': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#0b141b', bg:'#eef2f7', panel:'#ffffff', line:'#e2e8f0', ink:'#14212b', muted:'#64748b' },
-  'construction-project-management': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#0b141b', bg:'#eef2f7', panel:'#ffffff', line:'#e2e8f0', ink:'#14212b', muted:'#64748b' },
-  'manufacturing-industrial': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#0b141b', bg:'#eef2f7', panel:'#ffffff', line:'#e2e8f0', ink:'#14212b', muted:'#64748b' },
-  'general-maintenance': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#0b141b', bg:'#eef2f7', panel:'#ffffff', line:'#e2e8f0', ink:'#14212b', muted:'#64748b' }
+  'fleet-management': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' },
+  'hospitality-tourism': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' },
+  'food-beverage': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' },
+  'property-management-facilities': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' },
+  'construction-project-management': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' },
+  'manufacturing-industrial': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' },
+  'general-maintenance': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' }
 };
 
 function applyIndustryTheme() {

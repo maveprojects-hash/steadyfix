@@ -2,16 +2,18 @@
 
 /* Industry identity palettes: shared across the browser app and desktop wrapper. */
 const SF_INDUSTRY_THEMES = {
-  automation: { accent:'#d62828', highlight:'#2878c8', nav:'#172b4d', bg:'#eaf0f8', panel:'#ffffff', line:'#c8d5e6', ink:'#1d2d46', muted:'#586b86' },
-  'fleet-management': { accent:'#c46a13', highlight:'#f2b84b', nav:'#352311', bg:'#f8f0e5', panel:'#fffdf9', line:'#e7d5bc', ink:'#35291c', muted:'#766451' },
-  workshops: { accent:'#23834b', highlight:'#8bd5a6', nav:'#173b29', bg:'#eaf4ed', panel:'#ffffff', line:'#c7dfcf', ink:'#20382a', muted:'#587362' },
-  'logistics-transport': { accent:'#7650b8', highlight:'#c4a7f4', nav:'#2a1e40', bg:'#f0ebf7', panel:'#ffffff', line:'#d8cbe9', ink:'#302540', muted:'#6b607d' },
-  'hospitality-tourism': { accent:'#b84f68', highlight:'#f0a8b8', nav:'#3d202a', bg:'#f7edf0', panel:'#fffdfd', line:'#e8cbd2', ink:'#3c2930', muted:'#80636b' },
-  'food-beverage': { accent:'#9a7b22', highlight:'#e5d17a', nav:'#393016', bg:'#f5f1e3', panel:'#fffefa', line:'#e5d9b6', ink:'#39321e', muted:'#776d4e' },
-  'property-management-facilities': { accent:'#2878c8', highlight:'#8ec5ff', nav:'#192c42', bg:'#eaf0f6', panel:'#ffffff', line:'#cbd8e6', ink:'#203246', muted:'#5c6f82' },
-  'construction-project-management': { accent:'#b7791f', highlight:'#f6c453', nav:'#342a18', bg:'#f4f0e6', panel:'#fffefa', line:'#e2d6bd', ink:'#332b1e', muted:'#75684f' },
-  'manufacturing-industrial': { accent:'#52647f', highlight:'#9fb4d4', nav:'#202b3b', bg:'#edf0f5', panel:'#fffefa', line:'#d1d9e5', ink:'#273449', muted:'#64748b' },
-  'general-maintenance': { accent:'#167caa', highlight:'#e59f0f', nav:'#18313d', bg:'#e9f1f4', panel:'#ffffff', line:'#cbdde3', ink:'#1b3038', muted:'#58717a' }
+  /* Custom identities requested by the CMMS owner. */
+  automation: { accent:'#d62828', highlight:'#2878c8', nav:'#17334d', bg:'#edf3f8', panel:'#ffffff', line:'#cbd8e4', ink:'#1d2d3b', muted:'#586b78' },
+  workshops: { accent:'#b58a45', highlight:'#e8d8b5', nav:'#51432d', bg:'#f5f0e5', panel:'#fffdf8', line:'#e4d9c4', ink:'#352f25', muted:'#756b59' },
+  'logistics-transport': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#17364a', bg:'#eef2f7', panel:'#ffffff', line:'#d5e0e9', ink:'#14212b', muted:'#64748b' },
+  /* All remaining industries retain the standard CMMS colour scheme. */
+  'fleet-management': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#0b141b', bg:'#eef2f7', panel:'#ffffff', line:'#e2e8f0', ink:'#14212b', muted:'#64748b' },
+  'hospitality-tourism': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#0b141b', bg:'#eef2f7', panel:'#ffffff', line:'#e2e8f0', ink:'#14212b', muted:'#64748b' },
+  'food-beverage': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#0b141b', bg:'#eef2f7', panel:'#ffffff', line:'#e2e8f0', ink:'#14212b', muted:'#64748b' },
+  'property-management-facilities': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#0b141b', bg:'#eef2f7', panel:'#ffffff', line:'#e2e8f0', ink:'#14212b', muted:'#64748b' },
+  'construction-project-management': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#0b141b', bg:'#eef2f7', panel:'#ffffff', line:'#e2e8f0', ink:'#14212b', muted:'#64748b' },
+  'manufacturing-industrial': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#0b141b', bg:'#eef2f7', panel:'#ffffff', line:'#e2e8f0', ink:'#14212b', muted:'#64748b' },
+  'general-maintenance': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#0b141b', bg:'#eef2f7', panel:'#ffffff', line:'#e2e8f0', ink:'#14212b', muted:'#64748b' }
 };
 
 function applyIndustryTheme() {
@@ -20,8 +22,8 @@ function applyIndustryTheme() {
   const root = document.documentElement;
   root.style.setProperty('--ac', theme.accent);
   root.style.setProperty('--ac2', theme.highlight);
-  root.style.setProperty('--am', theme.accent);
-  root.style.setProperty('--am2', theme.highlight);
+  root.style.setProperty('--am', '#f2a900');
+  root.style.setProperty('--am2', '#ffc53d');
   root.style.setProperty('--nav', theme.nav);
   root.style.setProperty('--bg', theme.bg);
   root.style.setProperty('--pn', theme.panel);

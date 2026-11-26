@@ -1112,7 +1112,7 @@ async function ins(id){const m=MOD[id],row={company_id:me.company_id};if(m.s)row
 async function del(tb,rid){if(!confirm('Delete this row?'))return;const{error}=await sb.from(tb).delete().eq('id',rid);error?alert(error.message):draw()}
 
 const STARTER={daily:['Walk-round: leaks, noises, alarms','Pool plant pressure & chlorine','Generator fuel & battery','Geyser valves','Log meter readings'],weekly:['Test emergency lighting','Grease pumps & motors','Inspect gas connections','Clean strainers & filters','Fleet tyre & oil check'],monthly:['Thermal scan DB boards','Test generator on load','Service booster pumps','Review stock vs min levels','Review overdue PMs'],yearly:['Fire equipment service check','Electrical compliance inspection','Gas safety inspection','Boiler and geyser inspection','Review equipment replacement plan']};
-const FRQ=['daily','weekly','monthly','yearly'];let ct=null,ced=false,MP=Promise.resolve();
+const FRQ=['daily','weekly','monthly','yearly','other'];let ct=null,ced=false,MP=Promise.resolve();
 function pk(f){const d=new Date(),z=n=>String(n).padStart(2,'0');if(f=='weekly')d.setDate(d.getDate()-((d.getDay()+6)%7));if(f=='monthly')d.setDate(1);if(f=='yearly'){d.setMonth(0);d.setDate(1)}return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())}
 async function chk(){
  const all=(await sb.from('checklist_templates').select('*').eq('site_id',site).order('created_at',{ascending:false}).order('name')).data||[],list=all.filter(x=>x.frequency==cf),t=list.find(x=>x.id==ct)||list[0];

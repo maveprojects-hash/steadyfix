@@ -32,6 +32,8 @@ required_ui = [
     "const specialist=true",
     "const workspaceRoutes=new Set(typeof sfIndustryModules==='function'?sfIndustryModules(slug).map(m=>m[3]):[])",
     "cur=='logistics_ops'?await sfLogisticsWorkspace()",
+    "cur=='food_equipment'?await sfFoodEquipmentDesk()",
+    "['food_equipment','Kitchen equipment']",
     "cur=='service_contracts'?await sfServiceContracts()",
     "['logistics_ops','Parcel operations']",
     "['service_contracts','Service contracts']",
@@ -483,7 +485,7 @@ module_source = workspace_code[module_start:module_end]
 industry_routes = set(re.findall(r"\['[^']*','[^']*','[^']*','([a-z_]+)'\]", module_source))
 mod_source = html.split("const MOD={", 1)[1].split("};\nconst TABS=", 1)[0]
 base_modules = set(re.findall(r"^\s*([a-z_]+):\{", mod_source, re.MULTILINE))
-custom_views = {"service_contracts", "logistics_ops", "hospitality_rooms", "ohs", "fleet", "inv", "chk", "rep", "bud"}
+custom_views = {"service_contracts", "logistics_ops", "hospitality_rooms", "food_equipment", "ohs", "fleet", "inv", "chk", "rep", "bud"}
 unresolved_routes = sorted(industry_routes - base_modules - custom_views)
 if unresolved_routes:
     raise SystemExit(f"Industry workspace shortcuts have no registered destination: {unresolved_routes}")

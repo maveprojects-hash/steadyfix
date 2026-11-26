@@ -19,7 +19,9 @@ function applyIndustryTheme() {
   const theme = SF_INDUSTRY_THEMES[slug] || SF_INDUSTRY_THEMES['general-maintenance'];
   const root = document.documentElement;
   root.style.setProperty('--ac', theme.accent);
-  root.style.setProperty('--am', theme.highlight);
+  root.style.setProperty('--ac2', theme.highlight);
+  root.style.setProperty('--am', theme.accent);
+  root.style.setProperty('--am2', theme.highlight);
   root.style.setProperty('--nav', theme.nav);
   root.style.setProperty('--bg', theme.bg);
   root.style.setProperty('--pn', theme.panel);
@@ -80,7 +82,17 @@ function sfIndustryModules(slug){
     'hospitality-tourism':[['🏨','Property assets','Rooms, plant, equipment and facilities','assets'],['🛠️','Maintenance requests','Guest and staff maintenance tasks','work_orders'],['🔁','Preventive maintenance','Recurring room, plant and facility tasks','pm_schedules'],['☑️','Operating checklists','Daily, weekly and monthly checks','chk'],['📦','Stores & stock','Maintenance stock and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['🦺','Safety & fire','Inspections, incidents and fire equipment','ohs']],
     'food-beverage':[['🍽️','Venue equipment','Kitchen, refrigeration and dining equipment','assets'],['🛠️','Maintenance tasks','Repairs and breakdowns','work_orders'],['🔁','Planned servicing','Recurring equipment maintenance','pm_schedules'],['☑️','Hygiene & operating checks','Repeatable operating and maintenance checklists','chk'],['📦','Stock & supplies','Maintenance consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['🦺','Safety','Workplace and fire safety','ohs']],
     'property-management-facilities':[['🏢','Properties & assets','Buildings, blocks, campuses and facility assets','assets'],['🛠️','Service requests','Tenant, occupant and facilities work orders','work_orders'],['🔁','Preventive maintenance','Recurring building and plant maintenance','pm_schedules'],['☑️','Inspections','Property and facilities checklists','chk'],['⚠️','Damage reports','Record damage and corrective actions','damage_reports'],['📦','Stock & supplies','Maintenance stock','stock_items'],['🤝','Suppliers','Contractors and service providers','suppliers']],
-    'automation':[
+    'construction-project-management':[['🏗️','Project work packages','Plan and assign construction tasks, site work and delivery responsibilities','work_orders'],['🏢','Plant, tools & equipment','Register site plant, tools and construction equipment','assets'],['📅','Planned works','Schedule recurring and milestone-related maintenance activities','pm_schedules'],['💰','Project budgets & costs','Review budgets, cost lines and recorded expenses','bud'],['🛒','Materials procurement','Order construction materials and supplier services','purchase_orders'],['📦','Materials & stock','Track consumables, spares and site stock','stock_items'],['🤝','Contractors & suppliers','Manage subcontractors, trades and suppliers','suppliers'],['🦺','Site safety','Manage site safety inspections and incidents','ohs'],['☑️','Quality & site inspections','Run site checklists and quality inspections','chk'],['⚠️','Site issues & damage','Record site damage, defects and corrective actions','damage_reports']],
+    'manufacturing-industrial':[['🏭','Plant & equipment','Production assets and utilities','assets'],['🛠️','Maintenance work','Breakdown and planned maintenance tasks','work_orders'],['🔁','Preventive maintenance','Recurring plant servicing','pm_schedules'],['📦','Parts & stock','Spare parts and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['⏸️','Shutdowns','Planned shutdown records','shutdowns'],['🦺','Safety','Inspections and incidents','ohs']],
+    'general-maintenance':[['🛠️','Work orders','General maintenance and service tasks','work_orders'],['🏢','Assets','Equipment and facilities register','assets'],['🔁','Preventive maintenance','Recurring maintenance schedules','pm_schedules'],['📦','Stock','Parts and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['☑️','Checklists','Repeatable inspections and checks','chk'],['🤝','Suppliers','Suppliers and contractors','suppliers']]
+  };
+  return all[slug]||all['general-maintenance'];
+}
+
+async function sfAddIndustryStarterChecklists(){
+  const slug=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug;
+  const packs={
+    automation:[
       ['Copier and office equipment service visit','other',['Confirm customer, site and equipment serial number before starting','Record the opening page meter and reported fault','Inspect accessible exterior panels, trays, feed paths and consumable levels','Record fault findings and any parts or consumables used','Record work completed, meter reading and follow-up actions','Obtain customer acknowledgement using the approved job-card sign-off process']],
       ['Customer equipment installation and handover','other',['Confirm delivery location and equipment identity against the work order','Record serial number and equipment placement details','Check visible packaging and equipment condition before installation','Record initial meter reading and installed consumables','Demonstrate the agreed basic operating checks to the customer','Record handover notes and customer acknowledgement']]
     ],
@@ -100,16 +112,6 @@ function sfIndustryModules(slug){
       ['Daily maintenance team readiness','daily',['Review open work orders and identify urgent or overdue tasks','Confirm each assigned task has a location, responsible person and priority','Check required tools, PPE and common consumables are available','Review access requirements and site instructions before work starts','Record new defects and create work orders for actionable issues','Hand over incomplete or blocked work with a clear next action']],
       ['Weekly site and asset condition walk-through','weekly',['Inspect accessible plant and equipment for visible damage, leaks or abnormal noise','Check common areas, doors, lighting and walkways for defects','Review preventive maintenance due in the next 30 days','Check critical spares and consumables against reorder levels','Review repeat faults and unresolved corrective actions','Assign owners and due dates to all new findings']]
     ],
-    'construction-project-management':[['🏗️','Project work packages','Plan and assign construction tasks, site work and delivery responsibilities','work_orders'],['🏢','Plant, tools & equipment','Register site plant, tools and construction equipment','assets'],['📅','Planned works','Schedule recurring and milestone-related maintenance activities','pm_schedules'],['💰','Project budgets & costs','Review budgets, cost lines and recorded expenses','bud'],['🛒','Materials procurement','Order construction materials and supplier services','purchase_orders'],['📦','Materials & stock','Track consumables, spares and site stock','stock_items'],['🤝','Contractors & suppliers','Manage subcontractors, trades and suppliers','suppliers'],['🦺','Site safety','Manage site safety inspections and incidents','ohs'],['☑️','Quality & site inspections','Run site checklists and quality inspections','chk'],['⚠️','Site issues & damage','Record site damage, defects and corrective actions','damage_reports']],
-    'manufacturing-industrial':[['🏭','Plant & equipment','Production assets and utilities','assets'],['🛠️','Maintenance work','Breakdown and planned maintenance tasks','work_orders'],['🔁','Preventive maintenance','Recurring plant servicing','pm_schedules'],['📦','Parts & stock','Spare parts and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['⏸️','Shutdowns','Planned shutdown records','shutdowns'],['🦺','Safety','Inspections and incidents','ohs']],
-    'general-maintenance':[['🛠️','Work orders','General maintenance and service tasks','work_orders'],['🏢','Assets','Equipment and facilities register','assets'],['🔁','Preventive maintenance','Recurring maintenance schedules','pm_schedules'],['📦','Stock','Parts and consumables','stock_items'],['🛒','Purchasing','Supplier orders','purchase_orders'],['☑️','Checklists','Repeatable inspections and checks','chk'],['🤝','Suppliers','Suppliers and contractors','suppliers']]
-  };
-  return all[slug]||all['general-maintenance'];
-}
-
-async function sfAddIndustryStarterChecklists(){
-  const slug=INDUSTRY_PROFILE&&INDUSTRY_PROFILE.primary_industry_slug;
-  const packs={
     'food-beverage':[
       ['Kitchen equipment opening checks','daily',['Confirm refrigeration and freezer units are running and free from visible damage','Check cooking equipment, extraction and ventilation for visible faults','Check dishwashing and sanitation equipment is operational','Check floors, drains and work areas are clean and unobstructed','Record defects and raise a maintenance work order','Confirm urgent equipment faults have been escalated']],
       ['Food venue weekly maintenance walk-through','weekly',['Inspect refrigeration door seals, hinges and condensate drains','Inspect cooking equipment, controls and safety guards','Inspect extraction filters and ventilation access','Inspect taps, sinks, drains and hot-water equipment','Inspect cold-room doors, lighting and floor condition','Review open maintenance tasks and overdue servicing']]

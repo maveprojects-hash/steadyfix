@@ -381,6 +381,11 @@ for marker in [
 
 
 # Integrated industry operations: labour ledger, transactional stock issue, logistics waybills and POD.
+
+# Stock balance query failures must be handled explicitly, not as null-data crashes.
+stock_balance_load = "if(id=='stock_items'){const{data:stockBalances,error:stockBalanceError}=await sb.from('stock_levels').select('item_id,on_hand').eq('site_id',site);if(stockBalanceError)throw stockBalanceError;(stockBalances||[]).forEach(l=>oh[l.item_id]=l.on_hand);}"
+if stock_balance_load not in html:
+    raise SystemExit("Stock balance loading must check query errors and tolerate null data")
 operations_migration = next((root / "supabase" / "migrations").glob("*_industry_operations_logistics.sql"))
 operations_sql = operations_migration.read_text(encoding="utf-8").lower()
 for marker in [

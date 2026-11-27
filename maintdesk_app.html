@@ -986,7 +986,8 @@ async function shareHtml(html,fname,subject,text,to){
   if(!blob||blob.size<1500)throw new Error('The PDF file was generated empty. Please use Print / Save as PDF.');
   const pdfHeader=await blob.slice(0,5).text();
   if(pdfHeader!=='%PDF-')throw new Error('The generated file is not a valid PDF. Please use Print / Save as PDF.');
-  const pdfText=await blob.text();
+  const pdfBytes=new Uint8Array(await blob.arrayBuffer());
+  const pdfText=Array.from(pdfBytes,b=>String.fromCharCode(b)).join('');
   const pageCount=(pdfText.match(/\/Type\s*\/Page\b/g)||[]).length;
   if(pageCount<1)throw new Error('The PDF contains no page objects. Please use Print / Save as PDF.');
   if(!/%%EOF\s*$/.test(pdfText))throw new Error('The PDF output is incomplete (missing end-of-file marker). Please use Print / Save as PDF.');

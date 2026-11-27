@@ -603,8 +603,8 @@ for marker in [
     "await blob.arrayBuffer()",
     "pdfText.startsWith('%PDF-')",
     "pdfText.includes('%%EOF')",
-    "Page(?!s)",
-    "generated PDF is incomplete or contains no readable page",
+    "pageCount<1",
+    "The PDF contains no page objects.",
 ]:
     if marker not in pdf_share:
         raise SystemExit(f"PDF structure validation missing: {marker}")

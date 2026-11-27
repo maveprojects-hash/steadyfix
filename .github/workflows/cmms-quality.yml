@@ -76,3 +76,7 @@ jobs:
           name: document-browser-evidence
           path: test-results/
           if-no-files-found: ignore
+      - name: Check purchase order line integrity guards
+        run: python3 tests/check_purchase_order_line_integrity.py
+      - name: Check work order numeric integrity guards
+        run: python3 tests/check_work_order_numeric_integrity.py

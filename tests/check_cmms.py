@@ -1105,3 +1105,20 @@ for marker in [
         raise SystemExit(f"Missing industry workspace checklist shortcut: {marker}")
 print("Fleet and Workshops opt-in checklist packs: PASS")
 
+
+
+# Quotes and invoices: tenant/site scope, numeric validation and transactional conversion.
+for marker in [
+    "sb.rpc('convert_quote_to_invoice'",
+    "p_quote_id:id",
+    "p_invoice_number:number",
+    "Number.isFinite(+l.q)",
+    "Number.isFinite(+l.p)",
+    "eq('company_id',me.company_id)",
+    "pdfHeader!=='%PDF-'",
+    "brokenImages=imgs.filter(img=>!img.naturalWidth||!img.naturalHeight)",
+    "docNode.scrollWidth>docNode.clientWidth+2",
+]:
+    if marker not in html:
+        raise SystemExit("Quotes & invoices release guard missing: " + marker)
+print("Quotes & invoices tenant, validation, atomic conversion and PDF safeguards: PASS")

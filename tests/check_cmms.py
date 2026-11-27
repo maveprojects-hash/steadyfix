@@ -167,8 +167,8 @@ if not industry_js.exists():
     raise SystemExit("Missing industry workspace module")
 subprocess.run(["node", "--check", str(industry_js)], check=True)
 industry_code = industry_js.read_text(encoding="utf-8")
-if '<script src="industry_workspaces.js?v=20261126-industry-themes">' not in html:
-    raise SystemExit("Industry workspace palette asset must be cache-busted after theme updates")
+if '<script src="industry_workspaces.js?v=20261126-food-equipment-desk">' not in html:
+    raise SystemExit("Industry workspace asset must be cache-busted after workspace updates")
 for marker in [
     "SF_INDUSTRY_THEMES",
     "function applyIndustryTheme()",

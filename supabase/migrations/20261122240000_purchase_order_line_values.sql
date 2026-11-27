@@ -18,8 +18,8 @@ begin
   for v_line in select value from jsonb_array_elements(new.lines)
   loop
     if jsonb_typeof(v_line) <> 'object'
-       or jsonb_typeof(v_line->'q') <> 'number'
-       or jsonb_typeof(v_line->'p') <> 'number' then
+       or jsonb_typeof(v_line->'q') IS DISTINCT FROM 'number'
+       or jsonb_typeof(v_line->'p') IS DISTINCT FROM 'number' then
       raise exception 'Each purchase order line must have numeric quantity and unit price';
     end if;
     v_qty := (v_line->>'q')::numeric;

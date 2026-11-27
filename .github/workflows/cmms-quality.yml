@@ -58,3 +58,7 @@ jobs:
         run: bash tests/test_quote_conversion_rpc.sh
       - name: Run concurrent stock adjustment PostgreSQL regression
         run: bash tests/test_stock_adjustment_rpc.sh
+      - name: Check purchase order line integrity guards
+        run: python3 tests/check_purchase_order_line_integrity.py
+      - name: Check work order numeric integrity guards
+        run: python3 tests/check_work_order_numeric_integrity.py

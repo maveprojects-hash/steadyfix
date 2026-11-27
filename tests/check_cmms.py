@@ -603,8 +603,8 @@ for marker in [
     "await blob.arrayBuffer()",
     "pdfText.startsWith('%PDF-')",
     "pdfText.includes('%%EOF')",
-    "Page(?!s)",
-    "generated PDF is incomplete or contains no readable page",
+    "pageCount<1",
+    "The PDF contains no page objects.",
 ]:
     if marker not in pdf_share:
         raise SystemExit(f"PDF structure validation missing: {marker}")
@@ -744,10 +744,10 @@ for marker in ["eq('company_id',me.company_id)", "eq('site_id',site)", "eq('kind
     if marker not in export_code:
         raise SystemExit(f"Invoice accounting export is missing tenant/site scope: {marker}")
 for marker in [
-    "cu:(await sb.from('customers').select('*').eq('company_id',me.company_id))",
+    "const cu=cr.data||[]",
     "async function exportDocs(kind){const r=await sb.from('documents').select('*').eq('company_id',me.company_id).eq('site_id',site)",
-    "async function exportCust(){const D=(await sb.from('customers').select('*').eq('company_id',me.company_id)",
-    "async function exportExp(){const D=(await sb.from('expenses').select('*').eq('company_id',me.company_id).eq('site_id',site)",
+    "async function exportCust(){const r=await sb.from('customers').select('*').eq('company_id',me.company_id)",
+    "async function exportExp(){const r=await sb.from('expenses').select('*').eq('company_id',me.company_id).eq('site_id',site)",
 ]:
     if marker not in html:
         raise SystemExit(f"Accounting export tenant/site regression missing: {marker}")
@@ -1105,3 +1105,31 @@ for marker in [
         raise SystemExit(f"Missing industry workspace checklist shortcut: {marker}")
 print("Fleet and Workshops opt-in checklist packs: PASS")
 
+
+
+# Quotes and invoices: tenant/site scope, numeric validation and transactional conversion.
+for marker in [
+    "sb.rpc('convert_quote_to_invoice'",
+    "p_quote_id:id",
+    "p_invoice_number:number",
+    "Number.isFinite(+l.q)",
+    "Number.isFinite(+l.p)",
+    "eq('company_id',me.company_id)",
+    "pdfHeader!=='%PDF-'",
+    "brokenImages=imgs.filter(img=>!img.naturalWidth||!img.naturalHeight)",
+    "docNode.scrollWidth>docNode.clientWidth+2",
+]:
+    if marker not in html:
+        raise SystemExit("Quotes & invoices release guard missing: " + marker)
+print("Quotes & invoices tenant, validation, atomic conversion and PDF safeguards: PASS")
+
+
+# Generic module deletes and assignee references must stay inside the active tenant/site.
+for marker in [
+    "sb.from(tb).delete().eq('id',rid).eq('company_id',me.company_id)",
+    "if(MOD[tb]?.s)q=q.eq('site_id',site)",
+    "sb.from('profiles').select('id,full_name,role').eq('company_id',me.company_id).eq('active',true)",
+]:
+    if marker not in html:
+        raise SystemExit("Generic tenant write/reference guard missing: " + marker)
+print("Generic module delete and assignee tenant scope: PASS")

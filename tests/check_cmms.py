@@ -167,7 +167,7 @@ if not industry_js.exists():
     raise SystemExit("Missing industry workspace module")
 subprocess.run(["node", "--check", str(industry_js)], check=True)
 industry_code = industry_js.read_text(encoding="utf-8")
-if '<script src="industry_workspaces.js?v=20261126-food-equipment-desk">' not in html:
+if '<script src="industry_workspaces.js?v=20261127-industry-color-identities">' not in html:
     raise SystemExit("Industry workspace asset must be cache-busted after workspace updates")
 for marker in [
     "SF_INDUSTRY_THEMES",
@@ -182,9 +182,9 @@ for marker in [
     "'logistics-transport':",
     "'logistics-transport': { accent:'#1d6fa5', highlight:'#2b9bd6'",
     "'hospitality-tourism':",
-    "'hospitality-tourism': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed'",
+    "'hospitality-tourism': { accent:'#7c3aed', highlight:'#a78bfa', nav:'#35205f', bg:'#f3effa'",
     "'food-beverage':",
-    "'food-beverage': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed'",
+    "'food-beverage': { accent:'#c2410c', highlight:'#fb923c', nav:'#54220e', bg:'#fff4ec'",
     "'property-management-facilities':",
     "automation:",
     "Copier and office equipment service visit",
@@ -203,6 +203,11 @@ for marker in [
 ]:
     if marker not in industry_code:
         raise SystemExit(f"Missing industry visual identity: {marker}")
+theme_block = industry_code.split("const SF_INDUSTRY_THEMES = {", 1)[1].split("\n};", 1)[0]
+theme_accents = re.findall(r"accent:'(#[0-9a-fA-F]{6})'", theme_block)
+if len(theme_accents) != 10 or len(set(theme_accents)) != 10:
+    raise SystemExit(f"Expected ten distinct industry accent colours; found {len(set(theme_accents))} unique accents across {len(theme_accents)} themes")
+
 for marker in [
     "applyIndustryTheme==='function'",
     "border-bottom:3px solid var(--ac)",

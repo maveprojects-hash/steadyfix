@@ -1122,3 +1122,14 @@ for marker in [
     if marker not in html:
         raise SystemExit("Quotes & invoices release guard missing: " + marker)
 print("Quotes & invoices tenant, validation, atomic conversion and PDF safeguards: PASS")
+
+
+# Generic module deletes and assignee references must stay inside the active tenant/site.
+for marker in [
+    "sb.from(tb).delete().eq('id',rid).eq('company_id',me.company_id)",
+    "if(MOD[tb]?.s)q=q.eq('site_id',site)",
+    "sb.from('profiles').select('id,full_name,role').eq('company_id',me.company_id).eq('active',true)",
+]:
+    if marker not in html:
+        raise SystemExit("Generic tenant write/reference guard missing: " + marker)
+print("Generic module delete and assignee tenant scope: PASS")

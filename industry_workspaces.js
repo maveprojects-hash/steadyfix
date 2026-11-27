@@ -5,13 +5,13 @@ const SF_INDUSTRY_THEMES = {
   automation: { accent:'#d62828', highlight:'#2878c8', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' },
   workshops: { accent:'#b58a45', highlight:'#e8d8b5', nav:'#51432d', bg:'#f5f0e5', panel:'#fffdf8', line:'#e4d9c4', ink:'#352f25', muted:'#756b59' },
   'logistics-transport': { accent:'#1d6fa5', highlight:'#2b9bd6', nav:'#17364a', bg:'#eef2f7', panel:'#ffffff', line:'#d5e0e9', ink:'#14212b', muted:'#64748b' },
-  'fleet-management': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' },
-  'hospitality-tourism': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' },
-  'food-beverage': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' },
-  'property-management-facilities': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' },
-  'construction-project-management': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' },
-  'manufacturing-industrial': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' },
-  'general-maintenance': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed', panel:'#ffffff', line:'#cfd5da', ink:'#1b2831', muted:'#5d6b75' }
+  'fleet-management': { accent:'#0f766e', highlight:'#14b8a6', nav:'#123f3b', bg:'#eaf5f3', panel:'#ffffff', line:'#cde3df', ink:'#173b39', muted:'#567571' },
+  'hospitality-tourism': { accent:'#7c3aed', highlight:'#a78bfa', nav:'#35205f', bg:'#f3effa', panel:'#ffffff', line:'#ded2f1', ink:'#2d2340', muted:'#6d617e' },
+  'food-beverage': { accent:'#c2410c', highlight:'#fb923c', nav:'#54220e', bg:'#fff4ec', panel:'#fffdfa', line:'#f2d7c6', ink:'#3d2519', muted:'#806653' },
+  'property-management-facilities': { accent:'#4f46e5', highlight:'#818cf8', nav:'#26205d', bg:'#f0efff', panel:'#ffffff', line:'#d9d7f6', ink:'#27244b', muted:'#6d6a8a' },
+  'construction-project-management': { accent:'#ea580c', highlight:'#fb923c', nav:'#4b240e', bg:'#fff3e8', panel:'#fffdfa', line:'#f3d7c1', ink:'#3f2a1c', muted:'#806b5a' },
+  'manufacturing-industrial': { accent:'#0e7490', highlight:'#22d3ee', nav:'#123c4a', bg:'#eaf5f8', panel:'#ffffff', line:'#cce3e9', ink:'#1d3943', muted:'#5f7881' },
+  'general-maintenance': { accent:'#2563eb', highlight:'#60a5fa', nav:'#172554', bg:'#edf3ff', panel:'#ffffff', line:'#d3e1fb', ink:'#1e3155', muted:'#60769b' }
 };
 
 function applyIndustryTheme() {

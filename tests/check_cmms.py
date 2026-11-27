@@ -167,7 +167,7 @@ if not industry_js.exists():
     raise SystemExit("Missing industry workspace module")
 subprocess.run(["node", "--check", str(industry_js)], check=True)
 industry_code = industry_js.read_text(encoding="utf-8")
-if '<script src="industry_workspaces.js?v=20261126-food-equipment-desk">' not in html:
+if '<script src="industry_workspaces.js?v=20261127-industry-color-identities">' not in html:
     raise SystemExit("Industry workspace asset must be cache-busted after workspace updates")
 for marker in [
     "SF_INDUSTRY_THEMES",
@@ -182,9 +182,9 @@ for marker in [
     "'logistics-transport':",
     "'logistics-transport': { accent:'#1d6fa5', highlight:'#2b9bd6'",
     "'hospitality-tourism':",
-    "'hospitality-tourism': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed'",
+    "'hospitality-tourism': { accent:'#7c3aed', highlight:'#a78bfa', nav:'#35205f', bg:'#f3effa'",
     "'food-beverage':",
-    "'food-beverage': { accent:'#1f5f8b', highlight:'#1f5f8b', nav:'#1b2831', bg:'#e8eaed'",
+    "'food-beverage': { accent:'#c2410c', highlight:'#fb923c', nav:'#54220e', bg:'#fff4ec'",
     "'property-management-facilities':",
     "automation:",
     "Copier and office equipment service visit",
@@ -203,6 +203,11 @@ for marker in [
 ]:
     if marker not in industry_code:
         raise SystemExit(f"Missing industry visual identity: {marker}")
+theme_block = industry_code.split("const SF_INDUSTRY_THEMES = {", 1)[1].split("\n};", 1)[0]
+theme_accents = re.findall(r"accent:'(#[0-9a-fA-F]{6})'", theme_block)
+if len(theme_accents) != 10 or len(set(theme_accents)) != 10:
+    raise SystemExit(f"Expected ten distinct industry accent colours; found {len(set(theme_accents))} unique accents across {len(theme_accents)} themes")
+
 for marker in [
     "applyIndustryTheme==='function'",
     "border-bottom:3px solid var(--ac)",
@@ -603,8 +608,8 @@ for marker in [
     "await blob.arrayBuffer()",
     "pdfText.startsWith('%PDF-')",
     "pdfText.includes('%%EOF')",
-    "Page(?!s)",
-    "generated PDF is incomplete or contains no readable page",
+    "pageCount<1",
+    "The PDF contains no page objects.",
 ]:
     if marker not in pdf_share:
         raise SystemExit(f"PDF structure validation missing: {marker}")
@@ -744,10 +749,10 @@ for marker in ["eq('company_id',me.company_id)", "eq('site_id',site)", "eq('kind
     if marker not in export_code:
         raise SystemExit(f"Invoice accounting export is missing tenant/site scope: {marker}")
 for marker in [
-    "cu:(await sb.from('customers').select('*').eq('company_id',me.company_id))",
+    "const cu=cr.data||[]",
     "async function exportDocs(kind){const r=await sb.from('documents').select('*').eq('company_id',me.company_id).eq('site_id',site)",
-    "async function exportCust(){const D=(await sb.from('customers').select('*').eq('company_id',me.company_id)",
-    "async function exportExp(){const D=(await sb.from('expenses').select('*').eq('company_id',me.company_id).eq('site_id',site)",
+    "async function exportCust(){const r=await sb.from('customers').select('*').eq('company_id',me.company_id)",
+    "async function exportExp(){const r=await sb.from('expenses').select('*').eq('company_id',me.company_id).eq('site_id',site)",
 ]:
     if marker not in html:
         raise SystemExit(f"Accounting export tenant/site regression missing: {marker}")
@@ -1105,3 +1110,31 @@ for marker in [
         raise SystemExit(f"Missing industry workspace checklist shortcut: {marker}")
 print("Fleet and Workshops opt-in checklist packs: PASS")
 
+
+
+# Quotes and invoices: tenant/site scope, numeric validation and transactional conversion.
+for marker in [
+    "sb.rpc('convert_quote_to_invoice'",
+    "p_quote_id:id",
+    "p_invoice_number:number",
+    "Number.isFinite(+l.q)",
+    "Number.isFinite(+l.p)",
+    "eq('company_id',me.company_id)",
+    "pdfHeader!=='%PDF-'",
+    "brokenImages=imgs.filter(img=>!img.naturalWidth||!img.naturalHeight)",
+    "docNode.scrollWidth>docNode.clientWidth+2",
+]:
+    if marker not in html:
+        raise SystemExit("Quotes & invoices release guard missing: " + marker)
+print("Quotes & invoices tenant, validation, atomic conversion and PDF safeguards: PASS")
+
+
+# Generic module deletes and assignee references must stay inside the active tenant/site.
+for marker in [
+    "sb.from(tb).delete().eq('id',rid).eq('company_id',me.company_id)",
+    "if(MOD[tb]?.s)q=q.eq('site_id',site)",
+    "sb.from('profiles').select('id,full_name,role').eq('company_id',me.company_id).eq('active',true)",
+]:
+    if marker not in html:
+        raise SystemExit("Generic tenant write/reference guard missing: " + marker)
+print("Generic module delete and assignee tenant scope: PASS")

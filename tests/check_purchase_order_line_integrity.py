@@ -5,8 +5,8 @@ sql = migration.read_text(encoding="utf-8").lower()
 checks = {
  "array guard": "jsonb_typeof(new.lines) <> 'array'",
  "object guard": "jsonb_typeof(v_line) <> 'object'",
- "quantity numeric type": "jsonb_typeof(v_line->'q') <> 'number'",
- "price numeric type": "jsonb_typeof(v_line->'p') <> 'number'",
+ "quantity numeric type": "jsonb_typeof(v_line->'q') is distinct from 'number'",
+ "price numeric type": "jsonb_typeof(v_line->'p') is distinct from 'number'",
  "finite quantity": "v_qty::text in ('nan','infinity','-infinity')",
  "positive quantity": "v_qty <= 0",
  "finite price": "v_price::text in ('nan','infinity','-infinity')",

@@ -744,10 +744,10 @@ for marker in ["eq('company_id',me.company_id)", "eq('site_id',site)", "eq('kind
     if marker not in export_code:
         raise SystemExit(f"Invoice accounting export is missing tenant/site scope: {marker}")
 for marker in [
-    "cu:(await sb.from('customers').select('*').eq('company_id',me.company_id))",
+    "const cu=cr.data||[]",
     "async function exportDocs(kind){const r=await sb.from('documents').select('*').eq('company_id',me.company_id).eq('site_id',site)",
-    "async function exportCust(){const D=(await sb.from('customers').select('*').eq('company_id',me.company_id)",
-    "async function exportExp(){const D=(await sb.from('expenses').select('*').eq('company_id',me.company_id).eq('site_id',site)",
+    "async function exportCust(){const r=await sb.from('customers').select('*').eq('company_id',me.company_id)",
+    "async function exportExp(){const r=await sb.from('expenses').select('*').eq('company_id',me.company_id).eq('site_id',site)",
 ]:
     if marker not in html:
         raise SystemExit(f"Accounting export tenant/site regression missing: {marker}")
